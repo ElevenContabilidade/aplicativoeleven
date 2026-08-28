@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Scale, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ProcessoFormDialog } from "@/components/societario/processo-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import { formatDate } from "@/lib/utils";
@@ -14,6 +17,15 @@ import { formatDate } from "@/lib/utils";
 export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
   const processos = useAppStore((s) => s.processosSocietarios);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("novo") === "1") router.replace("/societario");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const myClients = clients.filter((c) => c.responsaveis.societario);
   const emAndamento = processos.filter((p) => p.status !== "Finalizado").length;
@@ -24,7 +36,7 @@ export default function SocietarioPage() {
       <PageHeader
         title="Societário"
         description="Abertura, alteração, baixa, inscrições e regularizações em andamento."
-        actions={<Button size="sm"><Plus className="size-3.5" /> Novo processo</Button>}
+        actions={<Button size="sm" onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo processo</Button>}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -70,6 +82,8 @@ export default function SocietarioPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <ProcessoFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
 }

@@ -1,11 +1,15 @@
 "use client";
 
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -13,6 +17,15 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 export default function FinanceiroPage() {
   const clients = useAppStore((s) => s.clients);
   const servicosExtras = useAppStore((s) => s.servicosExtras);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("novo") === "1") router.replace("/financeiro");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const ativos = clients.filter((c) => c.status === "Ativo");
   const mrr = ativos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
@@ -29,7 +42,11 @@ export default function FinanceiroPage() {
 
   return (
     <div>
-      <PageHeader title="Financeiro" description="Honorários, recebimentos, inadimplência e serviços extras da carteira." />
+      <PageHeader
+        title="Financeiro"
+        description="Honorários, recebimentos, inadimplência e serviços extras da carteira."
+        actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo recebimento</Button>}
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <MetricCard label="MRR" value={formatCurrency(mrr)} icon={Repeat} tone="wine" />
@@ -81,6 +98,8 @@ export default function FinanceiroPage() {
           </CardContent>
         </Card>
       </div>
+
+      <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
 }

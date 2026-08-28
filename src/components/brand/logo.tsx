@@ -4,40 +4,34 @@ type MarkProps = {
 };
 
 /**
- * Abstract recreation of the Eleven mark (nested chevrons + growth arrow).
- * Rebuilt as vector from the reference artwork — swap for the original
- * vector file when available.
+ * Vectorized recreation of the Eleven mark (two nested checkmarks + growth
+ * arrow) traced from the official artwork.
  */
 export function EleveMark({ className, color = "currentColor" }: MarkProps) {
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox="0 0 150 150"
       className={className}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
       <polyline
-        points="10,58 34,34 10,10"
+        points="14,84 42,112 74,60"
         stroke={color}
-        strokeWidth="11"
+        strokeWidth="16"
         strokeLinecap="square"
         strokeLinejoin="miter"
       />
       <polyline
-        points="32,80 56,56 32,32"
+        points="42,50 70,78 102,26"
         stroke={color}
-        strokeWidth="11"
+        strokeWidth="16"
         strokeLinecap="square"
         strokeLinejoin="miter"
       />
-      <polyline
-        points="45,66 82,29"
-        stroke={color}
-        strokeWidth="11"
-        strokeLinecap="square"
-      />
-      <polygon points="66,8 90,10 88,34" fill={color} />
+      <polyline points="102,26 128,6" stroke={color} strokeWidth="16" strokeLinecap="square" />
+      <polygon points="110,-4 140,0 136,30" fill={color} />
     </svg>
   );
 }

@@ -381,6 +381,8 @@ export interface Documento {
   dataArquivo: string;
   responsavelId: string;
   tamanho: string;
+  /** Object URL for files attached during this session (not persisted across reloads). */
+  url?: string;
 }
 
 // ---------- Notificações ----------

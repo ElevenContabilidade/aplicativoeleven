@@ -17,23 +17,23 @@ export default function Icon() {
           borderRadius: 14,
         }}
       >
-        <svg width="44" height="44" viewBox="0 0 100 100" fill="none">
+        <svg width="46" height="46" viewBox="0 0 150 150" fill="none">
           <polyline
-            points="10,58 34,34 10,10"
+            points="14,84 42,112 74,60"
             stroke="#4A0E17"
-            strokeWidth="13"
+            strokeWidth="18"
             strokeLinecap="square"
             strokeLinejoin="miter"
           />
           <polyline
-            points="32,80 56,56 32,32"
+            points="42,50 70,78 102,26"
             stroke="#4A0E17"
-            strokeWidth="13"
+            strokeWidth="18"
             strokeLinecap="square"
             strokeLinejoin="miter"
           />
-          <polyline points="45,66 82,29" stroke="#4A0E17" strokeWidth="13" strokeLinecap="square" />
-          <polygon points="64,6 92,9 89,36" fill="#4A0E17" />
+          <polyline points="102,26 128,6" stroke="#4A0E17" strokeWidth="18" strokeLinecap="square" />
+          <polygon points="108,-6 142,-2 138,32" fill="#4A0E17" />
         </svg>
       </div>
     ),

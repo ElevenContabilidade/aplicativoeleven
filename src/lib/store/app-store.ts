@@ -21,6 +21,8 @@ import type {
   Lead,
   LeadStage,
   Client,
+  DadosCadastrais,
+  HistoricoFinanceiro,
   Task,
   Obligation,
   ProcessoSocietario,
@@ -57,7 +59,12 @@ interface AppState {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   addClient: (client: Client) => void;
+  updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
   addDocumento: (doc: Documento) => void;
+  deleteDocumento: (id: string) => void;
+  addProcessoSocietario: (processo: ProcessoSocietario) => void;
+  addCertificado: (certificado: Certificado) => void;
+  addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
   resetData: () => void;
 }
 
@@ -133,10 +140,39 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) })),
 
       addClient: (client) => set((s) => ({ clients: [client, ...s.clients] })),
+      updateClientDados: (clientId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
+        })),
+
       addDocumento: (doc) => set((s) => ({ documentos: [doc, ...s.documentos] })),
+      deleteDocumento: (id) => set((s) => ({ documentos: s.documentos.filter((d) => d.id !== id) })),
+
+      addProcessoSocietario: (processo) =>
+        set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
+
+      addCertificado: (certificado) => set((s) => ({ certificados: [certificado, ...s.certificados] })),
+
+      addRecebimento: (clientId, entry) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, historicoFinanceiro: [entry, ...c.historicoFinanceiro] } : c
+          ),
+        })),
 
       resetData: () => set(initial),
     }),
-    { name: "eleven-hub-store", version: 1 }
+    {
+      name: "eleven-hub-store",
+      version: 1,
+      // blob: object URLs only live for this browser session — never persist them.
+      partialize: (state) => ({
+        ...state,
+        documentos: state.documentos.map((d) => {
+          const { url, ...rest } = d;
+          return url ? rest : d;
+        }),
+      }),
+    }
   )
 );

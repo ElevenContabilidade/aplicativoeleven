@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import { CLIENT_STATUS } from "@/lib/types";
@@ -18,6 +21,15 @@ export default function ClientesPage() {
   const clients = useAppStore((s) => s.clients);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<string>("Todos");
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("novo") === "1") router.replace("/clientes");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filtered = useMemo(() => {
     return clients.filter((c) => {
@@ -33,7 +45,11 @@ export default function ClientesPage() {
 
   return (
     <div>
-      <PageHeader title="Clientes" description={`${clients.length} clientes cadastrados na carteira da Eleven.`} />
+      <PageHeader
+        title="Clientes"
+        description={`${clients.length} clientes cadastrados na carteira da Eleven.`}
+        actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo cliente</Button>}
+      />
 
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative w-full max-w-xs">
@@ -98,6 +114,8 @@ export default function ClientesPage() {
           )}
         </TableBody>
       </Table>
+
+      <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
 }

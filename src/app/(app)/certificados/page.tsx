@@ -1,13 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus } from "lucide-react";
+import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -32,6 +35,15 @@ export default function CertificadosPage() {
   const clients = useAppStore((s) => s.clients);
   const [status, setStatus] = useState("Todos");
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+
+  useEffect(() => {
+    if (searchParams.get("novo") === "1") router.replace("/certificados");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const filtered = useMemo(() => {
     return certificados
       .filter((c) => status === "Todos" || c.status === status)
@@ -45,7 +57,11 @@ export default function CertificadosPage() {
 
   return (
     <div>
-      <PageHeader title="Certificados digitais" description="Gestão de e-CPF e e-CNPJ da carteira, com alertas de vencimento." />
+      <PageHeader
+        title="Certificados digitais"
+        description="Gestão de e-CPF e e-CNPJ da carteira, com alertas de vencimento."
+        actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo certificado</Button>}
+      />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MetricCard label="Em dia" value={emDia} icon={ShieldCheck} tone="success" />
@@ -99,6 +115,8 @@ export default function CertificadosPage() {
           )}
         </TableBody>
       </Table>
+
+      <CertificadoFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
 }

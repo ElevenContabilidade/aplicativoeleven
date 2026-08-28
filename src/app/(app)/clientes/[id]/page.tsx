@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -13,6 +13,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { CadastroForm } from "@/components/clients/cadastro-form";
+import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
+import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
@@ -34,6 +37,7 @@ export default function ClientProfilePage() {
   const addAnotacao = useAppStore((s) => s.addAnotacao);
   const { userId } = useAuthStore();
   const [noteText, setNoteText] = useState("");
+  const [docUploadOpen, setDocUploadOpen] = useState(false);
 
   const client = clients.find((c) => c.id === id);
   if (!client) {
@@ -145,22 +149,7 @@ export default function ClientProfilePage() {
         </TabsContent>
 
         <TabsContent value="cadastrais">
-          <Card>
-            <CardContent className="grid grid-cols-2 gap-4 p-5 text-xs sm:grid-cols-3">
-              <Info label="Razão social" value={client.dados.razaoSocial} />
-              <Info label="Nome fantasia" value={client.dados.nomeFantasia ?? "—"} />
-              <Info label="CNPJ" value={client.dados.cnpj} />
-              <Info label="Inscrição estadual" value={client.dados.inscricaoEstadual ?? "—"} />
-              <Info label="Inscrição municipal" value={client.dados.inscricaoMunicipal ?? "—"} />
-              <Info label="CNAE principal" value={client.dados.cnaePrincipal} />
-              <Info label="Natureza jurídica" value={client.dados.naturezaJuridica} />
-              <Info label="Data de abertura" value={formatDate(client.dados.dataAbertura)} />
-              <Info label="Capital social" value={formatCurrency(client.dados.capitalSocial)} />
-              <Info label="Regime tributário" value={client.dados.regimeTributario} />
-              <Info label="Município/UF" value={`${client.dados.municipio}/${client.dados.estado}`} />
-              <Info label="Endereço" value={client.dados.endereco} />
-            </CardContent>
-          </Card>
+          <CadastroForm client={client} />
         </TabsContent>
 
         <TabsContent value="socios" className="grid gap-4 lg:grid-cols-2">
@@ -245,19 +234,30 @@ export default function ClientProfilePage() {
 
         <TabsContent value="documentos">
           <Card>
-            <CardContent className="space-y-2 p-5">
-              {myDocs.map((d) => (
-                <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium text-sand-800">{d.nome}</span>
-                    <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
-                  </span>
-                  <span className="shrink-0 text-sand-400">{formatDate(d.dataArquivo)}</span>
-                </div>
-              ))}
-              {myDocs.length === 0 && <p className="text-xs text-sand-400">Nenhum documento anexado.</p>}
+            <CardContent className="p-5">
+              <div className="mb-3 flex justify-end">
+                <Button size="sm" onClick={() => setDocUploadOpen(true)}>
+                  <Upload className="size-3.5" /> Anexar documento
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {myDocs.map((d) => (
+                  <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-sand-800">{d.nome}</span>
+                      <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sand-400">{formatDate(d.dataArquivo)}</span>
+                      <DocumentActions documento={d} />
+                    </div>
+                  </div>
+                ))}
+                {myDocs.length === 0 && <p className="text-xs text-sand-400">Nenhum documento anexado.</p>}
+              </div>
             </CardContent>
           </Card>
+          <DocumentUploadDialog open={docUploadOpen} onOpenChange={setDocUploadOpen} fixedClienteId={client.id} />
         </TabsContent>
 
         <TabsContent value="atendimento">
@@ -310,15 +310,6 @@ function MiniStat({ icon: Icon, label, value }: { icon: React.ElementType; label
         <span className="block text-[10px] text-sand-400">{label}</span>
         <span className="block font-medium text-sand-800">{value}</span>
       </span>
-    </div>
-  );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wide text-sand-400">{label}</p>
-      <p className="font-medium text-sand-800">{value}</p>
     </div>
   );
 }
