@@ -68,6 +68,16 @@ const map: Record<string, BadgeTone> = {
   normal: "info",
   alta: "warning",
   urgente: "danger",
+
+  // licenças
+  regular: "success",
+  vencendo: "warning",
+  vencida: "danger",
+  "em renovação": "info",
+
+  // indicações
+  novo: "outline",
+  convertido: "success",
 };
 
 export function toneFor(status: string): BadgeTone {

@@ -11,6 +11,8 @@ import type {
   Anotacao,
   TimelineEvent,
   ServicoExtra,
+  Licenca,
+  Indicacao,
 } from "@/lib/types";
 
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
@@ -101,6 +103,8 @@ const clientBase = (
   },
   historicoFinanceiro: overrides.historicoFinanceiro ?? [],
   onboarding: overrides.onboarding ?? [],
+  notasDepartamentos: overrides.notasDepartamentos,
+  leadOrigemId: overrides.leadOrigemId,
   criadoEm: overrides.criadoEm ?? "2022-01-10",
 });
 
@@ -165,6 +169,11 @@ export const CLIENTS: Client[] = [
     historicoFinanceiro: historicoFin(780),
     onboarding: onboardingFrom(18),
     responsaveis: { comercial: "u1", relacionamento: "u9", fiscal: "u4", contabil: "u5", pessoal: "u6", societario: "u7", financeiro: "u8" },
+    notasDepartamentos: {
+      fiscal: { nota: "Movimento em dia, sem pendências. Próxima apuração do Simples em 20/09.", atualizadoEm: iso(-3) },
+      contabil: { nota: "Balancete de agosto fechado e enviado ao cliente.", atualizadoEm: iso(-5) },
+      pessoal: { nota: "Folha de julho processada. Aguardando exame periódico de 1 colaboradora.", atualizadoEm: iso(-2) },
+    },
     criadoEm: "2018-03-02",
   }),
   clientBase({
@@ -310,6 +319,27 @@ export const CLIENTS: Client[] = [
     onboarding: onboardingFrom(18),
     criadoEm: "2016-01-01",
   }),
+];
+
+// ---------------- Licenças e vencimentos ----------------
+
+export const LICENCAS: Licenca[] = [
+  { id: "lic1", clienteId: "c1", nome: "Alvará de Funcionamento", status: "Regular", dataEmissao: "2018-04-01", dataVencimento: iso(280), observacao: "Renovação automática anual" },
+  { id: "lic2", clienteId: "c1", nome: "Licença Sanitária (Vigilância Sanitária)", status: "Vencendo", dataEmissao: "2025-09-01", dataVencimento: iso(25) },
+  { id: "lic3", clienteId: "c1", nome: "AVCB (Corpo de Bombeiros)", status: "Regular", dataEmissao: "2024-11-10", dataVencimento: iso(400) },
+  { id: "lic4", clienteId: "c2", nome: "Alvará Sanitário CRO", status: "Regular", dataEmissao: "2023-06-01", dataVencimento: iso(150) },
+  { id: "lic5", clienteId: "c2", nome: "Licença de Funcionamento Municipal", status: "Vencida", dataEmissao: "2022-01-15", dataVencimento: iso(-12), observacao: "Aguardando protocolo de renovação junto à prefeitura" },
+  { id: "lic6", clienteId: "c9", nome: "Alvará de Funcionamento", status: "Em renovação", dataEmissao: "2019-11-20", dataVencimento: iso(-5) },
+  { id: "lic7", clienteId: "c11", nome: "Registro no CREA", status: "Regular", dataEmissao: "2021-02-15", dataVencimento: iso(500) },
+];
+
+// ---------------- Indicações ----------------
+
+export const INDICACOES: Indicacao[] = [
+  { id: "ind1", clienteId: "c1", nomeIndicado: "Bruna Kellermann", empresa: "Kellermann Odontologia", contato: "(11) 98877-2200", status: "Convertido", data: iso(-60), observacao: "Virou cliente Ativo em maio" },
+  { id: "ind2", clienteId: "c1", nomeIndicado: "Rogério Assis", empresa: "Assis Personal Training", contato: "(11) 99011-4433", status: "Em contato", data: iso(-10) },
+  { id: "ind3", clienteId: "c6", nomeIndicado: "Marcela Torres", empresa: "Torres Advocacia Trabalhista", contato: "(31) 98122-9090", status: "Novo", data: iso(-2) },
+  { id: "ind4", clienteId: "c9", nomeIndicado: "Empório Vieira Filho", status: "Perdido", data: iso(-45), observacao: "Optou por continuar com o contador atual" },
 ];
 
 // ---------------- Tarefas ----------------

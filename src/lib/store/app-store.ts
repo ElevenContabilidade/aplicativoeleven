@@ -15,6 +15,8 @@ import {
   TIMELINE,
   NOTIFICATIONS,
   SERVICOS_EXTRAS,
+  LICENCAS,
+  INDICACOES,
 } from "@/lib/data/seed";
 import type {
   TeamMember,
@@ -33,6 +35,9 @@ import type {
   AppNotification,
   OnboardingChecklistItem,
   ServicoExtra,
+  Licenca,
+  Indicacao,
+  DepartamentoChave,
 } from "@/lib/types";
 
 interface AppState {
@@ -48,6 +53,8 @@ interface AppState {
   timeline: TimelineEvent[];
   notifications: AppNotification[];
   servicosExtras: ServicoExtra[];
+  licencas: Licenca[];
+  indicacoes: Indicacao[];
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
@@ -67,6 +74,13 @@ interface AppState {
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   addCertificado: (certificado: Certificado) => void;
   addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
+  updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
+  addLicenca: (licenca: Licenca) => void;
+  updateLicenca: (id: string, patch: Partial<Licenca>) => void;
+  deleteLicenca: (id: string) => void;
+  addIndicacao: (indicacao: Indicacao) => void;
+  updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
+  deleteIndicacao: (id: string) => void;
   resetData: () => void;
 }
 
@@ -83,6 +97,8 @@ const initial = {
   timeline: TIMELINE,
   notifications: NOTIFICATIONS,
   servicosExtras: SERVICOS_EXTRAS,
+  licencas: LICENCAS,
+  indicacoes: INDICACOES,
 };
 
 export const useAppStore = create<AppState>()(
@@ -164,6 +180,31 @@ export const useAppStore = create<AppState>()(
             c.id === clientId ? { ...c, historicoFinanceiro: [entry, ...c.historicoFinanceiro] } : c
           ),
         })),
+
+      updateNotaDepartamento: (clientId, depto, nota) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? {
+                  ...c,
+                  notasDepartamentos: {
+                    ...c.notasDepartamentos,
+                    [depto]: { nota, atualizadoEm: new Date().toISOString().slice(0, 10) },
+                  },
+                }
+              : c
+          ),
+        })),
+
+      addLicenca: (licenca) => set((s) => ({ licencas: [licenca, ...s.licencas] })),
+      updateLicenca: (id, patch) =>
+        set((s) => ({ licencas: s.licencas.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+      deleteLicenca: (id) => set((s) => ({ licencas: s.licencas.filter((l) => l.id !== id) })),
+
+      addIndicacao: (indicacao) => set((s) => ({ indicacoes: [indicacao, ...s.indicacoes] })),
+      updateIndicacao: (id, patch) =>
+        set((s) => ({ indicacoes: s.indicacoes.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
+      deleteIndicacao: (id) => set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) })),
 
       resetData: () => set(initial),
     }),

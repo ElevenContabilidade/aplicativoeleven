@@ -227,6 +227,13 @@ export interface TimelineEvent {
   descricao: string;
 }
 
+export type DepartamentoChave = "fiscal" | "contabil" | "pessoal";
+
+export interface NotaDepartamento {
+  nota: string;
+  atualizadoEm?: string;
+}
+
 export interface Client {
   id: string;
   status: ClientStatus;
@@ -239,8 +246,41 @@ export interface Client {
   financeiro: FinanceiroCliente;
   historicoFinanceiro: HistoricoFinanceiro[];
   onboarding: OnboardingChecklistItem[];
+  notasDepartamentos?: Partial<Record<DepartamentoChave, NotaDepartamento>>;
   leadOrigemId?: string;
   criadoEm: string;
+}
+
+// ---------- Licenças e vencimentos ----------
+
+export const LICENCA_STATUS = ["Regular", "Vencendo", "Vencida", "Em renovação"] as const;
+export type LicencaStatus = (typeof LICENCA_STATUS)[number];
+
+export interface Licenca {
+  id: string;
+  clienteId: string;
+  nome: string;
+  status: LicencaStatus;
+  dataEmissao?: string;
+  dataVencimento: string;
+  documentoId?: string;
+  observacao?: string;
+}
+
+// ---------- Indicações ----------
+
+export const INDICACAO_STATUS = ["Novo", "Em contato", "Convertido", "Perdido"] as const;
+export type IndicacaoStatus = (typeof INDICACAO_STATUS)[number];
+
+export interface Indicacao {
+  id: string;
+  clienteId: string;
+  nomeIndicado: string;
+  empresa?: string;
+  contato?: string;
+  status: IndicacaoStatus;
+  data: string;
+  observacao?: string;
 }
 
 // ---------- Tarefas ----------

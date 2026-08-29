@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -14,6 +14,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CadastroForm } from "@/components/clients/cadastro-form";
+import { DepartmentNotesCard } from "@/components/clients/department-notes-card";
+import { LicencaFormDialog } from "@/components/clients/licenca-form-dialog";
+import { IndicacaoFormDialog } from "@/components/clients/indicacao-form-dialog";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
@@ -33,11 +36,17 @@ export default function ClientProfilePage() {
   const certificados = useAppStore((s) => s.certificados);
   const timeline = useAppStore((s) => s.timeline);
   const anotacoes = useAppStore((s) => s.anotacoes);
+  const licencas = useAppStore((s) => s.licencas);
+  const indicacoes = useAppStore((s) => s.indicacoes);
   const toggleOnboardingItem = useAppStore((s) => s.toggleOnboardingItem);
   const addAnotacao = useAppStore((s) => s.addAnotacao);
+  const deleteLicenca = useAppStore((s) => s.deleteLicenca);
+  const deleteIndicacao = useAppStore((s) => s.deleteIndicacao);
   const { userId } = useAuthStore();
   const [noteText, setNoteText] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
+  const [licencaOpen, setLicencaOpen] = useState(false);
+  const [indicacaoOpen, setIndicacaoOpen] = useState(false);
 
   const client = clients.find((c) => c.id === id);
   if (!client) {
@@ -54,7 +63,14 @@ export default function ClientProfilePage() {
   const myCerts = certificados.filter((c) => c.clienteId === client.id);
   const myTimeline = timeline.filter((t) => t.clienteId === client.id);
   const myNotes = anotacoes.filter((n) => n.clienteId === client.id);
+  const myLicencas = licencas.filter((l) => l.clienteId === client.id);
+  const myIndicacoes = indicacoes.filter((i) => i.clienteId === client.id);
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
+
+  const parceriaMeses = Math.max(
+    0,
+    Math.round((new Date().getTime() - new Date(client.criadoEm).getTime()) / (1000 * 60 * 60 * 24 * 30))
+  );
 
   function addNote() {
     if (!noteText.trim()) return;
@@ -98,7 +114,9 @@ export default function ClientProfilePage() {
           <TabsTrigger value="socios">Sócios &amp; contatos</TabsTrigger>
           <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+          <TabsTrigger value="licencas">Licenças</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="indicacoes">Indicações</TabsTrigger>
           <TabsTrigger value="atendimento">Atendimento</TabsTrigger>
           <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
         </TabsList>
@@ -143,6 +161,32 @@ export default function ClientProfilePage() {
                   </Badge>
                 ))}
                 {myCerts.length === 0 && <p className="text-xs text-sand-400">Nenhum certificado cadastrado.</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <DepartmentNotesCard client={client} depto="fiscal" />
+          <DepartmentNotesCard client={client} depto="contabil" />
+          <DepartmentNotesCard client={client} depto="pessoal" />
+
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><Handshake className="size-4 text-wine-600" /> Histórico de parceria</CardTitle></CardHeader>
+            <CardContent className="space-y-2 pt-4 text-xs">
+              <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
+                <span className="text-sand-500">Cliente desde</span>
+                <span className="font-medium text-sand-800">{formatDate(client.criadoEm)} · {parceriaMeses} {parceriaMeses === 1 ? "mês" : "meses"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
+                <span className="text-sand-500">Início do contrato</span>
+                <span className="font-medium text-sand-800">{formatDate(client.financeiro.inicioContrato)}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
+                <span className="text-sand-500">Onboarding</span>
+                <span className="font-medium text-sand-800">{onboardingPct}% concluído</span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
+                <span className="text-sand-500">Indicações geradas</span>
+                <span className="font-medium text-sand-800">{myIndicacoes.length}</span>
               </div>
             </CardContent>
           </Card>
@@ -232,6 +276,55 @@ export default function ClientProfilePage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="licencas">
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-3 flex justify-end">
+                <Button size="sm" onClick={() => setLicencaOpen(true)}>
+                  <Plus className="size-3.5" /> Nova licença
+                </Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Emissão</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {myLicencas.map((l) => (
+                    <TableRow key={l.id}>
+                      <TableCell className="flex items-center gap-2 font-medium text-sand-800">
+                        <Award className="size-3.5 shrink-0 text-wine-500" /> {l.nome}
+                      </TableCell>
+                      <TableCell>{l.dataEmissao ? formatDate(l.dataEmissao) : "—"}</TableCell>
+                      <TableCell>{formatDate(l.dataVencimento)}</TableCell>
+                      <TableCell><StatusBadge status={l.status} /></TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => confirm(`Excluir "${l.nome}"?`) && deleteLicenca(l.id)}
+                          title="Excluir"
+                          className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {myLicencas.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhuma licença ou registro cadastrado.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <LicencaFormDialog open={licencaOpen} onOpenChange={setLicencaOpen} clienteId={client.id} />
+        </TabsContent>
+
         <TabsContent value="documentos">
           <Card>
             <CardContent className="p-5">
@@ -258,6 +351,44 @@ export default function ClientProfilePage() {
             </CardContent>
           </Card>
           <DocumentUploadDialog open={docUploadOpen} onOpenChange={setDocUploadOpen} fixedClienteId={client.id} />
+        </TabsContent>
+
+        <TabsContent value="indicacoes">
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-3 flex justify-end">
+                <Button size="sm" onClick={() => setIndicacaoOpen(true)}>
+                  <Plus className="size-3.5" /> Nova indicação
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {myIndicacoes.map((i) => (
+                  <div key={i.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Share2 className="size-3.5 shrink-0 text-wine-500" />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium text-sand-800">{i.nomeIndicado}{i.empresa ? ` · ${i.empresa}` : ""}</span>
+                        <span className="text-sand-400">{i.contato ?? "Sem contato informado"} • {formatDate(i.data)}</span>
+                      </span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <StatusBadge status={i.status} />
+                      <button
+                        type="button"
+                        onClick={() => confirm(`Excluir indicação de "${i.nomeIndicado}"?`) && deleteIndicacao(i.id)}
+                        title="Excluir"
+                        className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {myIndicacoes.length === 0 && <p className="text-xs text-sand-400">Nenhuma indicação registrada por este cliente ainda.</p>}
+              </div>
+            </CardContent>
+          </Card>
+          <IndicacaoFormDialog open={indicacaoOpen} onOpenChange={setIndicacaoOpen} clienteId={client.id} />
         </TabsContent>
 
         <TabsContent value="atendimento">
