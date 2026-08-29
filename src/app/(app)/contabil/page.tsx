@@ -1,21 +1,16 @@
 "use client";
 
-import { Calculator } from "lucide-react";
-import { DepartmentPanel } from "@/components/departments/department-panel";
+import { PageHeader } from "@/components/layout/page-header";
 import { ContabilChecklist } from "@/components/departments/contabil-checklist";
 
 export default function ContabilPage() {
   return (
-    <>
-      <DepartmentPanel
+    <div>
+      <PageHeader
         title="Contábil"
         description="Conciliações, fechamentos, balancetes e demonstrações da carteira."
-        responsavelKey="contabil"
-        departamento="Contábil"
-        icon={Calculator}
-        showOverview={false}
       />
       <ContabilChecklist />
-    </>
+    </div>
   );
 }
