@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
+import { ETAPAS_ABERTURA_EMPRESA } from "@/lib/types";
 import type {
   TeamMember,
   Lead,
@@ -357,7 +358,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 4,
+      version: 5,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -371,13 +372,39 @@ export const useAppStore = create<AppState>()(
       migrate: (persistedState: unknown) => {
         const state = persistedState as (Partial<AppState> & Record<string, unknown>) | undefined;
         if (state?.processosSocietarios) {
-          state.processosSocietarios = state.processosSocietarios.map((p) => ({
-            ...p,
-            etapas: (p.etapas ?? []).map((e) => {
+          state.processosSocietarios = state.processosSocietarios.map((p) => {
+            const migratedEtapas: EtapaProcesso[] = (p.etapas ?? []).map((e) => {
               const old = e as unknown as { feito?: boolean; status?: ChecklistStatus };
               return { ...e, status: old.status ?? (old.feito ? "OK" : "Pendente") };
-            }),
-          }));
+            });
+            // "Abertura de empresa" always ships the same 27-step checklist. Older
+            // sessions may have it persisted under a previous wording/order of
+            // ETAPAS_ABERTURA_EMPRESA, which broke the "Por etapa" view (every cell
+            // showed "—" and nothing was clickable, since the lookup by `descricao`
+            // text no longer matched anything). Rebuild it here so it always has
+            // exactly one entry per current step, reusing the saved status/id by
+            // matching on descrição first and falling back to position.
+            if (p.tipoServico === "Abertura de empresa" && migratedEtapas.length > 0) {
+              const byDescricao = new Map(migratedEtapas.map((e) => [e.descricao, e]));
+              return {
+                ...p,
+                etapas: ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => {
+                  const match = byDescricao.get(descricao) ?? migratedEtapas[i];
+                  return match
+                    ? { ...match, descricao }
+                    : {
+                        id: `et${i}`,
+                        descricao,
+                        responsavelId: p.responsavelId,
+                        inicio: p.dataAbertura,
+                        prazo: p.prazo,
+                        status: "Pendente" as ChecklistStatus,
+                      };
+                }),
+              };
+            }
+            return { ...p, etapas: migratedEtapas };
+          });
         }
         // The certificado status list was collapsed from 8 granular steps down to
         // Válido/Aguardando Renovação/Vencido — remap anything saved under the old set.
