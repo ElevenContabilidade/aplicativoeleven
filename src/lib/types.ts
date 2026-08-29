@@ -448,3 +448,40 @@ export interface AppNotification {
   lida: boolean;
   href?: string;
 }
+
+// ---------- Checklist de rotinas contábeis ----------
+
+export const ROTINAS_CONTABEIS_MENSAIS = [
+  "Receber extratos bancários PDF e OFX",
+  "Cobrar dos clientes documentos faltantes",
+  "Classificar",
+  "Importar DP",
+  "Importar Fiscal",
+  "Imposto",
+  "Conciliar Banco",
+  "Conciliar cliente e fornecedores",
+  "Validar balancete com cliente",
+] as const;
+
+export const ROTINAS_CONTABEIS_ANUAIS = [
+  "Balanço",
+  "DRE",
+  "DLPA",
+  "DMPL",
+  "Notas Explicativas",
+  "Livro Diário",
+  "Registro Junta Comercial",
+  "Envio SPED ECD",
+] as const;
+
+export const CHECKLIST_STATUS = ["OK", "Pendente"] as const;
+export type ChecklistStatus = (typeof CHECKLIST_STATUS)[number];
+
+export interface ChecklistContabilEntry {
+  id: string;
+  clienteId: string;
+  /** "YYYY-MM" para rotinas mensais, "YYYY" para rotinas anuais. */
+  competencia: string;
+  rotina: string;
+  status: ChecklistStatus;
+}

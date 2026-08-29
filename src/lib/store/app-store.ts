@@ -39,6 +39,8 @@ import type {
   Indicacao,
   DepartamentoChave,
   EtapaProcesso,
+  ChecklistContabilEntry,
+  ChecklistStatus,
 } from "@/lib/types";
 
 interface AppState {
@@ -56,6 +58,7 @@ interface AppState {
   servicosExtras: ServicoExtra[];
   licencas: Licenca[];
   indicacoes: Indicacao[];
+  checklistContabil: ChecklistContabilEntry[];
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
@@ -87,6 +90,7 @@ interface AppState {
   addIndicacao: (indicacao: Indicacao) => void;
   updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
   deleteIndicacao: (id: string) => void;
+  setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   resetData: () => void;
 }
 
@@ -105,6 +109,7 @@ const initial = {
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
+  checklistContabil: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -240,6 +245,27 @@ export const useAppStore = create<AppState>()(
       updateIndicacao: (id, patch) =>
         set((s) => ({ indicacoes: s.indicacoes.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
       deleteIndicacao: (id) => set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) })),
+
+      setChecklistContabil: (clienteId, competencia, rotina, status) =>
+        set((s) => {
+          const existing = s.checklistContabil.find(
+            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
+          );
+          if (!status) {
+            return { checklistContabil: s.checklistContabil.filter((e) => e !== existing) };
+          }
+          if (existing) {
+            return {
+              checklistContabil: s.checklistContabil.map((e) => (e === existing ? { ...e, status } : e)),
+            };
+          }
+          return {
+            checklistContabil: [
+              ...s.checklistContabil,
+              { id: `chk-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
+            ],
+          };
+        }),
 
       resetData: () => set(initial),
     }),
