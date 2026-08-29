@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Loader2, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Client, DadosCadastrais } from "@/lib/types";
+import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
 const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
 
@@ -16,9 +17,41 @@ export function CadastroForm({ client }: { client: Client }) {
   const updateClientDados = useAppStore((s) => s.updateClientDados);
   const [form, setForm] = useState<DadosCadastrais>(client.dados);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [buscaErro, setBuscaErro] = useState<string | null>(null);
 
   function set<K extends keyof DadosCadastrais>(key: K, value: DadosCadastrais[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function buscarCnpj() {
+    if (onlyDigits(form.cnpj).length !== 14) {
+      setBuscaErro("Digite os 14 dígitos do CNPJ para buscar.");
+      return;
+    }
+    setBuscando(true);
+    setBuscaErro(null);
+    try {
+      const dados = await lookupCnpj(form.cnpj);
+      setForm((f) => ({
+        ...f,
+        razaoSocial: dados.razaoSocial || f.razaoSocial,
+        nomeFantasia: dados.nomeFantasia ?? f.nomeFantasia,
+        cnaePrincipal: dados.cnaePrincipal || f.cnaePrincipal,
+        cnaesSecundarios: dados.cnaesSecundarios.length ? dados.cnaesSecundarios : f.cnaesSecundarios,
+        naturezaJuridica: dados.naturezaJuridica || f.naturezaJuridica,
+        dataAbertura: dados.dataAbertura || f.dataAbertura,
+        capitalSocial: dados.capitalSocial || f.capitalSocial,
+        regimeTributario: dados.regimeTributario ?? f.regimeTributario,
+        municipio: dados.municipio || f.municipio,
+        estado: dados.estado || f.estado,
+        endereco: dados.endereco || f.endereco,
+      }));
+    } catch (err) {
+      setBuscaErro(err instanceof Error ? err.message : "Não foi possível consultar o CNPJ.");
+    } finally {
+      setBuscando(false);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -38,8 +71,15 @@ export function CadastroForm({ client }: { client: Client }) {
           <Field label="Nome fantasia">
             <Input value={form.nomeFantasia ?? ""} onChange={(e) => set("nomeFantasia", e.target.value)} />
           </Field>
-          <Field label="CNPJ">
-            <Input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} />
+          <Field label="CNPJ" className="sm:col-span-2 lg:col-span-1">
+            <div className="flex gap-2">
+              <Input value={form.cnpj} onChange={(e) => set("cnpj", maskCnpj(e.target.value))} />
+              <Button type="button" size="sm" variant="outline" onClick={buscarCnpj} disabled={buscando} className="shrink-0">
+                {buscando ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+                Buscar
+              </Button>
+            </div>
+            {buscaErro && <p className="mt-1 text-[11px] text-status-danger">{buscaErro}</p>}
           </Field>
           <Field label="Inscrição estadual">
             <Input value={form.inscricaoEstadual ?? ""} onChange={(e) => set("inscricaoEstadual", e.target.value)} />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { CLIENT_STATUS, type Client, type ClientStatus, type DadosCadastrais } from "@/lib/types";
+import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
 const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
 
@@ -25,10 +27,43 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [regime, setRegime] = useState<DadosCadastrais["regimeTributario"]>("Simples Nacional");
   const [status, setStatus] = useState<ClientStatus>("Onboarding");
   const [valorMensal, setValorMensal] = useState("");
+  const [dadosExtra, setDadosExtra] = useState<Partial<DadosCadastrais>>({});
+  const [buscando, setBuscando] = useState(false);
+  const [buscaErro, setBuscaErro] = useState<string | null>(null);
 
   function reset() {
     setRazaoSocial(""); setNomeFantasia(""); setCnpj(""); setSegmento("");
     setRegime("Simples Nacional"); setStatus("Onboarding"); setValorMensal("");
+    setDadosExtra({}); setBuscaErro(null);
+  }
+
+  async function buscarCnpj() {
+    if (onlyDigits(cnpj).length !== 14) {
+      setBuscaErro("Digite os 14 dígitos do CNPJ para buscar.");
+      return;
+    }
+    setBuscando(true);
+    setBuscaErro(null);
+    try {
+      const dados = await lookupCnpj(cnpj);
+      setRazaoSocial(dados.razaoSocial);
+      setNomeFantasia(dados.nomeFantasia ?? "");
+      if (dados.regimeTributario) setRegime(dados.regimeTributario);
+      setDadosExtra({
+        cnaePrincipal: dados.cnaePrincipal,
+        cnaesSecundarios: dados.cnaesSecundarios,
+        naturezaJuridica: dados.naturezaJuridica,
+        dataAbertura: dados.dataAbertura,
+        capitalSocial: dados.capitalSocial,
+        municipio: dados.municipio,
+        estado: dados.estado,
+        endereco: dados.endereco,
+      });
+    } catch (err) {
+      setBuscaErro(err instanceof Error ? err.message : "Não foi possível consultar o CNPJ.");
+    } finally {
+      setBuscando(false);
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -43,15 +78,15 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         razaoSocial,
         nomeFantasia: nomeFantasia || undefined,
         cnpj,
-        cnaePrincipal: "—",
-        cnaesSecundarios: [],
-        naturezaJuridica: "Sociedade Empresária Limitada",
-        dataAbertura: today,
-        capitalSocial: 0,
+        cnaePrincipal: dadosExtra.cnaePrincipal ?? "—",
+        cnaesSecundarios: dadosExtra.cnaesSecundarios ?? [],
+        naturezaJuridica: dadosExtra.naturezaJuridica ?? "Sociedade Empresária Limitada",
+        dataAbertura: dadosExtra.dataAbertura ?? today,
+        capitalSocial: dadosExtra.capitalSocial ?? 0,
         regimeTributario: regime,
-        municipio: "—",
-        estado: "—",
-        endereco: "—",
+        municipio: dadosExtra.municipio ?? "—",
+        estado: dadosExtra.estado ?? "—",
+        endereco: dadosExtra.endereco ?? "—",
       },
       socios: [],
       contatos: [],
@@ -83,6 +118,26 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
+            <Label className="mb-1 block">CNPJ *</Label>
+            <div className="flex gap-2">
+              <Input
+                value={cnpj}
+                onChange={(e) => setCnpj(maskCnpj(e.target.value))}
+                onBlur={() => onlyDigits(cnpj).length === 14 && buscarCnpj()}
+                placeholder="00.000.000/0001-00"
+                required
+              />
+              <Button type="button" variant="outline" onClick={buscarCnpj} disabled={buscando} className="shrink-0">
+                {buscando ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+                Buscar
+              </Button>
+            </div>
+            {buscaErro && <p className="mt-1 text-[11px] text-status-danger">{buscaErro}</p>}
+            {!buscaErro && dadosExtra.municipio && (
+              <p className="mt-1 text-[11px] text-status-success">Dados preenchidos automaticamente pela Receita Federal.</p>
+            )}
+          </div>
+          <div>
             <Label className="mb-1 block">Razão social *</Label>
             <Input value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} required />
           </div>
@@ -90,10 +145,6 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
             <div>
               <Label className="mb-1 block">Nome fantasia</Label>
               <Input value={nomeFantasia} onChange={(e) => setNomeFantasia(e.target.value)} />
-            </div>
-            <div>
-              <Label className="mb-1 block">CNPJ *</Label>
-              <Input value={cnpj} onChange={(e) => setCnpj(e.target.value)} placeholder="00.000.000/0001-00" required />
             </div>
             <div>
               <Label className="mb-1 block">Segmento</Label>
