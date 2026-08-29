@@ -474,7 +474,7 @@ export const ROTINAS_CONTABEIS_ANUAIS = [
   "Envio SPED ECD",
 ] as const;
 
-export const CHECKLIST_STATUS = ["OK", "Pendente"] as const;
+export const CHECKLIST_STATUS = ["OK", "Pendente", "Dispensada"] as const;
 export type ChecklistStatus = (typeof CHECKLIST_STATUS)[number];
 
 export interface ChecklistEntry {

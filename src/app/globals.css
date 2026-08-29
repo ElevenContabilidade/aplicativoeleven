@@ -47,6 +47,8 @@
   --color-status-info-bg: #E9F1F6;
   --color-status-neutral: #726A5B;
   --color-status-neutral-bg: #F4F0E8;
+  --color-status-brown: #7A4A23;
+  --color-status-brown-bg: #F1E4D3;
 }
 
 @theme inline {

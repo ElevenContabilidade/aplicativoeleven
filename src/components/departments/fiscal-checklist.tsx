@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -29,7 +29,12 @@ const REGIME_GROUPS: { label: string; match: (c: Client) => boolean }[] = [
 const STATUS_STYLE: Record<ChecklistStatus, string> = {
   OK: "border-status-success bg-status-success-bg text-status-success",
   Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
+  Dispensada: "border-status-brown bg-status-brown-bg text-status-brown",
 };
+
+function isDone(status: ChecklistStatus | null) {
+  return status === "OK" || status === "Dispensada";
+}
 
 function pctColor(pct: number) {
   if (pct === 100) return "text-status-success";
@@ -62,7 +67,7 @@ export function FiscalChecklist() {
 
   function pctForList(clienteId: string, comp: string, list: string[]) {
     if (list.length === 0) return 0;
-    const done = list.filter((r) => statusFor(clienteId, comp, r) === "OK").length;
+    const done = list.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
     return Math.round((done / list.length) * 100);
   }
 
@@ -72,7 +77,7 @@ export function FiscalChecklist() {
 
   const totalCells = myClients.reduce((sum, c) => sum + rotinasFor(c, period).length, 0);
   const okCells = myClients.reduce(
-    (sum, c) => sum + rotinasFor(c, period).filter((r) => statusFor(c.id, competencia, r) === "OK").length,
+    (sum, c) => sum + rotinasFor(c, period).filter((r) => isDone(statusFor(c.id, competencia, r))).length,
     0
   );
   const overallPct = totalCells > 0 ? Math.round((okCells / totalCells) * 100) : 0;
@@ -302,13 +307,14 @@ function ClientRow({
               value={status ?? "—"}
               onValueChange={(v) => setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
             >
-              <SelectTrigger className={cn("h-7 w-28 px-2 text-[11px]", status && STATUS_STYLE[status])}>
+              <SelectTrigger className={cn("h-7 w-28 justify-center px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="—">—</SelectItem>
-                <SelectItem value="OK">OK</SelectItem>
-                <SelectItem value="Pendente">Pendente</SelectItem>
+                {CHECKLIST_STATUS.map((s) => (
+                  <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </td>
