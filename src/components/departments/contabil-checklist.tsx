@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, type ChecklistStatus } from "@/lib/types";
+import { ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const WINE = "#5C1420";
 
 const MESES = [
   { value: "01", label: "Jan" }, { value: "02", label: "Fev" }, { value: "03", label: "Mar" },
@@ -15,121 +18,241 @@ const MESES = [
   { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
 ];
 
+const YEARS = Array.from({ length: 2034 - 2024 + 1 }, (_, i) => String(2024 + i)).reverse();
+
 const STATUS_STYLE: Record<ChecklistStatus, string> = {
   OK: "border-status-success bg-status-success-bg text-status-success",
-  Pendente: "border-status-warning bg-status-warning-bg text-status-warning",
+  Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
 };
+
+function pctColor(pct: number) {
+  if (pct === 100) return "text-status-success";
+  if (pct === 0) return "text-sand-400";
+  return "text-status-warning";
+}
 
 export function ContabilChecklist() {
   const clients = useAppStore((s) => s.clients);
   const checklist = useAppStore((s) => s.checklistContabil);
   const setChecklistContabil = useAppStore((s) => s.setChecklistContabil);
 
-  const years = useMemo(() => {
-    const set = new Set(clients.map((c) => c.criadoEm.slice(0, 4)));
-    set.add(new Date().getFullYear().toString());
-    return [...set].sort().reverse();
-  }, [clients]);
-  const [year, setYear] = useState(years[0]);
+  const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const myClients = clients.filter(
-    (c) => c.responsaveis.contabil && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding")
+  const myClients = useMemo(
+    () => clients.filter((c) => c.responsaveis.contabil && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding")),
+    [clients]
   );
 
   const rotinas = period === "anual" ? ROTINAS_CONTABEIS_ANUAIS : ROTINAS_CONTABEIS_MENSAIS;
   const competencia = period === "anual" ? year : `${year}-${period}`;
 
-  function statusFor(clienteId: string, rotina: string): ChecklistStatus | null {
-    return checklist.find((e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina)?.status ?? null;
+  function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
+    return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
+  }
+
+  function pctFor(clienteId: string, comp: string, list: readonly string[]) {
+    if (list.length === 0) return 0;
+    const done = list.filter((r) => statusFor(clienteId, comp, r) === "OK").length;
+    return Math.round((done / list.length) * 100);
   }
 
   const totalCells = myClients.length * rotinas.length;
-  const okCells = myClients.reduce((sum, c) => sum + rotinas.filter((r) => statusFor(c.id, r) === "OK").length, 0);
+  const okCells = myClients.reduce((sum, c) => sum + rotinas.filter((r) => statusFor(c.id, competencia, r) === "OK").length, 0);
+  const overallPct = totalCells > 0 ? Math.round((okCells / totalCells) * 100) : 0;
+
+  const clientPcts = useMemo(
+    () => myClients.map((c) => ({ cliente: (c.dados.nomeFantasia ?? c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c.id, competencia, rotinas) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [myClients, checklist, competencia, rotinas]
+  );
+  const clientesEmDia = clientPcts.filter((c) => c.pct === 100).length;
+  const clientesPendentes = clientPcts.filter((c) => c.pct < 100).length;
+
+  const monthlyTrend = useMemo(
+    () =>
+      MESES.map((m) => {
+        const comp = `${year}-${m.value}`;
+        const pcts = myClients.map((c) => pctFor(c.id, comp, ROTINAS_CONTABEIS_MENSAIS));
+        const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
+        return { mes: m.label, pct: avg };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [myClients, checklist, year]
+  );
 
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Checklist de rotinas contábeis</CardTitle>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-sand-500">{okCells}/{totalCells} concluídas</span>
-          <Select value={year} onValueChange={setYear}>
-            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          <PeriodChip label="Anual" active={period === "anual"} onClick={() => setPeriod("anual")} />
-          {MESES.map((m) => (
-            <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
-          ))}
-        </div>
+    <>
+      <Card className="mt-4">
+        <CardHeader><CardTitle>Dashboard contábil — {period === "anual" ? `rotinas anuais de ${year}` : `${MESES.find((m) => m.value === period)?.label}/${year}`}</CardTitle></CardHeader>
+        <CardContent className="space-y-4 pt-4">
+          <div className="grid grid-cols-3 gap-4">
+            <MiniStat label="Conclusão do período" value={`${overallPct}%`} tone={pctColor(overallPct)} />
+            <MiniStat label="Clientes em dia" value={String(clientesEmDia)} tone="text-status-success" />
+            <MiniStat label="Clientes com pendências" value={String(clientesPendentes)} tone="text-status-danger" />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="mb-2 text-xs font-semibold text-sand-700">% concluído por cliente no período</p>
+              <div className="h-56 w-full">
+                <ResponsiveContainer>
+                  <BarChart data={clientPcts}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                    <XAxis dataKey="cliente" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <Bar dataKey="pct" fill={WINE} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold text-sand-700">Evolução mensal (rotinas mensais, média da carteira) — {year}</p>
+              <div className="h-56 w-full">
+                <ResponsiveContainer>
+                  <LineChart data={monthlyTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+                    <Tooltip formatter={(v) => `${v}%`} />
+                    <Line type="monotone" dataKey="pct" stroke={WINE} strokeWidth={2.5} dot={{ r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-separate border-spacing-0 text-xs">
-            <thead>
-              <tr>
-                <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                  Cliente
-                </th>
-                {rotinas.map((r) => (
-                  <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                    {r}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {myClients.map((c) => (
-                <tr key={c.id} className="odd:bg-sand-50/60">
-                  <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
-                    <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
-                      {c.dados.nomeFantasia ?? c.dados.razaoSocial}
-                    </Link>
-                  </td>
-                  {rotinas.map((r) => {
-                    const status = statusFor(c.id, r);
-                    return (
-                      <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5">
-                        <Select
-                          value={status ?? "—"}
-                          onValueChange={(v) => setChecklistContabil(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
-                        >
-                          <SelectTrigger
-                            className={cn(
-                              "h-7 w-28 px-2 text-[11px]",
-                              status && STATUS_STYLE[status]
-                            )}
-                          >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="—">—</SelectItem>
-                            <SelectItem value="OK">OK</SelectItem>
-                            <SelectItem value="Pendente">Pendente</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-              {myClients.length === 0 && (
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Checklist de rotinas contábeis</CardTitle>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-sand-500">{okCells}/{totalCells} concluídas</span>
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            <PeriodChip label="Anual" active={period === "anual"} onClick={() => setPeriod("anual")} />
+            {MESES.map((m) => (
+              <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
+            ))}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[960px] border-separate border-spacing-0 text-xs">
+              <thead>
                 <tr>
-                  <td colSpan={rotinas.length + 1} className="py-8 text-center text-sand-400">
-                    Nenhum cliente atribuído ao setor Contábil.
-                  </td>
+                  <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                    Cliente
+                  </th>
+                  {rotinas.map((r) => (
+                    <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                      {r}
+                    </th>
+                  ))}
+                  <th className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                    % concluído
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {myClients.map((c) => (
+                  <ClientRow
+                    key={c.id}
+                    client={c}
+                    rotinas={rotinas}
+                    competencia={competencia}
+                    statusFor={statusFor}
+                    setChecklistContabil={setChecklistContabil}
+                    pct={pctFor(c.id, competencia, rotinas)}
+                  />
+                ))}
+                {myClients.length === 0 && (
+                  <tr>
+                    <td colSpan={rotinas.length + 2} className="py-8 text-center text-sand-400">
+                      Nenhum cliente atribuído ao setor Contábil.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function ClientRow({
+  client: c,
+  rotinas,
+  competencia,
+  statusFor,
+  setChecklistContabil,
+  pct,
+}: {
+  client: Client;
+  rotinas: readonly string[];
+  competencia: string;
+  statusFor: (clienteId: string, competencia: string, rotina: string) => ChecklistStatus | null;
+  setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
+  pct: number;
+}) {
+  return (
+    <tr className="odd:bg-sand-50/60">
+      <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
+        <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
+          {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+        </Link>
+      </td>
+      {rotinas.map((r) => {
+        const status = statusFor(c.id, competencia, r);
+        return (
+          <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5">
+            <Select
+              value={status ?? "—"}
+              onValueChange={(v) => setChecklistContabil(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
+            >
+              <SelectTrigger className={cn("h-7 w-28 px-2 text-[11px]", status && STATUS_STYLE[status])}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="—">—</SelectItem>
+                <SelectItem value="OK">OK</SelectItem>
+                <SelectItem value="Pendente">Pendente</SelectItem>
+              </SelectContent>
+            </Select>
+          </td>
+        );
+      })}
+      <td className="border-b border-l border-sand-200 px-3 py-1.5">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-14 overflow-hidden rounded-full bg-sand-200">
+            <div
+              className={cn("h-full rounded-full", pct === 100 ? "bg-status-success" : pct === 0 ? "bg-sand-300" : "bg-status-warning")}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className={cn("font-semibold", pctColor(pct))}>{pct}%</span>
         </div>
-      </CardContent>
-    </Card>
+      </td>
+    </tr>
+  );
+}
+
+function MiniStat({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className="rounded-xl border border-sand-200 p-4">
+      <p className="text-[11px] text-sand-500">{label}</p>
+      <p className={cn("mt-1 text-xl font-semibold", tone)}>{value}</p>
+    </div>
   );
 }
 

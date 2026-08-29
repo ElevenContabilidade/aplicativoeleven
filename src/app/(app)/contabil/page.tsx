@@ -14,6 +14,7 @@ export default function ContabilPage() {
         departamento="Contábil"
         docCategorias={["Contábil", "Relatórios"]}
         icon={Calculator}
+        showOverview={false}
       />
       <ContabilChecklist />
     </>
