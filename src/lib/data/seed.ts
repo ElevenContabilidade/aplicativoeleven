@@ -419,14 +419,13 @@ function etapasAberturaEmpresa(responsavelId: string, dataAbertura: string, stat
 export const PROCESSOS_SOCIETARIOS: ProcessoSocietario[] = [
   {
     id: "ps1", clienteId: "c4", tipoServico: "Abertura de empresa", responsavelId: "u7", orgao: "Junta Comercial SP", protocolo: "JC-2209981", dataAbertura: iso(-9), prazo: iso(2), status: "Em análise", observacoes: "Aguardando análise do órgão",
+    valorProcesso: 300, pagamento: "Pago",
     etapas: etapasAberturaEmpresa("u7", iso(-9), [
       "OK", "OK", "OK", "Dispensada", "OK", // Junta Comercial
       "OK", "OK", "OK", // Receita Federal
       "Pendente", "Pendente", "Pendente", "Pendente", // Prefeitura
       "Dispensada", "Dispensada", "Dispensada", // Estado
-      "Pendente", "Dispensada", "Dispensada", "Dispensada", // sistemas internos
-      "Pendente", "Pendente", "Pendente", "Dispensada", "OK", // demais obrigações
-      "Pendente", "Pendente", // eSocial / DCTFWeb
+      "Pendente", "Dispensada", "Dispensada", "Dispensada", "Pendente", "Pendente", "Pendente", "Dispensada", "OK", "Pendente", "Pendente", // Demais obrigações
     ]),
   },
   { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação", etapas: [] },

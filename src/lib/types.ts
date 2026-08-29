@@ -408,10 +408,10 @@ export const ETAPAS_ABERTURA_GRUPOS = [
   { label: "Receita Federal", count: 3, color: "#4A7A8C" },
   { label: "Prefeitura", count: 4, color: "#B4691F" },
   { label: "Estado", count: 3, color: "#7A1F1F" },
-  { label: "Sistemas internos", count: 4, color: "#8A4A5E" },
-  { label: "Demais obrigações", count: 6, color: "#9A5A72" },
-  { label: "eSocial / DCTFWeb", count: 2, color: "#7A1F2F" },
+  { label: "Demais obrigações", count: 12, color: "#9A5A72" },
 ] as const;
+
+export type PagamentoProcesso = "Pago" | "Pendente";
 
 export interface ProcessoSocietario {
   id: string;
@@ -426,6 +426,8 @@ export interface ProcessoSocietario {
   pendencias?: string;
   observacoes?: string;
   etapas: EtapaProcesso[];
+  valorProcesso?: number;
+  pagamento?: PagamentoProcesso;
 }
 
 // ---------- Certificados digitais ----------
