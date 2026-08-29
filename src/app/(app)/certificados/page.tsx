@@ -5,16 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search } from "lucide-react";
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { CERTIFICADO_STATUS, type Certificado } from "@/lib/types";
+import type { Certificado } from "@/lib/types";
 
 function daysUntil(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -36,7 +36,7 @@ export default function CertificadosPage() {
   const certificados = useAppStore((s) => s.certificados);
   const clients = useAppStore((s) => s.clients);
   const documentos = useAppStore((s) => s.documentos);
-  const [status, setStatus] = useState("Todos");
+  const [query, setQuery] = useState("");
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Certificado | null>(null);
   // Bumped on every dialog open so CertificadoFormDialog always remounts fresh
@@ -73,10 +73,29 @@ export default function CertificadosPage() {
   }, []);
 
   const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
     return certificados
-      .filter((c) => status === "Todos" || c.status === status)
+      .filter((c) => {
+        if (!q) return true;
+        const client = clients.find((cl) => cl.id === c.clienteId);
+        const days = daysUntil(c.dataVencimento);
+        const haystack = [
+          client?.dados.nomeFantasia,
+          client?.dados.razaoSocial,
+          c.tipo,
+          c.documento,
+          formatDate(c.dataVencimento),
+          days < 0 ? "vencido" : `vence em ${days}d`,
+          formatCurrency(c.valor),
+          c.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(q);
+      })
       .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento));
-  }, [certificados, status]);
+  }, [certificados, clients, query]);
 
   const vencendo60 = certificados.filter((c) => { const d = daysUntil(c.dataVencimento); return d >= 0 && d <= 60; }).length;
   const vencendo30 = certificados.filter((c) => { const d = daysUntil(c.dataVencimento); return d >= 0 && d <= 30; }).length;
@@ -99,15 +118,15 @@ export default function CertificadosPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todos">Todos os status</SelectItem>
-            {CERTIFICADO_STATUS.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative w-full max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+          <Input
+            placeholder="Buscar por cliente, tipo, CNPJ, vencimento, status..."
+            className="pl-9"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-sand-500">Senha Certificado A1</span>
           <Button variant="outline" size="sm" onClick={() => setRevealedIds(new Set(filtered.map((c) => c.id)))}>
