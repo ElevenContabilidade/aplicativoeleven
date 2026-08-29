@@ -91,7 +91,7 @@ export default function DashboardPage() {
     const emAberto = historico.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
     const inadimplencia = historico.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
 
-    const certVencendo = certificados.filter((c) => c.status === "Renovação próxima" || (daysFromToday(c.dataVencimento) >= 0 && daysFromToday(c.dataVencimento) <= 30)).length;
+    const certVencendo = certificados.filter((c) => c.status === "Aguardando Renovação" || (daysFromToday(c.dataVencimento) >= 0 && daysFromToday(c.dataVencimento) <= 30)).length;
     const certVencidos = certificados.filter((c) => c.status === "Vencido").length;
     const certEmitidosMes = certificados.filter((c) => c.dataEmissao && daysFromToday(c.dataEmissao) >= -30).length;
 

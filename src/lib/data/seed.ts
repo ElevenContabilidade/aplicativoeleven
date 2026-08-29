@@ -436,14 +436,14 @@ export const PROCESSOS_SOCIETARIOS: ProcessoSocietario[] = [
 // ---------------- Certificados ----------------
 
 export const CERTIFICADOS: Certificado[] = [
-  { id: "cert1", clienteId: "c1", documento: "31.244.887/0001-02", tipo: "e-CNPJ A1", dataEmissao: iso(-300), dataVencimento: iso(3), status: "Renovação próxima", valor: 220, formaPagamento: "PIX", responsavelId: "u7" },
-  { id: "cert2", clienteId: "c6", documento: "22.887.665/0001-40", tipo: "e-CNPJ A1", dataEmissao: iso(-355), dataVencimento: iso(10), status: "Renovação próxima", valor: 220, responsavelId: "u7" },
+  { id: "cert1", clienteId: "c1", documento: "31.244.887/0001-02", tipo: "e-CNPJ A1", dataEmissao: iso(-300), dataVencimento: iso(3), status: "Aguardando Renovação", valor: 220, formaPagamento: "PIX", responsavelId: "u7" },
+  { id: "cert2", clienteId: "c6", documento: "22.887.665/0001-40", tipo: "e-CNPJ A1", dataEmissao: iso(-355), dataVencimento: iso(10), status: "Aguardando Renovação", valor: 220, responsavelId: "u7" },
   { id: "cert3", clienteId: "c9", documento: "37.221.887/0001-63", tipo: "e-CNPJ A3", dataEmissao: iso(-360), dataVencimento: iso(-4), status: "Vencido", valor: 350, responsavelId: "u7" },
-  { id: "cert4", clienteId: "c2", documento: "220.998.774-11", tipo: "e-CPF A1", dataEmissao: iso(-100), dataVencimento: iso(265), status: "Entregue", valor: 180, responsavelId: "u7" },
-  { id: "cert5", clienteId: "c4", documento: "40.112.998/0001-77", tipo: "e-CNPJ A1", dataVencimento: iso(30), status: "Aguardando validação", valor: 220, responsavelId: "u7" },
-  { id: "cert6", clienteId: "c10", documento: "39.887.221/0001-91", tipo: "e-CNPJ A1", dataEmissao: iso(-200), dataVencimento: iso(165), status: "Entregue", valor: 220, responsavelId: "u7" },
-  { id: "cert7", clienteId: "c11", documento: "42.665.887/0001-22", tipo: "e-CNPJ A3", dataVencimento: iso(14), status: "Renovação próxima", valor: 350, responsavelId: "u7" },
-  { id: "cert8", clienteId: "c5", documento: "41.556.223/0001-30", tipo: "e-CNPJ A1", dataVencimento: iso(60), status: "Agendamento solicitado", valor: 220, responsavelId: "u7" },
+  { id: "cert4", clienteId: "c2", documento: "220.998.774-11", tipo: "e-CPF A1", dataEmissao: iso(-100), dataVencimento: iso(265), status: "Válido", valor: 180, responsavelId: "u7" },
+  { id: "cert5", clienteId: "c4", documento: "40.112.998/0001-77", tipo: "e-CNPJ A1", dataVencimento: iso(30), status: "Aguardando Renovação", valor: 220, responsavelId: "u7" },
+  { id: "cert6", clienteId: "c10", documento: "39.887.221/0001-91", tipo: "e-CNPJ A1", dataEmissao: iso(-200), dataVencimento: iso(165), status: "Válido", valor: 220, responsavelId: "u7" },
+  { id: "cert7", clienteId: "c11", documento: "42.665.887/0001-22", tipo: "e-CNPJ A3", dataVencimento: iso(14), status: "Aguardando Renovação", valor: 350, responsavelId: "u7" },
+  { id: "cert8", clienteId: "c5", documento: "41.556.223/0001-30", tipo: "e-CNPJ A1", dataVencimento: iso(60), status: "Aguardando Renovação", valor: 220, responsavelId: "u7" },
 ];
 
 // ---------------- Documentos ----------------

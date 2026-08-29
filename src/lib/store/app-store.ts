@@ -31,6 +31,7 @@ import type {
   Obligation,
   ProcessoSocietario,
   Certificado,
+  CertificadoStatus,
   Documento,
   Anotacao,
   TimelineEvent,
@@ -356,7 +357,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 3,
+      version: 4,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -376,6 +377,23 @@ export const useAppStore = create<AppState>()(
               const old = e as unknown as { feito?: boolean; status?: ChecklistStatus };
               return { ...e, status: old.status ?? (old.feito ? "OK" : "Pendente") };
             }),
+          }));
+        }
+        // The certificado status list was collapsed from 8 granular steps down to
+        // Válido/Aguardando Renovação/Vencido — remap anything saved under the old set.
+        if (state?.certificados) {
+          const legacyStatusMap: Record<string, string> = {
+            "Agendamento solicitado": "Aguardando Renovação",
+            "Agendamento realizado": "Aguardando Renovação",
+            "Aguardando validação": "Aguardando Renovação",
+            "Renovação próxima": "Aguardando Renovação",
+            Validado: "Válido",
+            "Certificado aprovado": "Válido",
+            Entregue: "Válido",
+          };
+          state.certificados = state.certificados.map((c) => ({
+            ...c,
+            status: (legacyStatusMap[c.status] ?? c.status) as CertificadoStatus,
           }));
         }
         return state;

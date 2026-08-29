@@ -432,15 +432,8 @@ export interface ProcessoSocietario {
 
 // ---------- Certificados digitais ----------
 
-export type CertificadoStatus =
-  | "Agendamento solicitado"
-  | "Agendamento realizado"
-  | "Aguardando validação"
-  | "Validado"
-  | "Certificado aprovado"
-  | "Entregue"
-  | "Renovação próxima"
-  | "Vencido";
+export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;
+export type CertificadoStatus = (typeof CERTIFICADO_STATUS)[number];
 
 export interface Certificado {
   id: string;

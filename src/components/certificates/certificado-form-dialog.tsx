@@ -9,23 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import type { Certificado, CertificadoStatus } from "@/lib/types";
+import { CERTIFICADO_STATUS, type Certificado, type CertificadoStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractDocumentDates } from "@/lib/document-date-extract";
 import { extractPfxDates } from "@/lib/pfx-dates";
 import { formatBytes } from "@/lib/utils";
 
 const TIPOS: Certificado["tipo"][] = ["e-CPF A1", "e-CNPJ A1", "e-CPF A3", "e-CNPJ A3"];
-const STATUSES: CertificadoStatus[] = [
-  "Agendamento solicitado",
-  "Agendamento realizado",
-  "Aguardando validação",
-  "Validado",
-  "Certificado aprovado",
-  "Entregue",
-  "Renovação próxima",
-  "Vencido",
-];
 
 type ExtractState = "idle" | "extracting" | "found" | "not-found" | "unsupported" | "error";
 
@@ -54,11 +44,17 @@ export function CertificadoFormDialog({
   const [dataEmissao, setDataEmissao] = useState(certificado?.dataEmissao ?? "");
   const [dataVencimento, setDataVencimento] = useState(certificado?.dataVencimento ?? "");
   const [valor, setValor] = useState(String(certificado?.valor ?? 220));
-  const [status, setStatus] = useState<CertificadoStatus>(certificado?.status ?? "Agendamento solicitado");
+  const [status, setStatus] = useState<CertificadoStatus>(certificado?.status ?? "Aguardando Renovação");
   const [senha, setSenha] = useState(certificado?.senha ?? "");
   const [showSenha, setShowSenha] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [extractState, setExtractState] = useState<ExtractState>("idle");
+
+  function handleClienteChange(id: string) {
+    setClienteId(id);
+    const client = clients.find((c) => c.id === id);
+    if (client?.dados.cnpj) setDocumento(client.dados.cnpj);
+  }
 
   async function handleFile(selected: File | null) {
     setFile(selected);
@@ -175,11 +171,11 @@ export function CertificadoFormDialog({
           </div>
           <div>
             <Label className="mb-1 block">Cliente</Label>
-            <Select value={clienteId} onValueChange={setClienteId}>
+            <Select value={clienteId} onValueChange={handleClienteChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -215,7 +211,7 @@ export function CertificadoFormDialog({
               <Select value={status} onValueChange={(v) => setStatus(v as CertificadoStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                  {CERTIFICADO_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

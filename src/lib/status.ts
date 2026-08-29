@@ -46,13 +46,8 @@ const map: Record<string, BadgeTone> = {
   perdido: "danger",
 
   // certificados
-  "agendamento solicitado": "neutral",
-  "agendamento realizado": "info",
-  "aguardando validação": "warning",
-  validado: "info",
-  "certificado aprovado": "cream",
-  entregue: "success",
-  "renovação próxima": "warning",
+  válido: "success",
+  "aguardando renovação": "warning",
   vencido: "danger",
 
   // societário

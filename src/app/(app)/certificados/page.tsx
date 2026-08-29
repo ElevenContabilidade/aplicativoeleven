@@ -14,7 +14,7 @@ import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Do
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Certificado } from "@/lib/types";
+import { CERTIFICADO_STATUS, type Certificado } from "@/lib/types";
 
 function daysUntil(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -103,7 +103,7 @@ export default function CertificadosPage() {
           <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos os status</SelectItem>
-            {["Agendamento solicitado", "Agendamento realizado", "Aguardando validação", "Validado", "Certificado aprovado", "Entregue", "Renovação próxima", "Vencido"].map((s) => (
+            {CERTIFICADO_STATUS.map((s) => (
               <SelectItem key={s} value={s}>{s}</SelectItem>
             ))}
           </SelectContent>
