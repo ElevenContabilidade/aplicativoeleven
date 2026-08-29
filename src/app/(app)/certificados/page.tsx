@@ -10,10 +10,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { Certificado } from "@/lib/types";
 
 function daysUntil(dateStr: string) {
@@ -32,11 +32,50 @@ function expiryBadge(days: number) {
   return <Badge variant="outline">Vence em {days}d</Badge>;
 }
 
+type SortColumn = "cliente" | "vencimento" | "alerta" | "status";
+
+// Ascending = most urgent first, so Vencimento/Alerta/Status all read the same direction.
+const STATUS_URGENCY: Record<string, number> = { Vencido: 0, "Aguardando Renovação": 1, Válido: 2 };
+
+function SortableHead({
+  label,
+  column,
+  sort,
+  onSort,
+}: {
+  label: string;
+  column: SortColumn;
+  sort: { column: SortColumn; direction: "asc" | "desc" };
+  onSort: (column: SortColumn) => void;
+}) {
+  const active = sort.column === column;
+  const Icon = active ? (sort.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          "flex items-center gap-1 uppercase tracking-wide hover:text-wine-700",
+          active && "text-wine-700"
+        )}
+      >
+        {label}
+        <Icon className={cn("size-3", !active && "text-sand-300")} />
+      </button>
+    </TableHead>
+  );
+}
+
 export default function CertificadosPage() {
   const certificados = useAppStore((s) => s.certificados);
   const clients = useAppStore((s) => s.clients);
   const documentos = useAppStore((s) => s.documentos);
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" }>({
+    column: "vencimento",
+    direction: "asc",
+  });
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<Certificado | null>(null);
   // Bumped on every dialog open so CertificadoFormDialog always remounts fresh
@@ -57,6 +96,10 @@ export default function CertificadosPage() {
     setEditing(c);
     setFormSession((n) => n + 1);
     setFormOpen(true);
+  }
+
+  function toggleSort(column: SortColumn) {
+    setSort((s) => (s.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));
   }
 
   function toggleRevealed(id: string) {
@@ -94,8 +137,22 @@ export default function CertificadosPage() {
           .toLowerCase();
         return haystack.includes(q);
       })
-      .sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento));
-  }, [certificados, clients, query]);
+      .sort((a, b) => {
+        let cmp = 0;
+        if (sort.column === "cliente") {
+          const clientA = clients.find((cl) => cl.id === a.clienteId);
+          const clientB = clients.find((cl) => cl.id === b.clienteId);
+          const nameA = clientA?.dados.nomeFantasia ?? clientA?.dados.razaoSocial ?? "";
+          const nameB = clientB?.dados.nomeFantasia ?? clientB?.dados.razaoSocial ?? "";
+          cmp = nameA.localeCompare(nameB);
+        } else if (sort.column === "vencimento" || sort.column === "alerta") {
+          cmp = a.dataVencimento.localeCompare(b.dataVencimento);
+        } else if (sort.column === "status") {
+          cmp = (STATUS_URGENCY[a.status] ?? 99) - (STATUS_URGENCY[b.status] ?? 99);
+        }
+        return sort.direction === "asc" ? cmp : -cmp;
+      });
+  }, [certificados, clients, query, sort]);
 
   const vencendo60 = certificados.filter((c) => { const d = daysUntil(c.dataVencimento); return d >= 0 && d <= 60; }).length;
   const vencendo30 = certificados.filter((c) => { const d = daysUntil(c.dataVencimento); return d >= 0 && d <= 30; }).length;
@@ -142,13 +199,13 @@ export default function CertificadosPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Cliente</TableHead>
+              <SortableHead label="Cliente" column="cliente" sort={sort} onSort={toggleSort} />
               <TableHead>Tipo</TableHead>
               <TableHead>Documento</TableHead>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>Alerta</TableHead>
+              <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} />
+              <SortableHead label="Alerta" column="alerta" sort={sort} onSort={toggleSort} />
               <TableHead>Valor</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
               <TableHead>Senha</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
