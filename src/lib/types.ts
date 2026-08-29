@@ -456,6 +456,7 @@ export interface Certificado {
   formaPagamento?: string;
   responsavelId: string;
   documentoId?: string;
+  senha?: string;
 }
 
 // ---------- Documentos ----------

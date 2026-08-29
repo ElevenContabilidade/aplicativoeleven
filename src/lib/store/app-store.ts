@@ -86,6 +86,7 @@ interface AppState {
   setEtapaStatus: (processoId: string, etapaId: string, status: ChecklistStatus) => void;
   deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
   addCertificado: (certificado: Certificado) => void;
+  updateCertificado: (id: string, patch: Partial<Certificado>) => void;
   addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
@@ -233,6 +234,12 @@ export const useAppStore = create<AppState>()(
       addCertificado: (certificado) =>
         set((s) => {
           const certificados = [certificado, ...s.certificados];
+          return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
+        }),
+
+      updateCertificado: (id, patch) =>
+        set((s) => {
+          const certificados = s.certificados.map((c) => (c.id === id ? { ...c, ...patch } : c));
           return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
         }),
 

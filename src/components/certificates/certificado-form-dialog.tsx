@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileUp, Loader2, Sparkles } from "lucide-react";
+import { Eye, EyeOff, FileUp, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -29,26 +29,36 @@ const STATUSES: CertificadoStatus[] = [
 
 type ExtractState = "idle" | "extracting" | "found" | "not-found" | "unsupported" | "error";
 
-export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CertificadoFormDialog({
+  open,
+  onOpenChange,
+  certificado,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** When set, the dialog edits this certificado instead of creating a new one. */
+  certificado?: Certificado | null;
+}) {
   const clients = useAppStore((s) => s.clients);
   const addCertificado = useAppStore((s) => s.addCertificado);
+  const updateCertificado = useAppStore((s) => s.updateCertificado);
   const addDocumento = useAppStore((s) => s.addDocumento);
   const { userId } = useAuthStore();
 
-  const [clienteId, setClienteId] = useState(clients[0]?.id ?? "");
-  const [tipo, setTipo] = useState<Certificado["tipo"]>("e-CNPJ A1");
-  const [documento, setDocumento] = useState("");
-  const [dataEmissao, setDataEmissao] = useState("");
-  const [dataVencimento, setDataVencimento] = useState("");
-  const [valor, setValor] = useState("220");
-  const [status, setStatus] = useState<CertificadoStatus>("Agendamento solicitado");
+  // The parent remounts this component (via a `key` tied to the certificado's id,
+  // or a fresh id for "create new") whenever it should show a different record, so
+  // plain useState initializers are enough — no effect needed to resync on open.
+  const [clienteId, setClienteId] = useState(certificado?.clienteId ?? clients[0]?.id ?? "");
+  const [tipo, setTipo] = useState<Certificado["tipo"]>(certificado?.tipo ?? "e-CNPJ A1");
+  const [documento, setDocumento] = useState(certificado?.documento ?? "");
+  const [dataEmissao, setDataEmissao] = useState(certificado?.dataEmissao ?? "");
+  const [dataVencimento, setDataVencimento] = useState(certificado?.dataVencimento ?? "");
+  const [valor, setValor] = useState(String(certificado?.valor ?? 220));
+  const [status, setStatus] = useState<CertificadoStatus>(certificado?.status ?? "Agendamento solicitado");
+  const [senha, setSenha] = useState(certificado?.senha ?? "");
+  const [showSenha, setShowSenha] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [extractState, setExtractState] = useState<ExtractState>("idle");
-
-  function reset() {
-    setTipo("e-CNPJ A1"); setDocumento(""); setDataEmissao(""); setDataVencimento(""); setValor("220");
-    setStatus("Agendamento solicitado"); setFile(null); setExtractState("idle");
-  }
 
   async function handleFile(selected: File | null) {
     setFile(selected);
@@ -80,7 +90,7 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
     e.preventDefault();
     if (!clienteId || !documento || !dataVencimento) return;
 
-    let documentoId: string | undefined;
+    let documentoId: string | undefined = certificado?.documentoId;
     if (file) {
       documentoId = `d-${Date.now()}`;
       addDocumento({
@@ -95,8 +105,7 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
       });
     }
 
-    const certificado: Certificado = {
-      id: `cert-${Date.now()}`,
+    const patch = {
       clienteId,
       documento,
       tipo,
@@ -104,19 +113,23 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
       dataVencimento,
       status,
       valor: Number(valor) || 0,
-      responsavelId: userId ?? "u7",
+      senha: senha || undefined,
       documentoId,
     };
-    addCertificado(certificado);
-    reset();
+
+    if (certificado) {
+      updateCertificado(certificado.id, patch);
+    } else {
+      addCertificado({ id: `cert-${Date.now()}`, responsavelId: userId ?? "u7", ...patch });
+    }
     onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo certificado digital</DialogTitle>
+          <DialogTitle>{certificado ? "Editar certificado digital" : "Novo certificado digital"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
@@ -206,13 +219,33 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
                 </SelectContent>
               </Select>
             </div>
+            <div className="col-span-2">
+              <Label className="mb-1 block">Senha do certificado (A1)</Label>
+              <div className="relative">
+                <Input
+                  type={showSenha ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Opcional — fica disponível para consulta na listagem"
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSenha((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
+                  tabIndex={-1}
+                >
+                  {showSenha ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+              </div>
+            </div>
           </div>
           <p className="text-[11px] text-sand-400">
             Você recebe um alerta na Central de Alertas quando faltar 1 mês para o vencimento.
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Cadastrar certificado</Button>
+            <Button type="submit">{certificado ? "Salvar alterações" : "Cadastrar certificado"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
