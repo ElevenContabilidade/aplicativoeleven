@@ -32,7 +32,8 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
 
   if (!processo) return null;
   const client = clients.find((c) => c.id === processo.clienteId);
-  const feitas = processo.etapas.filter((e) => e.feito).length;
+  const etapas = processo.etapas ?? [];
+  const feitas = etapas.filter((e) => e.feito).length;
 
   function addEtapa() {
     if (!descricao.trim() || !processo) return;
@@ -86,7 +87,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
         <div className="mt-5">
           <div className="mb-1.5 flex items-center justify-between">
             <p className="text-xs font-semibold text-sand-700">Etapas do processo</p>
-            <span className="text-[11px] text-sand-400">{feitas}/{processo.etapas.length} concluídas</span>
+            <span className="text-[11px] text-sand-400">{feitas}/{etapas.length} concluídas</span>
           </div>
           <Table>
             <TableHeader>
@@ -100,7 +101,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               </TableRow>
             </TableHeader>
             <TableBody>
-              {processo.etapas.map((e) => (
+              {etapas.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className={e.feito ? "text-sand-400 line-through" : "text-sand-800"}>{e.descricao}</TableCell>
                   <TableCell className="text-xs text-sand-500">{teamName(e.responsavelId)}</TableCell>
@@ -119,7 +120,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
                   </TableCell>
                 </TableRow>
               ))}
-              {processo.etapas.length === 0 && (
+              {etapas.length === 0 && (
                 <TableRow><TableCell colSpan={6} className="py-4 text-center text-xs text-sand-400">Nenhuma etapa cadastrada.</TableCell></TableRow>
               )}
             </TableBody>

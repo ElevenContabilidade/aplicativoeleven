@@ -192,7 +192,7 @@ export const useAppStore = create<AppState>()(
       addEtapaProcesso: (processoId, etapa) =>
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
-            p.id === processoId ? { ...p, etapas: [...p.etapas, etapa] } : p
+            p.id === processoId ? { ...p, etapas: [...(p.etapas ?? []), etapa] } : p
           ),
         })),
 
@@ -200,7 +200,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
             p.id === processoId
-              ? { ...p, etapas: p.etapas.map((e) => (e.id === etapaId ? { ...e, feito: !e.feito } : e)) }
+              ? { ...p, etapas: (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, feito: !e.feito } : e)) }
               : p
           ),
         })),
@@ -208,7 +208,7 @@ export const useAppStore = create<AppState>()(
       deleteEtapaProcesso: (processoId, etapaId) =>
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
-            p.id === processoId ? { ...p, etapas: p.etapas.filter((e) => e.id !== etapaId) } : p
+            p.id === processoId ? { ...p, etapas: (p.etapas ?? []).filter((e) => e.id !== etapaId) } : p
           ),
         })),
 
@@ -271,7 +271,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 1,
+      version: 2,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -280,6 +280,18 @@ export const useAppStore = create<AppState>()(
           return url ? rest : d;
         }),
       }),
+      // Fill in fields added to existing records after they were first persisted,
+      // so browsers with older cached state don't crash on undefined arrays.
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as (Partial<AppState> & Record<string, unknown>) | undefined;
+        if (state?.processosSocietarios) {
+          state.processosSocietarios = state.processosSocietarios.map((p) => ({
+            ...p,
+            etapas: p.etapas ?? [],
+          }));
+        }
+        return state;
+      },
     }
   )
 );

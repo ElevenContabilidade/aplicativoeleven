@@ -59,7 +59,7 @@ export default function SocietarioPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered]);
 
-  const comEtapas = filtered.filter((p) => p.etapas.length > 0);
+  const comEtapas = filtered.filter((p) => (p.etapas ?? []).length > 0);
 
   return (
     <div>
