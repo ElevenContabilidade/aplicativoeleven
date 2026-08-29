@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { LucideIcon } from "lucide-react";
 import { AlertOctagon, ListTodo, Users2 } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
@@ -30,14 +29,12 @@ export function DepartmentPanel({
 }) {
   const clients = useAppStore((s) => s.clients);
   const tasks = useAppStore((s) => s.tasks);
-  const obligations = useAppStore((s) => s.obligations);
   const documentos = useAppStore((s) => s.documentos);
 
   const myClients = clients.filter((c) => c.responsaveis[responsavelKey] && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding"));
   const myTasks = tasks.filter((t) => t.departamento === departamento);
   const openTasks = myTasks.filter((t) => !["Concluída", "Cancelada"].includes(t.status));
   const overdueTasks = openTasks.filter((t) => new Date(t.prazo) < new Date(new Date().toDateString()));
-  const myObligations = departamento === "Fiscal" ? obligations.filter((o) => myClients.some((c) => c.id === o.clienteId)) : [];
   const myDocs = docCategorias ? documentos.filter((d) => docCategorias.includes(d.categoria)) : [];
 
   return (
@@ -77,29 +74,6 @@ export function DepartmentPanel({
           </CardContent>
         </Card>
       </div>
-
-      {departamento === "Fiscal" && (
-        <Card className="mt-4">
-          <CardHeader><CardTitle>Obrigações do setor</CardTitle></CardHeader>
-          <CardContent className="pt-4">
-            <Table>
-              <TableHeader>
-                <TableRow><TableHead>Tipo</TableHead><TableHead>Cliente</TableHead><TableHead>Vencimento</TableHead><TableHead>Status</TableHead></TableRow>
-              </TableHeader>
-              <TableBody>
-                {myObligations.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">{o.tipo}</TableCell>
-                    <TableCell>{clients.find((c) => c.id === o.clienteId)?.dados.nomeFantasia}</TableCell>
-                    <TableCell>{formatDate(o.vencimento)}</TableCell>
-                    <TableCell><StatusBadge status={o.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
 
       {docCategorias && (
         <Card className="mt-4">

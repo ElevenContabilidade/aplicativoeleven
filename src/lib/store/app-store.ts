@@ -39,7 +39,7 @@ import type {
   Indicacao,
   DepartamentoChave,
   EtapaProcesso,
-  ChecklistContabilEntry,
+  ChecklistEntry,
   ChecklistStatus,
 } from "@/lib/types";
 
@@ -58,7 +58,8 @@ interface AppState {
   servicosExtras: ServicoExtra[];
   licencas: Licenca[];
   indicacoes: Indicacao[];
-  checklistContabil: ChecklistContabilEntry[];
+  checklistContabil: ChecklistEntry[];
+  checklistFiscal: ChecklistEntry[];
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
@@ -91,6 +92,7 @@ interface AppState {
   updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
   deleteIndicacao: (id: string) => void;
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
+  setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   resetData: () => void;
 }
 
@@ -110,6 +112,7 @@ const initial = {
   licencas: LICENCAS,
   indicacoes: INDICACOES,
   checklistContabil: [],
+  checklistFiscal: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -263,6 +266,27 @@ export const useAppStore = create<AppState>()(
             checklistContabil: [
               ...s.checklistContabil,
               { id: `chk-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
+            ],
+          };
+        }),
+
+      setChecklistFiscal: (clienteId, competencia, rotina, status) =>
+        set((s) => {
+          const existing = s.checklistFiscal.find(
+            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
+          );
+          if (!status) {
+            return { checklistFiscal: s.checklistFiscal.filter((e) => e !== existing) };
+          }
+          if (existing) {
+            return {
+              checklistFiscal: s.checklistFiscal.map((e) => (e === existing ? { ...e, status } : e)),
+            };
+          }
+          return {
+            checklistFiscal: [
+              ...s.checklistFiscal,
+              { id: `chkf-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
             ],
           };
         }),

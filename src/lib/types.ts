@@ -477,11 +477,44 @@ export const ROTINAS_CONTABEIS_ANUAIS = [
 export const CHECKLIST_STATUS = ["OK", "Pendente"] as const;
 export type ChecklistStatus = (typeof CHECKLIST_STATUS)[number];
 
-export interface ChecklistContabilEntry {
+export interface ChecklistEntry {
   id: string;
   clienteId: string;
   /** "YYYY-MM" para rotinas mensais, "YYYY" para rotinas anuais. */
   competencia: string;
   rotina: string;
   status: ChecklistStatus;
+}
+
+// ---------- Checklist de rotinas fiscais ----------
+
+export const ROTINAS_FISCAIS_MENSAIS = [
+  "Importação de Notas",
+  "Classificação de documentos fiscais",
+  "Fechamento do PGDAS",
+  "Envio da guia do DAS",
+  "Emissão de livros fiscais",
+  "Emissão guia DAE",
+  "DeSTDA",
+  "EFD-ICMS",
+  "EFD-Reinf",
+  "GIA-ST",
+  "Checar recebimento das guias pelo cliente",
+  "Contabilizar movimentos",
+  "Exportar pro contábil",
+] as const;
+
+/**
+ * Obrigação fiscal anual varia por enquadramento tributário — e clientes da
+ * área da saúde (tag #Saúde) acumulam a DMED além da obrigação do regime.
+ */
+export function obrigacaoAnualPorRegime(regime: DadosCadastrais["regimeTributario"]): string {
+  if (regime === "MEI") return "DASN-MEI";
+  if (regime === "Simples Nacional") return "DEFIS";
+  return "ECF";
+}
+
+export function rotinasFiscaisAnuais(client: Pick<Client, "dados" | "tags">): string[] {
+  const base = obrigacaoAnualPorRegime(client.dados.regimeTributario);
+  return client.tags.includes("#Saúde") ? [base, "DMED"] : [base];
 }
