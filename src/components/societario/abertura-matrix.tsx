@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Pencil, Check, X, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -48,12 +48,33 @@ const GRUPOS_COM_ETAPAS = (() => {
 export function AberturaMatrix({ processos, clients }: { processos: ProcessoSocietario[]; clients: Client[] }) {
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
+  const deleteProcessoSocietario = useAppStore((s) => s.deleteProcessoSocietario);
+  const updateClientDados = useAppStore((s) => s.updateClientDados);
   const [openId, setOpenId] = useState<string | null>(processos[0]?.id ?? null);
+  const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
+  const [nomeDraft, setNomeDraft] = useState("");
+
+  function startEditNome(clienteId: string, nomeAtual: string) {
+    setEditingClienteId(clienteId);
+    setNomeDraft(nomeAtual);
+  }
+
+  function saveNome(clienteId: string) {
+    const nome = nomeDraft.trim();
+    if (nome) updateClientDados(clienteId, { razaoSocial: nome });
+    setEditingClienteId(null);
+  }
+
+  function handleDelete(p: ProcessoSocietario, nomeCliente: string) {
+    if (confirm(`Excluir o processo de "${nomeCliente}"? Essa ação não pode ser desfeita.`)) {
+      deleteProcessoSocietario(p.id);
+    }
+  }
 
   if (processos.length === 0) {
     return (
       <div className="rounded-2xl border border-sand-200 bg-white py-10 text-center text-sand-400">
-        Nenhum processo de abertura de empresa com checklist neste ano.
+        Nenhum processo de abertura de empresa com checklist neste período.
       </div>
     );
   }
@@ -62,34 +83,78 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
     <div className="space-y-3">
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
+        const nomeCliente = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "—";
         const total = ETAPAS_ABERTURA_EMPRESA.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
         const open = openId === p.id;
+        const editingNome = editingClienteId === p.clienteId;
 
         return (
           <div key={p.id} className="overflow-hidden rounded-2xl border border-sand-200 bg-white">
-            <button
-              type="button"
-              onClick={() => setOpenId(open ? null : p.id)}
-              className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left hover:bg-sand-50"
-            >
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 hover:bg-sand-50">
+              <button
+                type="button"
+                onClick={() => setOpenId(open ? null : p.id)}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
                 <ChevronDown className={cn("size-4 shrink-0 text-sand-400 transition-transform", open && "rotate-180")} />
                 <div className="min-w-0">
-                  <Link
-                    href={`/clientes/${p.clienteId}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-semibold text-sand-800 hover:text-wine-700 hover:underline"
-                  >
-                    {client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "—"}
-                  </Link>
+                  {editingNome ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        autoFocus
+                        value={nomeDraft}
+                        onChange={(e) => setNomeDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveNome(p.clienteId);
+                          if (e.key === "Escape") setEditingClienteId(null);
+                        }}
+                        className="h-7 w-48 text-[13px] font-semibold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => saveNome(p.clienteId)}
+                        className="flex size-6 items-center justify-center rounded-md text-status-success hover:bg-status-success-bg"
+                      >
+                        <Check className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingClienteId(null)}
+                        className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/clientes/${p.clienteId}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                      >
+                        {nomeCliente}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditNome(p.clienteId, client?.dados.razaoSocial ?? "");
+                        }}
+                        title="Editar nome do cliente"
+                        className="flex size-5 items-center justify-center rounded text-sand-300 hover:bg-sand-100 hover:text-wine-700"
+                      >
+                        <Pencil className="size-3" />
+                      </button>
+                    </div>
+                  )}
                   <p className="text-xs text-sand-500">
                     {p.tipoServico}
                     {p.protocolo ? ` · Nº ${p.protocolo}` : ""}
                   </p>
                 </div>
-              </div>
+              </button>
 
               <div className="flex items-center gap-5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1.5">
@@ -139,8 +204,17 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                   <Progress value={pct} className="h-1.5" />
                   <span className="w-10 shrink-0 text-right text-xs font-semibold text-sand-600">{pct}%</span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDelete(p, nomeCliente)}
+                  title="Excluir processo"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
               </div>
-            </button>
+            </div>
 
             {open && (
               <div className="space-y-4 border-t border-sand-200 bg-sand-50/40 p-4">
@@ -169,7 +243,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                             key={descricao}
                             className="flex items-center justify-between gap-2 rounded-lg border border-sand-200 bg-white py-1 pl-3 pr-1"
                           >
-                            <span className="min-w-0 flex-1 truncate text-[12px] text-sand-700" title={descricao}>
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-sand-800" title={descricao}>
                               {descricao}
                             </span>
                             {etapa ? (

@@ -17,9 +17,17 @@ import { AberturaMatrix } from "@/components/societario/abertura-matrix";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import type { ProcessoSocietario } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 type ViewMode = "tabela" | "processo" | "etapa";
+
+const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
+const MESES = [
+  { value: "01", label: "Jan" }, { value: "02", label: "Fev" }, { value: "03", label: "Mar" },
+  { value: "04", label: "Abr" }, { value: "05", label: "Mai" }, { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" }, { value: "08", label: "Ago" }, { value: "09", label: "Set" },
+  { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
+];
 
 export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
@@ -31,12 +39,11 @@ export default function SocietarioPage() {
   const [selected, setSelected] = useState<ProcessoSocietario | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
 
-  const years = useMemo(() => {
-    const set = new Set(processos.map((p) => p.dataAbertura.slice(0, 4)));
-    set.add(new Date().getFullYear().toString());
-    return [...set].sort().reverse();
-  }, [processos]);
-  const [year, setYear] = useState(years[0]);
+  const [year, setYear] = useState(() => {
+    const current = new Date().getFullYear().toString();
+    return YEARS.includes(current) ? current : YEARS[0];
+  });
+  const [mes, setMes] = useState<string>("anual");
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/societario");
@@ -58,7 +65,9 @@ export default function SocietarioPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered]);
 
-  const aberturas = filtered.filter((p) => p.tipoServico === "Abertura de empresa" && (p.etapas ?? []).length > 0);
+  const aberturas = filtered
+    .filter((p) => p.tipoServico === "Abertura de empresa" && (p.etapas ?? []).length > 0)
+    .filter((p) => mes === "anual" || p.dataAbertura.startsWith(`${year}-${mes}`));
 
   return (
     <div>
@@ -85,10 +94,19 @@ export default function SocietarioPage() {
         <Select value={year} onValueChange={setYear}>
           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
+            {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
           </SelectContent>
         </Select>
       </div>
+
+      {view === "etapa" && (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
+          {MESES.map((m) => (
+            <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
+          ))}
+        </div>
+      )}
 
       {view === "tabela" && (
         <Card>
@@ -175,5 +193,20 @@ export default function SocietarioPage() {
       <ProcessoFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <ProcessoDetailDialog processo={selected} onClose={() => setSelected(null)} />
     </div>
+  );
+}
+
+function PeriodChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+        active ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+      )}
+    >
+      {label}
+    </button>
   );
 }

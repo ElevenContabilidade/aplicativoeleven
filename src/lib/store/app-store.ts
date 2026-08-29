@@ -84,6 +84,7 @@ interface AppState {
   deleteDocumento: (id: string) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
+  deleteProcessoSocietario: (id: string) => void;
   addEtapaProcesso: (processoId: string, etapa: EtapaProcesso) => void;
   setEtapaStatus: (processoId: string, etapaId: string, status: ChecklistStatus) => void;
   deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
@@ -209,6 +210,9 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
         })),
+
+      deleteProcessoSocietario: (id) =>
+        set((s) => ({ processosSocietarios: s.processosSocietarios.filter((p) => p.id !== id) })),
 
       addEtapaProcesso: (processoId, etapa) =>
         set((s) => ({
