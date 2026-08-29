@@ -13,28 +13,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProcessoFormDialog } from "@/components/societario/processo-form-dialog";
 import { ProcessoDetailDialog } from "@/components/societario/processo-detail-dialog";
+import { AberturaMatrix } from "@/components/societario/abertura-matrix";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
-import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario } from "@/lib/types";
-import { cn, formatDate } from "@/lib/utils";
+import type { ProcessoSocietario } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 
 type ViewMode = "tabela" | "processo" | "etapa";
-
-const ETAPA_STATUS_STYLE: Record<ChecklistStatus, string> = {
-  OK: "border-status-success bg-status-success-bg text-status-success",
-  Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
-  "Em andamento": "border-status-warning bg-status-warning-bg text-status-warning",
-  Dispensada: "border-status-brown bg-status-brown-bg text-status-brown",
-};
-
-function isDone(status: ChecklistStatus) {
-  return status === "OK" || status === "Dispensada";
-}
 
 export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
   const processos = useAppStore((s) => s.processosSocietarios);
-  const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -69,7 +58,7 @@ export default function SocietarioPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered]);
 
-  const comEtapas = filtered.filter((p) => (p.etapas ?? []).length > 0);
+  const aberturas = filtered.filter((p) => p.tipoServico === "Abertura de empresa" && (p.etapas ?? []).length > 0);
 
   return (
     <div>
@@ -175,42 +164,11 @@ export default function SocietarioPage() {
       )}
 
       {view === "etapa" && (
-        <div className="space-y-4">
-          {comEtapas.map((p) => {
-            const client = clients.find((c) => c.id === p.clienteId);
-            const feitas = p.etapas.filter((e) => isDone(e.status)).length;
-            return (
-              <Card key={p.id}>
-                <CardHeader>
-                  <CardTitle>
-                    {client?.dados.nomeFantasia ?? client?.dados.razaoSocial} <span className="font-normal text-sand-400">· {p.tipoServico}</span>
-                  </CardTitle>
-                  <button onClick={() => setSelected(p)} className="text-xs font-medium text-wine-700 hover:underline">
-                    {feitas}/{p.etapas.length} concluídas
-                  </button>
-                </CardHeader>
-                <CardContent className="space-y-1.5 pt-4">
-                  {p.etapas.map((e) => (
-                    <div key={e.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-sand-50">
-                      <span className={isDone(e.status) ? "flex-1 text-sand-400 line-through" : "flex-1 text-sand-800"}>{e.descricao}</span>
-                      <span className="text-sand-400">{teamName(e.responsavelId)} · prazo {formatDate(e.prazo)}</span>
-                      <Select value={e.status} onValueChange={(v) => setEtapaStatus(p.id, e.id, v as ChecklistStatus)}>
-                        <SelectTrigger className={cn("h-7 w-28 shrink-0 justify-center px-2 text-[11px] font-semibold uppercase", ETAPA_STATUS_STYLE[e.status])}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CHECKLIST_STATUS.map((s) => (
-                            <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            );
-          })}
-          {comEtapas.length === 0 && <p className="py-10 text-center text-sand-400">Nenhum processo com etapas cadastradas neste ano.</p>}
+        <div>
+          <p className="mb-3 text-[11px] text-sand-500">
+            Checklist de abertura de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
+          </p>
+          <AberturaMatrix processos={aberturas} clients={clients} />
         </div>
       )}
 

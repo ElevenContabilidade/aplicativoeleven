@@ -84,6 +84,19 @@
   --color-sand-800: var(--color-sand-800);
   --color-sand-900: var(--color-sand-900);
 
+  --color-status-success: var(--color-status-success);
+  --color-status-success-bg: var(--color-status-success-bg);
+  --color-status-warning: var(--color-status-warning);
+  --color-status-warning-bg: var(--color-status-warning-bg);
+  --color-status-danger: var(--color-status-danger);
+  --color-status-danger-bg: var(--color-status-danger-bg);
+  --color-status-info: var(--color-status-info);
+  --color-status-info-bg: var(--color-status-info-bg);
+  --color-status-neutral: var(--color-status-neutral);
+  --color-status-neutral-bg: var(--color-status-neutral-bg);
+  --color-status-brown: var(--color-status-brown);
+  --color-status-brown-bg: var(--color-status-brown-bg);
+
   --font-sans: var(--font-inter);
   --font-display: var(--font-poppins);
 }

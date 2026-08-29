@@ -402,6 +402,17 @@ export const ETAPAS_ABERTURA_EMPRESA = [
   "Enviar DCTFWeb",
 ] as const;
 
+/** Faixas de colunas de ETAPAS_ABERTURA_EMPRESA, com a cor de cada fase do controle societário. */
+export const ETAPAS_ABERTURA_GRUPOS = [
+  { label: "Junta Comercial", count: 5, color: "#2E5F7F" },
+  { label: "Receita Federal", count: 3, color: "#4A7A8C" },
+  { label: "Prefeitura", count: 4, color: "#B4691F" },
+  { label: "Estado", count: 3, color: "#7A1F1F" },
+  { label: "Sistemas internos", count: 4, color: "#8A4A5E" },
+  { label: "Demais obrigações", count: 6, color: "#9A5A72" },
+  { label: "eSocial / DCTFWeb", count: 2, color: "#7A1F2F" },
+] as const;
+
 export interface ProcessoSocietario {
   id: string;
   clienteId: string;
