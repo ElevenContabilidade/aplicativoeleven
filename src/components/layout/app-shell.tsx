@@ -17,8 +17,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="flex w-72 flex-col p-0">
           <SheetTitle className="sr-only">Menu</SheetTitle>
-          <div className="flex h-16 shrink-0 items-center px-4">
-            <EleveLogo variant="cream" markClassName="h-7 w-7" />
+          <div className="flex min-h-16 shrink-0 items-center px-4 py-3">
+            <EleveLogo variant="cream" markClassName="h-7 w-7" showTagline />
           </div>
           <SidebarNav collapsed={false} onNavigate={() => setMobileOpen(false)} />
         </SheetContent>

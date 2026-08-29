@@ -76,11 +76,11 @@ export function Sidebar({
         collapsed ? "w-[68px]" : "w-64"
       )}
     >
-      <div className="flex h-16 shrink-0 items-center justify-between px-4">
+      <div className="flex min-h-16 shrink-0 items-center justify-between px-4 py-3">
         {collapsed ? (
           <EleveMark className="size-7 text-cream-100" />
         ) : (
-          <EleveLogo variant="cream" markClassName="h-7 w-7" />
+          <EleveLogo variant="cream" markClassName="h-7 w-7" showTagline />
         )}
       </div>
 

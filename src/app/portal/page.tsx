@@ -37,7 +37,7 @@ export default function ClientPortalPage() {
     <div className="min-h-screen bg-sand-50">
       <header className="border-b border-sand-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-4">
-          <EleveLogo markClassName="h-7 w-7" />
+          <EleveLogo markClassName="h-7 w-7" showTagline />
           <Button variant="ghost" size="sm" onClick={() => { logout(); router.push("/login"); }}>
             <LogOut className="size-3.5" /> Sair
           </Button>
