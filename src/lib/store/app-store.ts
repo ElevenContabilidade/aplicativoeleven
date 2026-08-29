@@ -51,6 +51,8 @@ interface AppState {
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
+  updateLead: (leadId: string, patch: Partial<Lead>) => void;
+  deleteLead: (leadId: string) => void;
   updateTask: (taskId: string, patch: Partial<Task>) => void;
   addTask: (task: Task) => void;
   toggleOnboardingItem: (clientId: string, itemId: string) => void;
@@ -108,6 +110,9 @@ export const useAppStore = create<AppState>()(
         })),
 
       addLead: (lead) => set((s) => ({ leads: [lead, ...s.leads] })),
+      updateLead: (leadId, patch) =>
+        set((s) => ({ leads: s.leads.map((l) => (l.id === leadId ? { ...l, ...patch } : l)) })),
+      deleteLead: (leadId) => set((s) => ({ leads: s.leads.filter((l) => l.id !== leadId) })),
 
       updateTask: (taskId, patch) =>
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) })),

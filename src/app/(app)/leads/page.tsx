@@ -88,7 +88,7 @@ export default function LeadsPage() {
         </TableBody>
       </Table>
 
-      <LeadDetailDialog lead={selected} onClose={() => setSelected(null)} />
+      <LeadDetailDialog key={selected?.id ?? "none"} lead={selected} onClose={() => setSelected(null)} />
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );

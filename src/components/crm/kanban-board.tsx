@@ -63,7 +63,7 @@ export function KanbanBoard() {
         </div>
       </DndContext>
 
-      <LeadDetailDialog lead={selected} onClose={() => setSelected(null)} />
+      <LeadDetailDialog key={selected?.id ?? "none"} lead={selected} onClose={() => setSelected(null)} />
     </>
   );
 }
