@@ -10,7 +10,7 @@ type MarkProps = {
 export function EleveMark({ className, color = "currentColor" }: MarkProps) {
   return (
     <svg
-      viewBox="24.25 24.25 437.25 446.25"
+      viewBox="18.25 18.25 449.25 458.25"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
