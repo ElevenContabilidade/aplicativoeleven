@@ -18,6 +18,7 @@ import {
   LICENCAS,
   INDICACOES,
 } from "@/lib/data/seed";
+import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import type {
   TeamMember,
   Lead,
@@ -95,6 +96,7 @@ interface AppState {
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
+  resyncLicencaAlerts: () => void;
   resetData: () => void;
 }
 
@@ -109,7 +111,7 @@ const initial = {
   documentos: DOCUMENTOS,
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
-  notifications: NOTIFICATIONS,
+  notifications: syncLicencaAlerts(NOTIFICATIONS, LICENCAS, CLIENTS),
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
@@ -242,10 +244,21 @@ export const useAppStore = create<AppState>()(
           ),
         })),
 
-      addLicenca: (licenca) => set((s) => ({ licencas: [licenca, ...s.licencas] })),
+      addLicenca: (licenca) =>
+        set((s) => {
+          const licencas = [licenca, ...s.licencas];
+          return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
+        }),
       updateLicenca: (id, patch) =>
-        set((s) => ({ licencas: s.licencas.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
-      deleteLicenca: (id) => set((s) => ({ licencas: s.licencas.filter((l) => l.id !== id) })),
+        set((s) => {
+          const licencas = s.licencas.map((l) => (l.id === id ? { ...l, ...patch } : l));
+          return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
+        }),
+      deleteLicenca: (id) =>
+        set((s) => {
+          const licencas = s.licencas.filter((l) => l.id !== id);
+          return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
+        }),
 
       addIndicacao: (indicacao) => set((s) => ({ indicacoes: [indicacao, ...s.indicacoes] })),
       updateIndicacao: (id, patch) =>
@@ -315,6 +328,9 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
+      resyncLicencaAlerts: () =>
+        set((s) => ({ notifications: syncLicencaAlerts(s.notifications, s.licencas, s.clients) })),
+
       resetData: () => set(initial),
     }),
     {
@@ -342,6 +358,11 @@ export const useAppStore = create<AppState>()(
           }));
         }
         return state;
+      },
+      // Recompute "licença vencendo" alerts on every load so the day countdown
+      // (e.g. "vencendo em N dias") stays accurate, not just when a licença is edited.
+      onRehydrateStorage: () => (state) => {
+        state?.resyncLicencaAlerts();
       },
     }
   )

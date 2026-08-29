@@ -470,6 +470,7 @@ export type DocumentoCategoria =
   | "Contábil"
   | "Relatórios"
   | "Comprovantes"
+  | "Licenças"
   | "Outros";
 
 export interface Documento {
@@ -486,7 +487,7 @@ export interface Documento {
 
 // ---------- Notificações ----------
 
-export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa";
+export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca";
 
 export interface AppNotification {
   id: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, CheckCheck } from "lucide-react";
+import { AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, CheckCheck, Award } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const ICONS: Record<NotificationTipo, typeof AlertTriangle> = {
   comercial: TrendingUp,
   financeiro: Wallet,
   tarefa: ListChecks,
+  licenca: Award,
 };
 
 const LABELS: Record<NotificationTipo, string> = {
@@ -23,6 +24,7 @@ const LABELS: Record<NotificationTipo, string> = {
   comercial: "Comercial",
   financeiro: "Financeiro",
   tarefa: "Tarefa",
+  licenca: "Licença",
 };
 
 const TONES: Record<NotificationTipo, string> = {
@@ -31,6 +33,7 @@ const TONES: Record<NotificationTipo, string> = {
   comercial: "text-status-info bg-status-info-bg",
   financeiro: "text-wine-700 bg-wine-100",
   tarefa: "text-status-neutral bg-status-neutral-bg",
+  licenca: "text-status-warning bg-status-warning-bg",
 };
 
 export default function AlertasPage() {
@@ -43,7 +46,7 @@ export default function AlertasPage() {
     <div>
       <PageHeader
         title="Central de alertas"
-        description="Obrigações vencendo, certificados expirando, leads sem contato e honorários em atraso."
+        description="Obrigações vencendo, certificados e licenças expirando, leads sem contato e honorários em atraso."
         actions={<Button variant="outline" size="sm" onClick={markAllRead}><CheckCheck className="size-3.5" /> Marcar tudo como lido</Button>}
       />
 

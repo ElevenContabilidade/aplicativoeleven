@@ -22,6 +22,7 @@ export const DOCUMENT_CATEGORIAS: DocumentoCategoria[] = [
   "Contábil",
   "Relatórios",
   "Comprovantes",
+  "Licenças",
   "Outros",
 ];
 
