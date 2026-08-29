@@ -12,6 +12,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import type { Certificado, CertificadoStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractDocumentDates } from "@/lib/document-date-extract";
+import { extractPfxDates } from "@/lib/pfx-dates";
 import { formatBytes } from "@/lib/utils";
 
 const TIPOS: Certificado["tipo"][] = ["e-CPF A1", "e-CNPJ A1", "e-CPF A3", "e-CNPJ A3"];
@@ -55,14 +56,18 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
       setExtractState("idle");
       return;
     }
-    if (selected.type !== "application/pdf") {
+    const name = selected.name.toLowerCase();
+    const isPfx = name.endsWith(".pfx") || name.endsWith(".p12");
+    const isPdf = selected.type === "application/pdf" || name.endsWith(".pdf");
+    if (!isPfx && !isPdf) {
       setExtractState("unsupported");
       return;
     }
     setExtractState("extracting");
     try {
-      const text = await extractPdfText(selected);
-      const { dataEmissao: emissao, dataVencimento: vencimento } = extractDocumentDates(text);
+      const { dataEmissao: emissao, dataVencimento: vencimento } = isPfx
+        ? await extractPfxDates(selected)
+        : extractDocumentDates(await extractPdfText(selected));
       if (emissao) setDataEmissao(emissao);
       if (vencimento) setDataVencimento(vencimento);
       setExtractState(emissao || vencimento ? "found" : "not-found");
@@ -119,12 +124,12 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
             <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-sand-300 bg-sand-50 px-4 py-5 text-center hover:border-wine-400 hover:bg-wine-50">
               <FileUp className="size-5 text-wine-500" />
               <span className="text-xs font-medium text-sand-700">
-                {file ? file.name : "Clique para anexar o certificado (PDF)"}
+                {file ? file.name : "Clique para anexar o certificado (.pfx/.p12 ou PDF)"}
               </span>
               {file && <span className="text-[11px] text-sand-400">{formatBytes(file.size)}</span>}
               <input
                 type="file"
-                accept=".pdf,image/*"
+                accept=".pfx,.p12,.pdf,image/*"
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
               />
@@ -141,17 +146,17 @@ export function CertificadoFormDialog({ open, onOpenChange }: { open: boolean; o
             )}
             {extractState === "not-found" && (
               <p className="mt-1.5 text-[11px] text-sand-500">
-                Não encontramos as datas no texto do PDF. Preencha manualmente.
+                Não encontramos as datas no arquivo. Preencha manualmente.
               </p>
             )}
             {extractState === "unsupported" && (
               <p className="mt-1.5 text-[11px] text-sand-500">
-                Extração automática funciona só para PDF com texto (não fotos). Preencha as datas manualmente.
+                Extração automática funciona para .pfx/.p12 e PDF com texto (não fotos). Preencha as datas manualmente.
               </p>
             )}
             {extractState === "error" && (
               <p className="mt-1.5 text-[11px] text-status-danger">
-                Não foi possível ler este PDF. Preencha as datas manualmente.
+                Não foi possível ler este arquivo. Preencha as datas manualmente.
               </p>
             )}
           </div>
