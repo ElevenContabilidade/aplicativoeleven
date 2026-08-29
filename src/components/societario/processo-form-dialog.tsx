@@ -59,6 +59,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
       prazo,
       status,
       observacoes: observacoes || undefined,
+      etapas: [],
     };
     addProcessoSocietario(processo);
     reset();

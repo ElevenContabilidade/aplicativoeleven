@@ -38,6 +38,7 @@ import type {
   Licenca,
   Indicacao,
   DepartamentoChave,
+  EtapaProcesso,
 } from "@/lib/types";
 
 interface AppState {
@@ -72,6 +73,10 @@ interface AppState {
   addDocumento: (doc: Documento) => void;
   deleteDocumento: (id: string) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
+  updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
+  addEtapaProcesso: (processoId: string, etapa: EtapaProcesso) => void;
+  toggleEtapaProcesso: (processoId: string, etapaId: string) => void;
+  deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
   addCertificado: (certificado: Certificado) => void;
   addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
@@ -171,6 +176,34 @@ export const useAppStore = create<AppState>()(
 
       addProcessoSocietario: (processo) =>
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
+
+      updateProcessoSocietario: (id, patch) =>
+        set((s) => ({
+          processosSocietarios: s.processosSocietarios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        })),
+
+      addEtapaProcesso: (processoId, etapa) =>
+        set((s) => ({
+          processosSocietarios: s.processosSocietarios.map((p) =>
+            p.id === processoId ? { ...p, etapas: [...p.etapas, etapa] } : p
+          ),
+        })),
+
+      toggleEtapaProcesso: (processoId, etapaId) =>
+        set((s) => ({
+          processosSocietarios: s.processosSocietarios.map((p) =>
+            p.id === processoId
+              ? { ...p, etapas: p.etapas.map((e) => (e.id === etapaId ? { ...e, feito: !e.feito } : e)) }
+              : p
+          ),
+        })),
+
+      deleteEtapaProcesso: (processoId, etapaId) =>
+        set((s) => ({
+          processosSocietarios: s.processosSocietarios.map((p) =>
+            p.id === processoId ? { ...p, etapas: p.etapas.filter((e) => e.id !== etapaId) } : p
+          ),
+        })),
 
       addCertificado: (certificado) => set((s) => ({ certificados: [certificado, ...s.certificados] })),
 

@@ -357,6 +357,15 @@ export type ProcessoSocietarioStatus =
   | "Aprovado"
   | "Finalizado";
 
+export interface EtapaProcesso {
+  id: string;
+  descricao: string;
+  responsavelId: string;
+  inicio: string;
+  prazo: string;
+  feito: boolean;
+}
+
 export interface ProcessoSocietario {
   id: string;
   clienteId: string;
@@ -369,6 +378,7 @@ export interface ProcessoSocietario {
   status: ProcessoSocietarioStatus;
   pendencias?: string;
   observacoes?: string;
+  etapas: EtapaProcesso[];
 }
 
 // ---------- Certificados digitais ----------

@@ -390,10 +390,19 @@ export const OBLIGATIONS: Obligation[] = CLIENTS.filter((c) => c.status === "Ati
 // ---------------- Societário ----------------
 
 export const PROCESSOS_SOCIETARIOS: ProcessoSocietario[] = [
-  { id: "ps1", clienteId: "c4", tipoServico: "Abertura de empresa", responsavelId: "u7", orgao: "Junta Comercial SP", protocolo: "JC-2209981", dataAbertura: iso(-9), prazo: iso(2), status: "Em análise", observacoes: "Aguardando análise do órgão" },
-  { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação" },
-  { id: "ps3", clienteId: "c9", tipoServico: "Alteração contratual", responsavelId: "u7", orgao: "Junta Comercial RJ", protocolo: "JC-1187722", dataAbertura: iso(-20), prazo: iso(-3), status: "Exigência", pendencias: "Falta assinatura de sócio" },
-  { id: "ps4", clienteId: "c3", tipoServico: "Regularização", responsavelId: "u7", orgao: "Receita Federal", dataAbertura: iso(-30), prazo: iso(-5), status: "Solicitado" },
+  {
+    id: "ps1", clienteId: "c4", tipoServico: "Abertura de empresa", responsavelId: "u7", orgao: "Junta Comercial SP", protocolo: "JC-2209981", dataAbertura: iso(-9), prazo: iso(2), status: "Em análise", observacoes: "Aguardando análise do órgão",
+    etapas: [
+      { id: "et1", descricao: "Coletar documentos dos sócios", responsavelId: "u7", inicio: iso(-9), prazo: iso(-7), feito: true },
+      { id: "et2", descricao: "Elaborar contrato social", responsavelId: "u7", inicio: iso(-7), prazo: iso(-5), feito: true },
+      { id: "et3", descricao: "Protocolar na Junta Comercial", responsavelId: "u7", inicio: iso(-5), prazo: iso(-3), feito: true },
+      { id: "et4", descricao: "Acompanhar análise do órgão", responsavelId: "u7", inicio: iso(-3), prazo: iso(2), feito: false },
+      { id: "et5", descricao: "Solicitar inscrições municipal/estadual", responsavelId: "u7", inicio: iso(2), prazo: iso(6), feito: false },
+    ],
+  },
+  { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação", etapas: [] },
+  { id: "ps3", clienteId: "c9", tipoServico: "Alteração contratual", responsavelId: "u7", orgao: "Junta Comercial RJ", protocolo: "JC-1187722", dataAbertura: iso(-20), prazo: iso(-3), status: "Exigência", pendencias: "Falta assinatura de sócio", etapas: [] },
+  { id: "ps4", clienteId: "c3", tipoServico: "Regularização", responsavelId: "u7", orgao: "Receita Federal", dataAbertura: iso(-30), prazo: iso(-5), status: "Solicitado", etapas: [] },
 ];
 
 // ---------------- Certificados ----------------
