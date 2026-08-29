@@ -42,13 +42,13 @@ const VENCIMENTO_KEYWORDS = [
   "validade",
 ];
 
-export interface ExtractedLicenseDates {
+export interface ExtractedDocumentDates {
   dataEmissao?: string;
   dataVencimento?: string;
 }
 
 /** Best-effort extraction of emissão/vencimento dates from a document's raw text. */
-export function extractLicenseDates(text: string): ExtractedLicenseDates {
+export function extractDocumentDates(text: string): ExtractedDocumentDates {
   const dataVencimento = findDateNear(text, VENCIMENTO_KEYWORDS);
   const dataEmissao = findDateNear(text, EMISSAO_KEYWORDS);
   return { dataEmissao, dataVencimento };

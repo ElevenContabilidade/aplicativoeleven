@@ -12,7 +12,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { LICENCA_STATUS, type Licenca, type LicencaStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
-import { extractLicenseDates } from "@/lib/license-date-extract";
+import { extractDocumentDates } from "@/lib/document-date-extract";
 import { formatBytes } from "@/lib/utils";
 
 type ExtractState = "idle" | "extracting" | "found" | "not-found" | "unsupported" | "error";
@@ -56,7 +56,7 @@ export function LicencaFormDialog({
     setExtractState("extracting");
     try {
       const text = await extractPdfText(selected);
-      const { dataEmissao: emissao, dataVencimento: vencimento } = extractLicenseDates(text);
+      const { dataEmissao: emissao, dataVencimento: vencimento } = extractDocumentDates(text);
       if (emissao) setDataEmissao(emissao);
       if (vencimento) setDataVencimento(vencimento);
       setExtractState(emissao || vencimento ? "found" : "not-found");

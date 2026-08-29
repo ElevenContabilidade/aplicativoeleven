@@ -491,11 +491,12 @@ export const SERVICOS_EXTRAS: ServicoExtra[] = [
 
 // ---------------- Notificações ----------------
 
+// Alertas de certificado e de licença vencendo são calculados dinamicamente
+// (ver src/lib/certificado-alerts.ts e src/lib/licenca-alerts.ts) a partir dos
+// dados de CERTIFICADOS/LICENCAS, então não entram nesta lista estática.
 export const NOTIFICATIONS: AppNotification[] = [
   { id: "n1", tipo: "urgente", titulo: "Obrigação vencendo hoje", descricao: "Rocha & Vieira Comércio possui DAS vencendo hoje.", data: iso(0), lida: false, href: "/obrigacoes" },
-  { id: "n2", tipo: "certificado", titulo: "Certificado vencendo em 3 dias", descricao: "Studio Movimento — e-CNPJ A1 vence em breve.", data: iso(0), lida: false, href: "/certificados" },
   { id: "n3", tipo: "comercial", titulo: "Lead sem contato há 3 dias", descricao: "André Kimura está há 3 dias sem retorno.", data: iso(-1), lida: false, href: "/comercial" },
   { id: "n4", tipo: "financeiro", titulo: "Honorário em atraso", descricao: "Kimura Tecnologia está com pagamento atrasado.", data: iso(-1), lida: true, href: "/financeiro" },
   { id: "n5", tipo: "tarefa", titulo: "Tarefa vencida", descricao: "Verificar DAS — Peixoto Farma está atrasada.", data: iso(-1), lida: false, href: "/tarefas" },
-  { id: "n6", tipo: "certificado", titulo: "Certificado vencido", descricao: "Empório Rocha — e-CNPJ A3 está vencido.", data: iso(-4), lida: true, href: "/certificados" },
 ];

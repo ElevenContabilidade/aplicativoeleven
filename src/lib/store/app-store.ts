@@ -19,6 +19,7 @@ import {
   INDICACOES,
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
+import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import type {
   TeamMember,
   Lead,
@@ -96,8 +97,17 @@ interface AppState {
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
-  resyncLicencaAlerts: () => void;
+  resyncAlerts: () => void;
   resetData: () => void;
+}
+
+function syncAllAlerts(
+  notifications: AppNotification[],
+  licencas: Licenca[],
+  certificados: Certificado[],
+  clients: Client[]
+): AppNotification[] {
+  return syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients);
 }
 
 const initial = {
@@ -111,7 +121,7 @@ const initial = {
   documentos: DOCUMENTOS,
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
-  notifications: syncLicencaAlerts(NOTIFICATIONS, LICENCAS, CLIENTS),
+  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS),
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
@@ -220,7 +230,11 @@ export const useAppStore = create<AppState>()(
           ),
         })),
 
-      addCertificado: (certificado) => set((s) => ({ certificados: [certificado, ...s.certificados] })),
+      addCertificado: (certificado) =>
+        set((s) => {
+          const certificados = [certificado, ...s.certificados];
+          return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
+        }),
 
       addRecebimento: (clientId, entry) =>
         set((s) => ({
@@ -328,8 +342,8 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
-      resyncLicencaAlerts: () =>
-        set((s) => ({ notifications: syncLicencaAlerts(s.notifications, s.licencas, s.clients) })),
+      resyncAlerts: () =>
+        set((s) => ({ notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients) })),
 
       resetData: () => set(initial),
     }),
@@ -362,7 +376,7 @@ export const useAppStore = create<AppState>()(
       // Recompute "licença vencendo" alerts on every load so the day countdown
       // (e.g. "vencendo em N dias") stays accurate, not just when a licença is edited.
       onRehydrateStorage: () => (state) => {
-        state?.resyncLicencaAlerts();
+        state?.resyncAlerts();
       },
     }
   )
