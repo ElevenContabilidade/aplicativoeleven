@@ -104,6 +104,7 @@ const clientBase = (
   historicoFinanceiro: overrides.historicoFinanceiro ?? [],
   onboarding: overrides.onboarding ?? [],
   notasDepartamentos: overrides.notasDepartamentos,
+  numeroFuncionarios: overrides.numeroFuncionarios,
   leadOrigemId: overrides.leadOrigemId,
   criadoEm: overrides.criadoEm ?? "2022-01-10",
 });
@@ -157,6 +158,7 @@ function historicoFin(clienteMensal: number, meses = 6, atraso = false): Client[
 export const CLIENTS: Client[] = [
   clientBase({
     id: "c1",
+    numeroFuncionarios: 3,
     razaoSocial: "Studio Movimento Pilates e Fisioterapia Ltda",
     cnpj: "31.244.887/0001-02",
     status: "Ativo",
@@ -178,6 +180,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c2",
+    numeroFuncionarios: 5,
     razaoSocial: "Dr. Felipe Andrade Consultório Odontológico Ltda",
     cnpj: "29.887.410/0001-45",
     status: "Ativo",
@@ -192,6 +195,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c3",
+    numeroFuncionarios: 0,
     razaoSocial: "Nogueira & Prado Contabilidade Digital Ltda", // placeholder distinct
     cnpj: "35.221.774/0001-19",
     status: "Com pendência",
@@ -205,6 +209,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c4",
+    numeroFuncionarios: 14,
     razaoSocial: "Salgado Materiais de Construção Ltda",
     cnpj: "40.112.998/0001-77",
     status: "Onboarding",
@@ -219,6 +224,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c5",
+    numeroFuncionarios: 1,
     razaoSocial: "Monteiro Nutrição Clínica Ltda",
     cnpj: "41.556.223/0001-30",
     status: "Onboarding",
@@ -232,6 +238,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c6",
+    numeroFuncionarios: 6,
     razaoSocial: "Bittencourt Advocacia Associados",
     cnpj: "22.887.665/0001-40",
     status: "Ativo",
@@ -245,6 +252,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c7",
+    numeroFuncionarios: 5,
     razaoSocial: "Kimura Tecnologia e Sistemas Ltda",
     cnpj: "38.221.100/0001-88",
     status: "Suspenso",
@@ -258,6 +266,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c8",
+    numeroFuncionarios: 0,
     razaoSocial: "Lacerda Psicologia Clínica",
     cnpj: "44.887.221/0001-05",
     status: "Em processo de cancelamento",
@@ -270,6 +279,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c9",
+    numeroFuncionarios: 4,
     razaoSocial: "Rocha & Vieira Comércio de Alimentos Ltda",
     cnpj: "37.221.887/0001-63",
     status: "Ativo",
@@ -283,6 +293,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c10",
+    numeroFuncionarios: 9,
     razaoSocial: "Peixoto Farma Manipulação Ltda",
     cnpj: "39.887.221/0001-91",
     status: "Ativo",
@@ -296,6 +307,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c11",
+    numeroFuncionarios: 18,
     razaoSocial: "Amaral Engenharia e Projetos Ltda",
     cnpj: "42.665.887/0001-22",
     status: "Ativo",
@@ -309,6 +321,7 @@ export const CLIENTS: Client[] = [
   }),
   clientBase({
     id: "c12",
+    numeroFuncionarios: 0,
     razaoSocial: "Costa & Filhos Transportes Encerrada Ltda",
     cnpj: "20.554.887/0001-10",
     status: "Encerrado",

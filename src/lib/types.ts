@@ -247,6 +247,7 @@ export interface Client {
   historicoFinanceiro: HistoricoFinanceiro[];
   onboarding: OnboardingChecklistItem[];
   notasDepartamentos?: Partial<Record<DepartamentoChave, NotaDepartamento>>;
+  numeroFuncionarios?: number;
   leadOrigemId?: string;
   criadoEm: string;
 }
@@ -517,4 +518,38 @@ export function obrigacaoAnualPorRegime(regime: DadosCadastrais["regimeTributari
 export function rotinasFiscaisAnuais(client: Pick<Client, "dados" | "tags">): string[] {
   const base = obrigacaoAnualPorRegime(client.dados.regimeTributario);
   return client.tags.includes("#Saúde") ? [base, "DMED"] : [base];
+}
+
+// ---------- Checklist de rotinas do Departamento Pessoal ----------
+
+export const ROTINAS_PESSOAL_FIXAS = [
+  "Solicitar documentação da folha de pagamento",
+  "Conferência folha de ponto e variáveis da folha",
+  "Processar e enviar recibos/folhas de pagamento",
+  "Entrega da DCTFWeb",
+  "Emissão e Envio do FGTS",
+  "Emissão e Envio do INSS e IRRF",
+] as const;
+
+export const ROTINAS_PESSOAL_VARIAVEIS = [
+  "Processar admissões",
+  "Processar rescisões",
+  "Processar férias",
+  "Processar benefícios",
+  "Processar afastamentos",
+  "Emissão e Envio de Quadro de Horários",
+  "Emissão e Envio de Folhas de Ponto",
+  "Emissão e Envio de escala de revezamento",
+  "Classificar",
+  "Lançar no sistema",
+  "Conciliar Banco",
+  "Importar DP",
+  "Validar balanço com cliente",
+] as const;
+
+/** Obrigação anual do Departamento Pessoal — só se aplica a clientes com folha ativa. */
+export const ROTINA_PESSOAL_ANUAL = "DCTFWeb 13ª";
+
+export function possuiFuncionarios(client: Pick<Client, "numeroFuncionarios">): boolean {
+  return (client.numeroFuncionarios ?? 0) > 0;
 }

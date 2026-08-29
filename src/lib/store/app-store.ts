@@ -60,6 +60,7 @@ interface AppState {
   indicacoes: Indicacao[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
+  checklistPessoal: ChecklistEntry[];
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
@@ -93,6 +94,7 @@ interface AppState {
   deleteIndicacao: (id: string) => void;
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
+  setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   resetData: () => void;
 }
 
@@ -113,6 +115,7 @@ const initial = {
   indicacoes: INDICACOES,
   checklistContabil: [],
   checklistFiscal: [],
+  checklistPessoal: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -287,6 +290,27 @@ export const useAppStore = create<AppState>()(
             checklistFiscal: [
               ...s.checklistFiscal,
               { id: `chkf-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
+            ],
+          };
+        }),
+
+      setChecklistPessoal: (clienteId, competencia, rotina, status) =>
+        set((s) => {
+          const existing = s.checklistPessoal.find(
+            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
+          );
+          if (!status) {
+            return { checklistPessoal: s.checklistPessoal.filter((e) => e !== existing) };
+          }
+          if (existing) {
+            return {
+              checklistPessoal: s.checklistPessoal.map((e) => (e === existing ? { ...e, status } : e)),
+            };
+          }
+          return {
+            checklistPessoal: [
+              ...s.checklistPessoal,
+              { id: `chkp-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
             ],
           };
         }),
