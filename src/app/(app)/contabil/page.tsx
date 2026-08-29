@@ -12,7 +12,6 @@ export default function ContabilPage() {
         description="Conciliações, fechamentos, balancetes e demonstrações da carteira."
         responsavelKey="contabil"
         departamento="Contábil"
-        docCategorias={["Contábil", "Relatórios"]}
         icon={Calculator}
         showOverview={false}
       />
