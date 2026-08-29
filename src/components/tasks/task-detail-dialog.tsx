@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -18,6 +19,7 @@ const STATUSES: TaskStatus[] = ["Não iniciada", "Em andamento", "Aguardando cli
 
 export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose: () => void }) {
   const updateTask = useAppStore((s) => s.updateTask);
+  const deleteTask = useAppStore((s) => s.deleteTask);
   const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
   const [comment, setComment] = useState("");
@@ -45,6 +47,14 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
     updateTask(task.id, { subtarefas: task.subtarefas.map((s) => (s.id === id ? { ...s, concluida: !s.concluida } : s)) });
   }
 
+  function handleDelete() {
+    if (!task) return;
+    if (confirm(`Excluir a tarefa "${task.titulo}"? Essa ação não pode ser desfeita.`)) {
+      deleteTask(task.id);
+      onClose();
+    }
+  }
+
   return (
     <Dialog open={!!task} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
@@ -60,16 +70,21 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
           <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)} • {teamName(task.responsavelId)}</span>
         </div>
 
-        <div className="mt-3">
-          <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
-          <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
-            <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="mt-3 flex items-end justify-between gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
+            <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
+              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={handleDelete} className="text-status-danger hover:bg-status-danger-bg">
+            <Trash2 className="size-3.5" /> Excluir tarefa
+          </Button>
         </div>
 
         <div className="mt-4">

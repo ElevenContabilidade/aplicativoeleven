@@ -63,6 +63,7 @@ interface AppState {
   deleteLead: (leadId: string) => void;
   updateTask: (taskId: string, patch: Partial<Task>) => void;
   addTask: (task: Task) => void;
+  deleteTask: (taskId: string) => void;
   toggleOnboardingItem: (clientId: string, itemId: string) => void;
   addAnotacao: (nota: Anotacao) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
@@ -139,6 +140,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) })),
 
       addTask: (task) => set((s) => ({ tasks: [task, ...s.tasks] })),
+      deleteTask: (taskId) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) })),
 
       toggleOnboardingItem: (clientId, itemId) =>
         set((s) => ({
