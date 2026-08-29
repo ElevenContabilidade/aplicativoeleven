@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,15 +15,26 @@ import { ProcessoFormDialog } from "@/components/societario/processo-form-dialog
 import { ProcessoDetailDialog } from "@/components/societario/processo-detail-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
-import type { ProcessoSocietario } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario } from "@/lib/types";
+import { cn, formatDate } from "@/lib/utils";
 
 type ViewMode = "tabela" | "processo" | "etapa";
+
+const ETAPA_STATUS_STYLE: Record<ChecklistStatus, string> = {
+  OK: "border-status-success bg-status-success-bg text-status-success",
+  Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
+  "Em andamento": "border-status-warning bg-status-warning-bg text-status-warning",
+  Dispensada: "border-status-brown bg-status-brown-bg text-status-brown",
+};
+
+function isDone(status: ChecklistStatus) {
+  return status === "OK" || status === "Dispensada";
+}
 
 export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
   const processos = useAppStore((s) => s.processosSocietarios);
-  const toggleEtapaProcesso = useAppStore((s) => s.toggleEtapaProcesso);
+  const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -168,7 +178,7 @@ export default function SocietarioPage() {
         <div className="space-y-4">
           {comEtapas.map((p) => {
             const client = clients.find((c) => c.id === p.clienteId);
-            const feitas = p.etapas.filter((e) => e.feito).length;
+            const feitas = p.etapas.filter((e) => isDone(e.status)).length;
             return (
               <Card key={p.id}>
                 <CardHeader>
@@ -181,11 +191,20 @@ export default function SocietarioPage() {
                 </CardHeader>
                 <CardContent className="space-y-1.5 pt-4">
                   {p.etapas.map((e) => (
-                    <label key={e.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-sand-50">
-                      <Checkbox checked={e.feito} onCheckedChange={() => toggleEtapaProcesso(p.id, e.id)} />
-                      <span className={e.feito ? "flex-1 text-sand-400 line-through" : "flex-1 text-sand-800"}>{e.descricao}</span>
+                    <div key={e.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs hover:bg-sand-50">
+                      <span className={isDone(e.status) ? "flex-1 text-sand-400 line-through" : "flex-1 text-sand-800"}>{e.descricao}</span>
                       <span className="text-sand-400">{teamName(e.responsavelId)} · prazo {formatDate(e.prazo)}</span>
-                    </label>
+                      <Select value={e.status} onValueChange={(v) => setEtapaStatus(p.id, e.id, v as ChecklistStatus)}>
+                        <SelectTrigger className={cn("h-7 w-28 shrink-0 justify-center px-2 text-[11px] font-semibold uppercase", ETAPA_STATUS_STYLE[e.status])}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHECKLIST_STATUS.map((s) => (
+                            <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   ))}
                 </CardContent>
               </Card>

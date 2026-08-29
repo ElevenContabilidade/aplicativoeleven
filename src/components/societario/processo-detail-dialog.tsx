@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,16 +12,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import { TEAM, teamName } from "@/lib/data/seed";
-import type { ProcessoSocietario, ProcessoSocietarioStatus } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
+import { cn, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
+
+const ETAPA_STATUS_STYLE: Record<ChecklistStatus, string> = {
+  OK: "border-status-success bg-status-success-bg text-status-success",
+  Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
+  "Em andamento": "border-status-warning bg-status-warning-bg text-status-warning",
+  Dispensada: "border-status-brown bg-status-brown-bg text-status-brown",
+};
+
+function isDone(status: ChecklistStatus) {
+  return status === "OK" || status === "Dispensada";
+}
 
 export function ProcessoDetailDialog({ processo, onClose }: { processo: ProcessoSocietario | null; onClose: () => void }) {
   const clients = useAppStore((s) => s.clients);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const addEtapaProcesso = useAppStore((s) => s.addEtapaProcesso);
-  const toggleEtapaProcesso = useAppStore((s) => s.toggleEtapaProcesso);
+  const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
   const deleteEtapaProcesso = useAppStore((s) => s.deleteEtapaProcesso);
 
   const [descricao, setDescricao] = useState("");
@@ -33,11 +43,11 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   if (!processo) return null;
   const client = clients.find((c) => c.id === processo.clienteId);
   const etapas = processo.etapas ?? [];
-  const feitas = etapas.filter((e) => e.feito).length;
+  const feitas = etapas.filter((e) => isDone(e.status)).length;
 
   function addEtapa() {
     if (!descricao.trim() || !processo) return;
-    addEtapaProcesso(processo.id, { id: `et-${Date.now()}`, descricao, responsavelId, inicio, prazo, feito: false });
+    addEtapaProcesso(processo.id, { id: `et-${Date.now()}`, descricao, responsavelId, inicio, prazo, status: "Pendente" });
     setDescricao("");
   }
 
@@ -96,18 +106,29 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
                 <TableHead>Responsável</TableHead>
                 <TableHead>Início</TableHead>
                 <TableHead>Prazo</TableHead>
-                <TableHead className="w-10">Feito</TableHead>
+                <TableHead className="w-32">Status</TableHead>
                 <TableHead className="w-8" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {etapas.map((e) => (
                 <TableRow key={e.id}>
-                  <TableCell className={e.feito ? "text-sand-400 line-through" : "text-sand-800"}>{e.descricao}</TableCell>
+                  <TableCell className={isDone(e.status) ? "text-sand-400 line-through" : "text-sand-800"}>{e.descricao}</TableCell>
                   <TableCell className="text-xs text-sand-500">{teamName(e.responsavelId)}</TableCell>
                   <TableCell className="text-xs text-sand-500">{formatDate(e.inicio)}</TableCell>
                   <TableCell className="text-xs text-sand-500">{formatDate(e.prazo)}</TableCell>
-                  <TableCell><Checkbox checked={e.feito} onCheckedChange={() => toggleEtapaProcesso(processo.id, e.id)} /></TableCell>
+                  <TableCell>
+                    <Select value={e.status} onValueChange={(v) => setEtapaStatus(processo.id, e.id, v as ChecklistStatus)}>
+                      <SelectTrigger className={cn("h-7 w-28 justify-center px-2 text-[11px] font-semibold uppercase", ETAPA_STATUS_STYLE[e.status])}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CHECKLIST_STATUS.map((s) => (
+                          <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
                   <TableCell>
                     <button
                       type="button"

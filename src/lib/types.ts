@@ -364,8 +364,43 @@ export interface EtapaProcesso {
   responsavelId: string;
   inicio: string;
   prazo: string;
-  feito: boolean;
+  status: ChecklistStatus;
 }
+
+/**
+ * Checklist padrão de uma abertura de empresa, agrupado pelas mesmas fases
+ * do controle societário (Junta Comercial, Receita Federal, Prefeitura,
+ * Estado, sistemas internos e demais obrigações).
+ */
+export const ETAPAS_ABERTURA_EMPRESA = [
+  "Viabilidade",
+  "DBE",
+  "FCN/Integrador",
+  "Pagamento Taxa",
+  "Registro",
+  "Gerar CNPJ",
+  "Opção pelo Simples",
+  "Procuração ECAC",
+  "Inscrição Municipal",
+  "Liberar emissão de NFSe",
+  "Alvará",
+  "Licenças",
+  "Inscrição Estadual",
+  "DTE/Sintegra",
+  "Bombeiro",
+  "Certificado Digital",
+  "Cadastro no sistema contábil",
+  "Cadastro no sistema de gestão",
+  "Cadastro no banco (boleto)",
+  "Fazer a opção do DET",
+  "Fazer procuração FGTS",
+  "Fazer contrato de prestação de serviço",
+  "Marcar reunião de integração",
+  "Adicionar dados do cliente nas planilhas",
+  "Guardar documentos no Drive",
+  "Enviar eventos eSocial",
+  "Enviar DCTFWeb",
+] as const;
 
 export interface ProcessoSocietario {
   id: string;
@@ -475,7 +510,7 @@ export const ROTINAS_CONTABEIS_ANUAIS = [
   "Envio SPED ECD",
 ] as const;
 
-export const CHECKLIST_STATUS = ["OK", "Pendente", "Dispensada"] as const;
+export const CHECKLIST_STATUS = ["OK", "Pendente", "Em andamento", "Dispensada"] as const;
 export type ChecklistStatus = (typeof CHECKLIST_STATUS)[number];
 
 export interface ChecklistEntry {

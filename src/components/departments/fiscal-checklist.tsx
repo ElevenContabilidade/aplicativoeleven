@@ -29,6 +29,7 @@ const REGIME_GROUPS: { label: string; match: (c: Client) => boolean }[] = [
 const STATUS_STYLE: Record<ChecklistStatus, string> = {
   OK: "border-status-success bg-status-success-bg text-status-success",
   Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
+  "Em andamento": "border-status-warning bg-status-warning-bg text-status-warning",
   Dispensada: "border-status-brown bg-status-brown-bg text-status-brown",
 };
 

@@ -81,7 +81,7 @@ interface AppState {
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
   addEtapaProcesso: (processoId: string, etapa: EtapaProcesso) => void;
-  toggleEtapaProcesso: (processoId: string, etapaId: string) => void;
+  setEtapaStatus: (processoId: string, etapaId: string, status: ChecklistStatus) => void;
   deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
   addCertificado: (certificado: Certificado) => void;
   addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
@@ -202,11 +202,11 @@ export const useAppStore = create<AppState>()(
           ),
         })),
 
-      toggleEtapaProcesso: (processoId, etapaId) =>
+      setEtapaStatus: (processoId, etapaId, status) =>
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
             p.id === processoId
-              ? { ...p, etapas: (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, feito: !e.feito } : e)) }
+              ? { ...p, etapas: (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, status } : e)) }
               : p
           ),
         })),
@@ -319,7 +319,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 2,
+      version: 3,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -335,7 +335,10 @@ export const useAppStore = create<AppState>()(
         if (state?.processosSocietarios) {
           state.processosSocietarios = state.processosSocietarios.map((p) => ({
             ...p,
-            etapas: p.etapas ?? [],
+            etapas: (p.etapas ?? []).map((e) => {
+              const old = e as unknown as { feito?: boolean; status?: ChecklistStatus };
+              return { ...e, status: old.status ?? (old.feito ? "OK" : "Pendente") };
+            }),
           }));
         }
         return state;

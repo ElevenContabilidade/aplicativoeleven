@@ -1,3 +1,4 @@
+import { ETAPAS_ABERTURA_EMPRESA } from "@/lib/types";
 import type {
   TeamMember,
   Lead,
@@ -13,6 +14,8 @@ import type {
   ServicoExtra,
   Licenca,
   Indicacao,
+  EtapaProcesso,
+  ChecklistStatus,
 } from "@/lib/types";
 
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
@@ -402,16 +405,29 @@ export const OBLIGATIONS: Obligation[] = CLIENTS.filter((c) => c.status === "Ati
 
 // ---------------- Societário ----------------
 
+function etapasAberturaEmpresa(responsavelId: string, dataAbertura: string, statuses: ChecklistStatus[]): EtapaProcesso[] {
+  return ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => ({
+    id: `et${i}`,
+    descricao,
+    responsavelId,
+    inicio: dataAbertura,
+    prazo: iso(-9 + i),
+    status: statuses[i] ?? "Pendente",
+  }));
+}
+
 export const PROCESSOS_SOCIETARIOS: ProcessoSocietario[] = [
   {
     id: "ps1", clienteId: "c4", tipoServico: "Abertura de empresa", responsavelId: "u7", orgao: "Junta Comercial SP", protocolo: "JC-2209981", dataAbertura: iso(-9), prazo: iso(2), status: "Em análise", observacoes: "Aguardando análise do órgão",
-    etapas: [
-      { id: "et1", descricao: "Coletar documentos dos sócios", responsavelId: "u7", inicio: iso(-9), prazo: iso(-7), feito: true },
-      { id: "et2", descricao: "Elaborar contrato social", responsavelId: "u7", inicio: iso(-7), prazo: iso(-5), feito: true },
-      { id: "et3", descricao: "Protocolar na Junta Comercial", responsavelId: "u7", inicio: iso(-5), prazo: iso(-3), feito: true },
-      { id: "et4", descricao: "Acompanhar análise do órgão", responsavelId: "u7", inicio: iso(-3), prazo: iso(2), feito: false },
-      { id: "et5", descricao: "Solicitar inscrições municipal/estadual", responsavelId: "u7", inicio: iso(2), prazo: iso(6), feito: false },
-    ],
+    etapas: etapasAberturaEmpresa("u7", iso(-9), [
+      "OK", "OK", "OK", "Dispensada", "OK", // Junta Comercial
+      "OK", "OK", "OK", // Receita Federal
+      "Pendente", "Pendente", "Pendente", "Pendente", // Prefeitura
+      "Dispensada", "Dispensada", "Dispensada", // Estado
+      "Pendente", "Dispensada", "Dispensada", "Dispensada", // sistemas internos
+      "Pendente", "Pendente", "Pendente", "Dispensada", "OK", // demais obrigações
+      "Pendente", "Pendente", // eSocial / DCTFWeb
+    ]),
   },
   { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação", etapas: [] },
   { id: "ps3", clienteId: "c9", tipoServico: "Alteração contratual", responsavelId: "u7", orgao: "Junta Comercial RJ", protocolo: "JC-1187722", dataAbertura: iso(-20), prazo: iso(-3), status: "Exigência", pendencias: "Falta assinatura de sócio", etapas: [] },

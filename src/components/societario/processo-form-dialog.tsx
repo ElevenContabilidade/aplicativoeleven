@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { CLIENTS } from "@/lib/data/seed";
-import type { ProcessoSocietario, ProcessoSocietarioStatus } from "@/lib/types";
+import { ETAPAS_ABERTURA_EMPRESA, type EtapaProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
 
 const TIPOS_SERVICO = [
   "Abertura de empresa",
@@ -49,6 +49,17 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
     e.preventDefault();
     if (!clienteId || !orgao || !prazo) return;
     const today = new Date().toISOString().slice(0, 10);
+    const etapas: EtapaProcesso[] =
+      tipoServico === "Abertura de empresa"
+        ? ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => ({
+            id: `et-${Date.now()}-${i}`,
+            descricao,
+            responsavelId: userId ?? "u7",
+            inicio: today,
+            prazo,
+            status: "Pendente",
+          }))
+        : [];
     const processo: ProcessoSocietario = {
       id: `ps-${Date.now()}`,
       clienteId,
@@ -59,7 +70,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
       prazo,
       status,
       observacoes: observacoes || undefined,
-      etapas: [],
+      etapas,
     };
     addProcessoSocietario(processo);
     reset();
