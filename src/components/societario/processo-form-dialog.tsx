@@ -15,13 +15,10 @@ import {
   type Client,
   type EtapaProcesso,
   type ProcessoSocietario,
-  type ProcessoSocietarioStatus,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const TIPOS_SERVICO = ["Abertura", "Alteração", "Baixa", "Desenquadramento", "Balanço", "Livro Diário"];
-
-const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
 
 export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addProcessoSocietario = useAppStore((s) => s.addProcessoSocietario);
@@ -38,9 +35,6 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   const [valor, setValor] = useState("");
   const [numeroProcesso, setNumeroProcesso] = useState("");
   const [dataInicio, setDataInicio] = useState(today);
-  const [orgao, setOrgao] = useState("");
-  const [prazo, setPrazo] = useState("");
-  const [status, setStatus] = useState<ProcessoSocietarioStatus>("Solicitado");
   const [observacoes, setObservacoes] = useState("");
 
   function reset() {
@@ -50,9 +44,6 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
     setValor("");
     setNumeroProcesso("");
     setDataInicio(today);
-    setOrgao("");
-    setPrazo("");
-    setStatus("Solicitado");
     setObservacoes("");
   }
 
@@ -106,7 +97,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
             descricao,
             responsavelId: userId ?? "u7",
             inicio: today,
-            prazo: prazo || dataInicio,
+            prazo: dataInicio,
             status: "Pendente",
           }))
         : [];
@@ -116,11 +107,9 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
       clienteId: finalClienteId,
       tipoServico,
       responsavelId: userId ?? "u7",
-      orgao: orgao || undefined,
       protocolo: numeroProcesso || undefined,
       dataAbertura: dataInicio,
-      prazo: prazo || undefined,
-      status,
+      status: "Solicitado",
       observacoes: observacoes || undefined,
       etapas,
       valorProcesso: valorNumero,
@@ -197,15 +186,6 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               </Select>
             </div>
             <div>
-              <Label className="mb-1 block">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as ProcessoSocietarioStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label className="mb-1 block">Valor do serviço (R$)</Label>
               <Input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
             </div>
@@ -214,17 +194,9 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
               <p className="mt-1 text-[11px] text-sand-500">Define em que ano/mês o processo entra nos filtros e relatórios.</p>
             </div>
-            <div>
+            <div className="col-span-2">
               <Label className="mb-1 block">Número do processo</Label>
               <Input value={numeroProcesso} onChange={(e) => setNumeroProcesso(e.target.value)} placeholder="Ex: JC-2209981" />
-            </div>
-            <div>
-              <Label className="mb-1 block">Órgão</Label>
-              <Input value={orgao} onChange={(e) => setOrgao(e.target.value)} placeholder="Ex: Junta Comercial SP" />
-            </div>
-            <div>
-              <Label className="mb-1 block">Prazo</Label>
-              <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
             </div>
           </div>
 
