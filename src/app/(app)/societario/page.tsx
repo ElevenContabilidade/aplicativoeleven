@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Scale, Plus } from "lucide-react";
+import { Scale, Plus, Wallet, CircleDollarSign, Hourglass } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,10 @@ import { AberturaMatrix } from "@/components/societario/abertura-matrix";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import type { ProcessoSocietario } from "@/lib/types";
-import { cn, formatDate } from "@/lib/utils";
+import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
-type ViewMode = "tabela" | "processo" | "etapa";
+type ViewMode = "tabela" | "processo" | "etapa" | "financeiro";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -69,6 +70,8 @@ export default function SocietarioPage() {
     .filter((p) => p.tipoServico === "Abertura de empresa" && (p.etapas ?? []).length > 0)
     .filter((p) => mes === "anual" || p.dataAbertura.startsWith(`${year}-${mes}`));
 
+  const resumoFinanceiro = useMemo(() => resumoFinanceiroSocietario(filtered), [filtered]);
+
   return (
     <div>
       <PageHeader
@@ -89,6 +92,7 @@ export default function SocietarioPage() {
             <TabsTrigger value="tabela">Tabela</TabsTrigger>
             <TabsTrigger value="processo">Por processo</TabsTrigger>
             <TabsTrigger value="etapa">Por etapa</TabsTrigger>
+            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           </TabsList>
         </Tabs>
         <Select value={year} onValueChange={setYear}>
@@ -187,6 +191,49 @@ export default function SocietarioPage() {
             Checklist de abertura de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
           </p>
           <AberturaMatrix processos={aberturas} clients={clients} />
+        </div>
+      )}
+
+      {view === "financeiro" && (
+        <div>
+          <p className="mb-3 text-[11px] text-sand-500">
+            Valores cobrados nos processos societários de {year} (campo R$/Valor de cada processo). Esses mesmos números aparecem na página Financeiro.
+          </p>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <MetricCard label="Total cobrado" value={formatCurrency(resumoFinanceiro.total)} icon={Wallet} tone="wine" />
+            <MetricCard label="Recebido" value={formatCurrency(resumoFinanceiro.recebido)} icon={CircleDollarSign} tone="success" />
+            <MetricCard label="A receber" value={formatCurrency(resumoFinanceiro.aReceber)} icon={Hourglass} tone="warning" />
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Quanto cada serviço rendeu</CardTitle></CardHeader>
+            <CardContent className="pt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Processos</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Recebido</TableHead>
+                    <TableHead>A receber</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resumoFinanceiro.porServico.map((s) => (
+                    <TableRow key={s.tipoServico}>
+                      <TableCell className="font-medium">{s.tipoServico}</TableCell>
+                      <TableCell>{s.qtd}</TableCell>
+                      <TableCell>{formatCurrency(s.total)}</TableCell>
+                      <TableCell className="text-status-success">{formatCurrency(s.recebido)}</TableCell>
+                      <TableCell className="text-status-warning">{formatCurrency(s.aReceber)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {resumoFinanceiro.porServico.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-10 text-center text-sand-400">Nenhum processo com valor informado neste ano.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       )}
 

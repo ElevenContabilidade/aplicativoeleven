@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -12,11 +12,14 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
+import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function FinanceiroPage() {
   const clients = useAppStore((s) => s.clients);
   const servicosExtras = useAppStore((s) => s.servicosExtras);
+  const processosSocietarios = useAppStore((s) => s.processosSocietarios);
+  const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -98,6 +101,44 @@ export default function FinanceiroPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Scale className="size-4 text-wine-600" /> Societário — quanto ganho por serviço</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <MetricCard label="Total cobrado" value={formatCurrency(resumoSocietario.total)} icon={Wallet} tone="wine" />
+            <MetricCard label="Recebido" value={formatCurrency(resumoSocietario.recebido)} icon={CircleDollarSign} tone="success" />
+            <MetricCard label="A receber" value={formatCurrency(resumoSocietario.aReceber)} icon={Wallet} tone="warning" />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Serviço</TableHead>
+                <TableHead>Processos</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Recebido</TableHead>
+                <TableHead>A receber</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {resumoSocietario.porServico.map((s) => (
+                <TableRow key={s.tipoServico}>
+                  <TableCell className="font-medium">{s.tipoServico}</TableCell>
+                  <TableCell>{s.qtd}</TableCell>
+                  <TableCell>{formatCurrency(s.total)}</TableCell>
+                  <TableCell className="text-status-success">{formatCurrency(s.recebido)}</TableCell>
+                  <TableCell className="text-status-warning">{formatCurrency(s.aReceber)}</TableCell>
+                </TableRow>
+              ))}
+              {resumoSocietario.porServico.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhum processo societário com valor informado ainda.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>

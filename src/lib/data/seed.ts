@@ -428,9 +428,9 @@ export const PROCESSOS_SOCIETARIOS: ProcessoSocietario[] = [
       "Pendente", "Dispensada", "Dispensada", "Dispensada", "Pendente", "Pendente", "Pendente", "Dispensada", "OK", "Pendente", "Pendente", // Demais obrigações
     ]),
   },
-  { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação", etapas: [] },
-  { id: "ps3", clienteId: "c9", tipoServico: "Alteração contratual", responsavelId: "u7", orgao: "Junta Comercial RJ", protocolo: "JC-1187722", dataAbertura: iso(-20), prazo: iso(-3), status: "Exigência", pendencias: "Falta assinatura de sócio", etapas: [] },
-  { id: "ps4", clienteId: "c3", tipoServico: "Regularização", responsavelId: "u7", orgao: "Receita Federal", dataAbertura: iso(-30), prazo: iso(-5), status: "Solicitado", etapas: [] },
+  { id: "ps2", clienteId: "c5", tipoServico: "Inscrição municipal", responsavelId: "u7", orgao: "Prefeitura de São Paulo", dataAbertura: iso(-2), prazo: iso(8), status: "Documentação", etapas: [], valorProcesso: 180, pagamento: "Pendente" },
+  { id: "ps3", clienteId: "c9", tipoServico: "Alteração contratual", responsavelId: "u7", orgao: "Junta Comercial RJ", protocolo: "JC-1187722", dataAbertura: iso(-20), prazo: iso(-3), status: "Exigência", pendencias: "Falta assinatura de sócio", etapas: [], valorProcesso: 250, pagamento: "Pago" },
+  { id: "ps4", clienteId: "c3", tipoServico: "Regularização", responsavelId: "u7", orgao: "Receita Federal", dataAbertura: iso(-30), prazo: iso(-5), status: "Solicitado", etapas: [], valorProcesso: 400, pagamento: "Pago" },
 ];
 
 // ---------------- Certificados ----------------
