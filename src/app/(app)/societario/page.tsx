@@ -60,16 +60,16 @@ export default function SocietarioPage() {
     [processos, year]
   );
 
-  const porProcesso = useMemo(() => {
-    const map = new Map<string, ProcessoSocietario[]>();
-    for (const p of filtered) map.set(p.tipoServico, [...(map.get(p.tipoServico) ?? []), p]);
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered]);
-
   const filteredPeriodo = useMemo(
     () => filtered.filter((p) => mes === "anual" || p.dataAbertura.startsWith(`${year}-${mes}`)),
     [filtered, mes, year]
   );
+
+  const porProcesso = useMemo(() => {
+    const map = new Map<string, ProcessoSocietario[]>();
+    for (const p of filteredPeriodo) map.set(p.tipoServico, [...(map.get(p.tipoServico) ?? []), p]);
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filteredPeriodo]);
 
   const aberturas = filteredPeriodo.filter(
     (p) => (p.tipoServico === "Abertura" || p.tipoServico === "Abertura de empresa") && (p.etapas ?? []).length > 0
@@ -108,14 +108,12 @@ export default function SocietarioPage() {
         </Select>
       </div>
 
-      {(view === "etapa" || view === "financeiro") && (
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
-          {MESES.map((m) => (
-            <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
-          ))}
-        </div>
-      )}
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
+        {MESES.map((m) => (
+          <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
+        ))}
+      </div>
 
       {view === "tabela" && (
         <Card>
@@ -134,7 +132,7 @@ export default function SocietarioPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((p) => {
+                {filteredPeriodo.map((p) => {
                   const client = clients.find((c) => c.id === p.clienteId);
                   return (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
@@ -148,8 +146,8 @@ export default function SocietarioPage() {
                     </TableRow>
                   );
                 })}
-                {filtered.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-sand-400">Nenhum processo neste ano.</TableCell></TableRow>
+                {filteredPeriodo.length === 0 && (
+                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-sand-400">Nenhum processo neste período.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -186,7 +184,7 @@ export default function SocietarioPage() {
               </div>
             </div>
           ))}
-          {porProcesso.length === 0 && <p className="py-10 text-center text-sand-400">Nenhum processo neste ano.</p>}
+          {porProcesso.length === 0 && <p className="py-10 text-center text-sand-400">Nenhum processo neste período.</p>}
         </div>
       )}
 
