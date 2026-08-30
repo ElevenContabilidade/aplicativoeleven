@@ -1,13 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash2, Tag } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Trash2, Tag, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store/app-store";
+import { cn } from "@/lib/utils";
+
+type SortColumn = "nome" | "valor";
+
+function SortableHead({
+  label,
+  column,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  column: SortColumn;
+  sort: { column: SortColumn; direction: "asc" | "desc" } | null;
+  onSort: (column: SortColumn) => void;
+  className?: string;
+}) {
+  const active = sort?.column === column;
+  const Icon = active ? (sort!.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn(
+          "flex items-center gap-1 uppercase tracking-wide hover:text-wine-700",
+          active && "text-wine-700"
+        )}
+      >
+        {label}
+        <Icon className={cn("size-3", !active && "text-sand-300")} />
+      </button>
+    </TableHead>
+  );
+}
 
 export default function PortfolioPage() {
   const servicosPortfolio = useAppStore((s) => s.servicosPortfolio);
@@ -17,6 +52,20 @@ export default function PortfolioPage() {
 
   const [novoNome, setNovoNome] = useState("");
   const [novoValor, setNovoValor] = useState("");
+  const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
+
+  function toggleSort(column: SortColumn) {
+    setSort((s) => (s?.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));
+  }
+
+  const servicosOrdenados = useMemo(() => {
+    if (!sort) return servicosPortfolio;
+    const dir = sort.direction === "asc" ? 1 : -1;
+    return [...servicosPortfolio].sort((a, b) => {
+      if (sort.column === "nome") return a.nome.localeCompare(b.nome, "pt-BR") * dir;
+      return (a.valor - b.valor) * dir;
+    });
+  }, [servicosPortfolio, sort]);
 
   function handleAddServico() {
     const nome = novoNome.trim();
@@ -51,13 +100,13 @@ export default function PortfolioPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Serviço</TableHead>
-                <TableHead className="w-40">Valor (R$)</TableHead>
+                <SortableHead label="Serviço" column="nome" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Valor (R$)" column="valor" sort={sort} onSort={toggleSort} className="w-40" />
                 <TableHead className="w-14" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {servicosPortfolio.map((sp) => (
+              {servicosOrdenados.map((sp) => (
                 <TableRow key={sp.id}>
                   <TableCell>
                     <Input
@@ -86,7 +135,7 @@ export default function PortfolioPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {servicosPortfolio.length === 0 && (
+              {servicosOrdenados.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={3} className="py-8 text-center text-sand-400">
                     Nenhum serviço cadastrado.
