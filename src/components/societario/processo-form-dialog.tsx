@@ -158,7 +158,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
                   clienteMode === "novo" ? "bg-white text-wine-700 shadow-sm" : "text-sand-500 hover:text-sand-700"
                 )}
               >
-                Novo cliente (abertura)
+                Novo cliente
               </button>
             </div>
             {clienteMode === "existente" ? (
@@ -175,11 +175,11 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
                 <Input
                   value={novoClienteNome}
                   onChange={(e) => setNovoClienteNome(e.target.value)}
-                  placeholder="Nome da empresa a ser aberta"
+                  placeholder="Nome da empresa"
                   required
                 />
                 <p className="mt-1 text-[11px] text-sand-500">
-                  Cria um cadastro de cliente novo (status Onboarding). CNPJ e demais dados dá pra completar depois, na etapa &quot;Gerar CNPJ&quot; ou direto no cadastro do cliente.
+                  Cria um cadastro de cliente novo (status Onboarding). CNPJ e demais dados dá pra completar depois, direto no cadastro do cliente.
                 </p>
               </div>
             )}
