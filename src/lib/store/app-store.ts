@@ -17,6 +17,7 @@ import {
   SERVICOS_EXTRAS,
   LICENCAS,
   INDICACOES,
+  SERVICOS_PORTFOLIO,
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
@@ -45,6 +46,7 @@ import type {
   EtapaProcesso,
   ChecklistEntry,
   ChecklistStatus,
+  ServicoPortfolio,
 } from "@/lib/types";
 
 interface AppState {
@@ -62,6 +64,7 @@ interface AppState {
   servicosExtras: ServicoExtra[];
   licencas: Licenca[];
   indicacoes: Indicacao[];
+  servicosPortfolio: ServicoPortfolio[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -98,6 +101,9 @@ interface AppState {
   addIndicacao: (indicacao: Indicacao) => void;
   updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
   deleteIndicacao: (id: string) => void;
+  addServicoPortfolio: (servico: ServicoPortfolio) => void;
+  updateServicoPortfolio: (id: string, patch: Partial<ServicoPortfolio>) => void;
+  deleteServicoPortfolio: (id: string) => void;
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
@@ -129,6 +135,7 @@ const initial = {
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
+  servicosPortfolio: SERVICOS_PORTFOLIO,
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -291,6 +298,15 @@ export const useAppStore = create<AppState>()(
       updateIndicacao: (id, patch) =>
         set((s) => ({ indicacoes: s.indicacoes.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
       deleteIndicacao: (id) => set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) })),
+
+      addServicoPortfolio: (servico) =>
+        set((s) => ({ servicosPortfolio: [servico, ...s.servicosPortfolio] })),
+      updateServicoPortfolio: (id, patch) =>
+        set((s) => ({
+          servicosPortfolio: s.servicosPortfolio.map((sp) => (sp.id === id ? { ...sp, ...patch } : sp)),
+        })),
+      deleteServicoPortfolio: (id) =>
+        set((s) => ({ servicosPortfolio: s.servicosPortfolio.filter((sp) => sp.id !== id) })),
 
       setChecklistContabil: (clienteId, competencia, rotina, status) =>
         set((s) => {

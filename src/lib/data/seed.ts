@@ -16,6 +16,7 @@ import type {
   Indicacao,
   EtapaProcesso,
   ChecklistStatus,
+  ServicoPortfolio,
 } from "@/lib/types";
 
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
@@ -487,6 +488,25 @@ export const SERVICOS_EXTRAS: ServicoExtra[] = [
   { id: "se3", servico: "Parcelamento de débitos", clienteId: "c3", valor: 600, responsavelId: "u4", data: iso(-5), status: "Em aberto" },
   { id: "se4", servico: "Consultoria tributária pontual", clienteId: "c11", valor: 1200, responsavelId: "u1", data: iso(-3), status: "Em aberto" },
   { id: "se5", servico: "Regularização cadastral", clienteId: "c7", valor: 380, responsavelId: "u7", data: iso(-40), status: "Atrasado" },
+];
+
+// ---------------- Portfólio (tabela de preços) ----------------
+
+export const SERVICOS_PORTFOLIO: ServicoPortfolio[] = [
+  { id: "sp1", nome: "Parcelamento", valor: 150 },
+  { id: "sp2", nome: "Abertura de MEI", valor: 200 },
+  { id: "sp3", nome: "Consultoria", valor: 250 },
+  { id: "sp4", nome: "Alteração de MEI", valor: 100 },
+  { id: "sp5", nome: "Abertura de empresa", valor: 1621 },
+  { id: "sp6", nome: "Alteração de empresa", valor: 800 },
+  { id: "sp7", nome: "Baixa de empresa", valor: 800 },
+  { id: "sp8", nome: "Envio de PGDAS (com movimento)", valor: 80 },
+  { id: "sp9", nome: "Envio de PGDAS (sem movimento)", valor: 50 },
+  { id: "sp10", nome: "DCTFWeb", valor: 100 },
+  { id: "sp11", nome: "ECF (com movimento)", valor: 600 },
+  { id: "sp12", nome: "ECF (sem movimento)", valor: 300 },
+  { id: "sp13", nome: "DEFIS (com movimento)", valor: 400 },
+  { id: "sp14", nome: "DEFIS (sem movimento)", valor: 200 },
 ];
 
 // ---------------- Notificações ----------------

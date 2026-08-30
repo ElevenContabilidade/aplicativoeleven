@@ -209,6 +209,13 @@ export interface ServicoExtra {
   status: "Pago" | "Em aberto" | "Atrasado" | "Negociado" | "Cancelado";
 }
 
+/** Tabela de preços dos serviços que a Eleven vende (Portfólio). */
+export interface ServicoPortfolio {
+  id: string;
+  nome: string;
+  valor: number;
+}
+
 export interface Anotacao {
   id: string;
   clienteId: string;
