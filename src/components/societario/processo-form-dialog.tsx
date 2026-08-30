@@ -19,16 +19,7 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-const TIPOS_SERVICO = [
-  "Abertura de empresa",
-  "Alteração contratual",
-  "Baixa",
-  "Inscrição municipal",
-  "Inscrição estadual",
-  "Licenças",
-  "Regularização",
-  "Enquadramento",
-];
+const TIPOS_SERVICO = ["Abertura", "Alteração", "Baixa", "Desenquadramento", "Balanço", "Livro Diário"];
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
 
@@ -38,10 +29,15 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const [clienteMode, setClienteMode] = useState<"existente" | "novo">("existente");
   const [clienteId, setClienteId] = useState(clients[0]?.id ?? CLIENTS[0].id);
   const [novoClienteNome, setNovoClienteNome] = useState("");
   const [tipoServico, setTipoServico] = useState(TIPOS_SERVICO[0]);
+  const [valor, setValor] = useState("");
+  const [numeroProcesso, setNumeroProcesso] = useState("");
+  const [dataInicio, setDataInicio] = useState(today);
   const [orgao, setOrgao] = useState("");
   const [prazo, setPrazo] = useState("");
   const [status, setStatus] = useState<ProcessoSocietarioStatus>("Solicitado");
@@ -51,6 +47,9 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
     setClienteMode("existente");
     setNovoClienteNome("");
     setTipoServico(TIPOS_SERVICO[0]);
+    setValor("");
+    setNumeroProcesso("");
+    setDataInicio(today);
     setOrgao("");
     setPrazo("");
     setStatus("Solicitado");
@@ -60,9 +59,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (clienteMode === "novo" ? !novoClienteNome.trim() : !clienteId) return;
-    if (!orgao || !prazo) return;
-
-    const today = new Date().toISOString().slice(0, 10);
+    if (!dataInicio) return;
 
     let finalClienteId = clienteId;
     if (clienteMode === "novo") {
@@ -103,27 +100,31 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
     }
 
     const etapas: EtapaProcesso[] =
-      tipoServico === "Abertura de empresa"
+      tipoServico === "Abertura"
         ? ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => ({
             id: `et-${Date.now()}-${i}`,
             descricao,
             responsavelId: userId ?? "u7",
             inicio: today,
-            prazo,
+            prazo: prazo || dataInicio,
             status: "Pendente",
           }))
         : [];
+    const valorNumero = valor ? Number(valor.replace(",", ".")) : undefined;
     const processo: ProcessoSocietario = {
       id: `ps-${Date.now()}`,
       clienteId: finalClienteId,
       tipoServico,
       responsavelId: userId ?? "u7",
-      orgao,
-      dataAbertura: today,
-      prazo,
+      orgao: orgao || undefined,
+      protocolo: numeroProcesso || undefined,
+      dataAbertura: dataInicio,
+      prazo: prazo || undefined,
       status,
       observacoes: observacoes || undefined,
       etapas,
+      valorProcesso: valorNumero,
+      pagamento: valorNumero ? "Pendente" : undefined,
     };
     addProcessoSocietario(processo);
     reset();
@@ -205,12 +206,25 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               </Select>
             </div>
             <div>
-              <Label className="mb-1 block">Órgão *</Label>
-              <Input value={orgao} onChange={(e) => setOrgao(e.target.value)} placeholder="Ex: Junta Comercial SP" required />
+              <Label className="mb-1 block">Valor do serviço (R$)</Label>
+              <Input type="number" step="0.01" min="0" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0,00" />
             </div>
             <div>
-              <Label className="mb-1 block">Prazo *</Label>
-              <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} required />
+              <Label className="mb-1 block">Data de início do processo *</Label>
+              <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} required />
+              <p className="mt-1 text-[11px] text-sand-500">Define em que ano/mês o processo entra nos filtros e relatórios.</p>
+            </div>
+            <div>
+              <Label className="mb-1 block">Número do processo</Label>
+              <Input value={numeroProcesso} onChange={(e) => setNumeroProcesso(e.target.value)} placeholder="Ex: JC-2209981" />
+            </div>
+            <div>
+              <Label className="mb-1 block">Órgão</Label>
+              <Input value={orgao} onChange={(e) => setOrgao(e.target.value)} placeholder="Ex: Junta Comercial SP" />
+            </div>
+            <div>
+              <Label className="mb-1 block">Prazo</Label>
+              <Input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} />
             </div>
           </div>
 

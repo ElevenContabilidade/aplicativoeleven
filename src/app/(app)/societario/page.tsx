@@ -66,11 +66,16 @@ export default function SocietarioPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered]);
 
-  const aberturas = filtered
-    .filter((p) => p.tipoServico === "Abertura de empresa" && (p.etapas ?? []).length > 0)
-    .filter((p) => mes === "anual" || p.dataAbertura.startsWith(`${year}-${mes}`));
+  const filteredPeriodo = useMemo(
+    () => filtered.filter((p) => mes === "anual" || p.dataAbertura.startsWith(`${year}-${mes}`)),
+    [filtered, mes, year]
+  );
 
-  const resumoFinanceiro = useMemo(() => resumoFinanceiroSocietario(filtered), [filtered]);
+  const aberturas = filteredPeriodo.filter(
+    (p) => (p.tipoServico === "Abertura" || p.tipoServico === "Abertura de empresa") && (p.etapas ?? []).length > 0
+  );
+
+  const resumoFinanceiro = useMemo(() => resumoFinanceiroSocietario(filteredPeriodo), [filteredPeriodo]);
 
   return (
     <div>
@@ -103,7 +108,7 @@ export default function SocietarioPage() {
         </Select>
       </div>
 
-      {view === "etapa" && (
+      {(view === "etapa" || view === "financeiro") && (
         <div className="mb-4 flex flex-wrap gap-1.5">
           <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
           {MESES.map((m) => (
@@ -135,10 +140,10 @@ export default function SocietarioPage() {
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
                       <TableCell className="font-medium">{client?.dados.nomeFantasia ?? client?.dados.razaoSocial}</TableCell>
                       <TableCell>{p.tipoServico}</TableCell>
-                      <TableCell>{p.orgao}</TableCell>
+                      <TableCell>{p.orgao ?? "—"}</TableCell>
                       <TableCell className="text-sand-500">{p.protocolo ?? "—"}</TableCell>
                       <TableCell>{teamName(p.responsavelId)}</TableCell>
-                      <TableCell>{formatDate(p.prazo)}</TableCell>
+                      <TableCell>{p.prazo ? formatDate(p.prazo) : "—"}</TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
                     </TableRow>
                   );
@@ -171,8 +176,8 @@ export default function SocietarioPage() {
                           <StatusBadge status={p.status} />
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-sand-500">
-                          <span>{p.orgao}</span>
-                          <span>Prazo {formatDate(p.prazo)}</span>
+                          <span>{p.orgao ?? "—"}</span>
+                          <span>Prazo {p.prazo ? formatDate(p.prazo) : "—"}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -197,7 +202,7 @@ export default function SocietarioPage() {
       {view === "financeiro" && (
         <div>
           <p className="mb-3 text-[11px] text-sand-500">
-            Valores cobrados nos processos societários de {year} (campo R$/Valor de cada processo). Esses mesmos números aparecem na página Financeiro.
+            Valores cobrados nos processos societários de {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`} (campo R$/Valor de cada processo). Esses mesmos números aparecem na página Financeiro.
           </p>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <MetricCard label="Total cobrado" value={formatCurrency(resumoFinanceiro.total)} icon={Wallet} tone="wine" />

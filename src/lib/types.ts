@@ -425,10 +425,10 @@ export interface ProcessoSocietario {
   clienteId: string;
   tipoServico: string;
   responsavelId: string;
-  orgao: string;
+  orgao?: string;
   protocolo?: string;
   dataAbertura: string;
-  prazo: string;
+  prazo?: string;
   status: ProcessoSocietarioStatus;
   pendencias?: string;
   observacoes?: string;

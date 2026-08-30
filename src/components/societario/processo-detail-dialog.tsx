@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { TEAM, teamName } from "@/lib/data/seed";
 import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
 
@@ -60,9 +60,13 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline">{processo.orgao}</Badge>
-          {processo.protocolo && <Badge variant="cream">Protocolo {processo.protocolo}</Badge>}
-          <span className="text-xs text-sand-400">Aberto em {formatDate(processo.dataAbertura)} • Prazo {formatDate(processo.prazo)}</span>
+          {processo.orgao && <Badge variant="outline">{processo.orgao}</Badge>}
+          {processo.protocolo && <Badge variant="cream">Nº {processo.protocolo}</Badge>}
+          {!!processo.valorProcesso && <Badge variant="cream">{formatCurrency(processo.valorProcesso)}</Badge>}
+          <span className="text-xs text-sand-400">
+            Iniciado em {formatDate(processo.dataAbertura)}
+            {processo.prazo ? ` • Prazo ${formatDate(processo.prazo)}` : ""}
+          </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3">

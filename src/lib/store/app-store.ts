@@ -417,7 +417,7 @@ export const useAppStore = create<AppState>()(
                         descricao,
                         responsavelId: p.responsavelId,
                         inicio: p.dataAbertura,
-                        prazo: p.prazo,
+                        prazo: p.prazo ?? p.dataAbertura,
                         status: "Pendente" as ChecklistStatus,
                       };
                 }),
