@@ -248,7 +248,7 @@ function RotinaTable({
               Cliente
             </th>
             {columns.map((r) => (
-              <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+              <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                 {r}
               </th>
             ))}

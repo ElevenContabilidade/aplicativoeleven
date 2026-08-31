@@ -30,6 +30,7 @@ import type {
   Lead,
   LeadStage,
   Client,
+  ClientStatus,
   DadosCadastrais,
   Socio,
   Contato,
@@ -97,6 +98,9 @@ interface AppState {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   addClient: (client: Client) => void;
+  deleteClient: (clientId: string) => void;
+  updateClientStatus: (clientId: string, status: ClientStatus) => void;
+  updateClientTags: (clientId: string, tags: string[]) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
@@ -230,7 +234,12 @@ export const useAppStore = create<AppState>()(
                   }
                 : item
             );
-            return { ...c, onboarding };
+            // Assim que o onboarding chega a 100%, o cliente passa sozinho para
+            // Ativo — só quando ele ainda estava em Onboarding (não mexe em
+            // status definidos manualmente, como Suspenso ou Encerrado).
+            const completo = onboarding.length > 0 && onboarding.every((item) => item.concluido);
+            const status = completo && c.status === "Onboarding" ? "Ativo" : c.status;
+            return { ...c, onboarding, status };
           }),
         })),
 
@@ -243,6 +252,28 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) })),
 
       addClient: (client) => set((s) => ({ clients: [client, ...s.clients] })),
+      deleteClient: (clientId) =>
+        set((s) => ({
+          clients: s.clients.filter((c) => c.id !== clientId),
+          tasks: s.tasks.filter((t) => t.clienteId !== clientId),
+          obligations: s.obligations.filter((o) => o.clienteId !== clientId),
+          processosSocietarios: s.processosSocietarios.filter((p) => p.clienteId !== clientId),
+          certificados: s.certificados.filter((c) => c.clienteId !== clientId),
+          documentos: s.documentos.filter((d) => d.clienteId !== clientId),
+          anotacoes: s.anotacoes.filter((a) => a.clienteId !== clientId),
+          timeline: s.timeline.filter((t) => t.clienteId !== clientId),
+          servicosExtras: s.servicosExtras.filter((se) => se.clienteId !== clientId),
+          licencas: s.licencas.filter((l) => l.clienteId !== clientId),
+          indicacoes: s.indicacoes.filter((i) => i.clienteId !== clientId),
+          boletosMensais: s.boletosMensais.filter((b) => b.clienteId !== clientId),
+          checklistContabil: s.checklistContabil.filter((e) => e.clienteId !== clientId),
+          checklistFiscal: s.checklistFiscal.filter((e) => e.clienteId !== clientId),
+          checklistPessoal: s.checklistPessoal.filter((e) => e.clienteId !== clientId),
+        })),
+      updateClientStatus: (clientId, status) =>
+        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) })),
+      updateClientTags: (clientId, tags) =>
+        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

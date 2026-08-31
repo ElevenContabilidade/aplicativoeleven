@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,10 +28,11 @@ import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
-import type { Socio, Contato, HistoricoFinanceiro } from "@/lib/types";
+import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro } from "@/lib/types";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
-import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { toneFor } from "@/lib/status";
+import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 const MARKERS: Record<string, string> = { atencao: "⚠️ Atenção", estrategico: "⭐ Cliente estratégico", oportunidade: "💰 Oportunidade", documento: "📄 Documento pendente", urgente: "🚨 Urgente" };
 
@@ -54,8 +57,12 @@ export default function ClientProfilePage() {
   const deleteSocio = useAppStore((s) => s.deleteSocio);
   const deleteContato = useAppStore((s) => s.deleteContato);
   const deleteHistoricoCliente = useAppStore((s) => s.deleteHistoricoCliente);
+  const deleteClient = useAppStore((s) => s.deleteClient);
+  const updateClientStatus = useAppStore((s) => s.updateClientStatus);
+  const updateClientTags = useAppStore((s) => s.updateClientTags);
   const { userId } = useAuthStore();
   const [noteText, setNoteText] = useState("");
+  const [tagInput, setTagInput] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
@@ -161,6 +168,25 @@ export default function ClientProfilePage() {
     setNoteText("");
   }
 
+  function addTag() {
+    const tag = tagInput.trim();
+    if (!tag || client!.tags.includes(tag)) return;
+    updateClientTags(client!.id, [...client!.tags, tag]);
+    setTagInput("");
+  }
+
+  function removeTag(tag: string) {
+    updateClientTags(client!.id, client!.tags.filter((t) => t !== tag));
+  }
+
+  function handleDeleteClient() {
+    const nome = client!.dados.nomeFantasia ?? client!.dados.razaoSocial;
+    if (!confirm(`Excluir definitivamente o cliente "${nome}"? Isso apaga tarefas, documentos, certificados, licenças, checklist e demais dados vinculados a ele.`)) return;
+    if (!confirm(`Confirma mesmo a exclusão de "${nome}"? Essa ação não pode ser desfeita.`)) return;
+    deleteClient(client!.id);
+    router.push("/clientes");
+  }
+
   return (
     <div>
       <button onClick={() => router.push("/clientes")} className="mb-4 flex items-center gap-1.5 text-xs font-medium text-sand-500 hover:text-wine-700">
@@ -172,18 +198,48 @@ export default function ClientProfilePage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-xl font-semibold text-sand-900">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</h1>
-              <StatusBadge status={client.status} />
+              <Select value={client.status} onValueChange={(v) => updateClientStatus(client.id, v as ClientStatus)}>
+                <SelectTrigger className={cn(badgeVariants({ variant: toneFor(client.status) }), "h-auto w-auto gap-1 border-0 py-0.5")}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLIENT_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                </SelectContent>
+              </Select>
               {client.tags.map((t) => (
-                <Badge key={t} variant="outline">{t}</Badge>
+                <Badge key={t} variant="outline" className="gap-1 pr-1.5">
+                  {t}
+                  <button type="button" onClick={() => removeTag(t)} title={`Remover tag ${t}`} className="rounded-full p-0.5 hover:bg-sand-200">
+                    <X className="size-2.5" />
+                  </button>
+                </Badge>
               ))}
+              <Input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                onBlur={addTag}
+                placeholder="+ tag"
+                className="h-6 w-20 rounded-full border-dashed px-2.5 text-[11px]"
+              />
             </div>
             <p className="mt-1 text-sm text-sand-500">{client.dados.razaoSocial} • {client.dados.cnpj}</p>
           </div>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs sm:grid-cols-4">
-            <MiniStat icon={Building2} label="Regime" value={client.dados.regimeTributario} />
-            <MiniStat icon={User} label="Responsável" value={client.responsaveis.relacionamento ? teamName(client.responsaveis.relacionamento) : "—"} />
-            <MiniStat icon={Wallet} label="Mensalidade" value={formatCurrency(client.financeiro.valorMensal)} />
-            <MiniStat icon={ShieldCheck} label="Financeiro" value={client.financeiro.statusFinanceiro} />
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs sm:grid-cols-4">
+              <MiniStat icon={Building2} label="Regime" value={client.dados.regimeTributario} />
+              <MiniStat icon={User} label="Responsável" value={client.responsaveis.relacionamento ? teamName(client.responsaveis.relacionamento) : "—"} />
+              <MiniStat icon={Wallet} label="Mensalidade" value={formatCurrency(client.financeiro.valorMensal)} />
+              <MiniStat icon={ShieldCheck} label="Financeiro" value={client.financeiro.statusFinanceiro} />
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteClient}
+              title="Excluir cliente"
+              className="flex items-center gap-1.5 rounded-lg border border-status-danger/30 px-2.5 py-1.5 text-[11px] font-medium text-status-danger transition-colors hover:bg-status-danger-bg"
+            >
+              <Trash2 className="size-3.5" /> Excluir cliente
+            </button>
           </div>
         </CardContent>
       </Card>
