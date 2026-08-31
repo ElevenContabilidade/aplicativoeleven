@@ -472,6 +472,30 @@ export interface ProcessoSocietario {
   pagamento?: PagamentoProcesso;
 }
 
+// ---------- Parcelamentos ----------
+
+export type StatusEnvioParcelamento = "Enviado" | "Não enviado";
+
+export const TIPOS_PARCELAMENTO_PADRAO = [
+  "Parcelamento Simples Nacional",
+  "Parcelamento PGFN",
+  "Parcelamento Receita Federal (Convencional)",
+  "Parcelamento INSS",
+  "Parcelamento FGTS",
+  "Parcelamento Municipal (ISS)",
+  "Parcelamento Estadual (ICMS)",
+] as const;
+
+export interface Parcelamento {
+  id: string;
+  clienteNome: string;
+  tipo: string;
+  competencia: string; // "YYYY-MM" — define em que mês/ano entra nos filtros
+  status: StatusEnvioParcelamento;
+  observacoes?: string;
+  criadoEm: string;
+}
+
 // ---------- Certificados digitais ----------
 
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;

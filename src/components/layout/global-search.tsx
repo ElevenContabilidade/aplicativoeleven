@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Building2, UsersRound, ListChecks, ShieldCheck, FolderOpen } from "lucide-react";
+import { Search, Building2, UsersRound, ListChecks, ShieldCheck, FolderOpen, Receipt } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ export function GlobalSearch() {
   const tasks = useAppStore((s) => s.tasks);
   const certificados = useAppStore((s) => s.certificados);
   const documentos = useAppStore((s) => s.documentos);
+  const parcelamentos = useAppStore((s) => s.parcelamentos);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -100,8 +101,17 @@ export function GlobalSearch() {
           .slice(0, 6)
           .map((d) => ({ id: d.id, title: d.nome, subtitle: clientOf(d.clienteId)?.dados.nomeFantasia ?? "", href: `/documentos` })),
       },
+      {
+        key: "parcelamentos",
+        label: "Parcelamentos",
+        icon: Receipt,
+        items: parcelamentos
+          .filter((p) => p.clienteNome.toLowerCase().includes(q) || p.tipo.toLowerCase().includes(q))
+          .slice(0, 6)
+          .map((p) => ({ id: p.id, title: p.tipo, subtitle: p.clienteNome, href: `/parcelamentos` })),
+      },
     ].filter((g) => g.items.length > 0);
-  }, [query, clients, leads, tasks, certificados, documentos]);
+  }, [query, clients, leads, tasks, certificados, documentos, parcelamentos]);
 
   function go(href: string) {
     setOpen(false);

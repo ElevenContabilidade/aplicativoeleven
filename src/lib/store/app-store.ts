@@ -18,6 +18,7 @@ import {
   LICENCAS,
   INDICACOES,
   SERVICOS_PORTFOLIO,
+  PARCELAMENTOS,
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
@@ -52,6 +53,7 @@ import type {
   ChecklistStatus,
   ServicoPortfolio,
   Recebimento,
+  Parcelamento,
 } from "@/lib/types";
 
 interface AppState {
@@ -71,6 +73,7 @@ interface AppState {
   indicacoes: Indicacao[];
   servicosPortfolio: ServicoPortfolio[];
   recebimentos: Recebimento[];
+  parcelamentos: Parcelamento[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -111,6 +114,9 @@ interface AppState {
   updateCertificado: (id: string, patch: Partial<Certificado>) => void;
   addRecebimento: (entry: Recebimento) => void;
   deleteRecebimento: (id: string) => void;
+  addParcelamento: (parcelamento: Parcelamento) => void;
+  updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
+  deleteParcelamento: (id: string) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -159,6 +165,7 @@ const initial = {
   indicacoes: INDICACOES,
   servicosPortfolio: SERVICOS_PORTFOLIO,
   recebimentos: [] as Recebimento[],
+  parcelamentos: PARCELAMENTOS,
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -350,6 +357,11 @@ export const useAppStore = create<AppState>()(
 
       addRecebimento: (entry) => set((s) => ({ recebimentos: [entry, ...s.recebimentos] })),
       deleteRecebimento: (id) => set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) })),
+
+      addParcelamento: (parcelamento) => set((s) => ({ parcelamentos: [parcelamento, ...s.parcelamentos] })),
+      updateParcelamento: (id, patch) =>
+        set((s) => ({ parcelamentos: s.parcelamentos.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      deleteParcelamento: (id) => set((s) => ({ parcelamentos: s.parcelamentos.filter((p) => p.id !== id) })),
 
       updateNotaDepartamento: (clientId, depto, nota) =>
         set((s) => ({

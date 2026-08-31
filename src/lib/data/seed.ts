@@ -17,6 +17,7 @@ import type {
   EtapaProcesso,
   ChecklistStatus,
   ServicoPortfolio,
+  Parcelamento,
 } from "@/lib/types";
 
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
@@ -486,6 +487,15 @@ export const SERVICOS_PORTFOLIO: ServicoPortfolio[] = [
   { id: "sp12", nome: "ECF (sem movimento)", valor: 300 },
   { id: "sp13", nome: "DEFIS (com movimento)", valor: 400 },
   { id: "sp14", nome: "DEFIS (sem movimento)", valor: 200 },
+];
+
+// ---------------- Parcelamentos ----------------
+
+export const PARCELAMENTOS: Parcelamento[] = [
+  { id: "pc1", clienteNome: "Studio Movimento", tipo: "Parcelamento Simples Nacional", competencia: "2026-08", status: "Enviado", criadoEm: iso(-10) },
+  { id: "pc2", clienteNome: "Bittencourt Advocacia", tipo: "Parcelamento PGFN", competencia: "2026-08", status: "Não enviado", criadoEm: iso(-4) },
+  { id: "pc3", clienteNome: "Kimura Tech", tipo: "Parcelamento INSS", competencia: "2026-07", status: "Enviado", criadoEm: iso(-30) },
+  { id: "pc4", clienteNome: "Salgado Materiais", tipo: "Parcelamento Municipal (ISS)", competencia: "2026-09", status: "Não enviado", criadoEm: iso(-1) },
 ];
 
 // ---------------- Notificações ----------------

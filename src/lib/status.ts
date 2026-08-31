@@ -70,6 +70,10 @@ const map: Record<string, BadgeTone> = {
   vencida: "danger",
   "em renovação": "info",
 
+  // parcelamentos
+  enviado: "success",
+  "não enviado": "warning",
+
   // indicações
   novo: "outline",
   convertido: "success",
