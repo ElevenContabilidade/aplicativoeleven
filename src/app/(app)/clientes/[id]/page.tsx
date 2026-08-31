@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -502,7 +502,21 @@ export default function ClientProfilePage() {
         <TabsContent value="documentos">
           <Card>
             <CardContent className="p-5">
-              <div className="mb-3 flex justify-end">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                {client.dados.linkDrive ? (
+                  <a
+                    href={client.dados.linkDrive}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-medium text-wine-700 hover:underline"
+                  >
+                    <FolderOpen className="size-3.5" /> Abrir pasta no Drive
+                  </a>
+                ) : (
+                  <p className="text-[11px] text-sand-400">
+                    Nenhuma pasta do Drive vinculada — adicione o link em Dados cadastrais.
+                  </p>
+                )}
                 <Button size="sm" onClick={() => setDocUploadOpen(true)}>
                   <Upload className="size-3.5" /> Anexar documento
                 </Button>

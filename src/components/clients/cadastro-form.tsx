@@ -109,6 +109,14 @@ export function CadastroForm({ client }: { client: Client }) {
               </button>
             </div>
           </Field>
+          <Field label="Link da pasta no Drive" className="sm:col-span-2 lg:col-span-3">
+            <Input
+              type="url"
+              value={form.linkDrive ?? ""}
+              onChange={(e) => set("linkDrive", e.target.value)}
+              placeholder="https://drive.google.com/drive/folders/..."
+            />
+          </Field>
           <Field label="CNAE principal">
             <Input value={form.cnaePrincipal} onChange={(e) => set("cnaePrincipal", e.target.value)} />
           </Field>
