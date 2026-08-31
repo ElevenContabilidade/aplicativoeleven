@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Building2, UsersRound, ListChecks, ShieldCheck, FolderOpen, FileClock } from "lucide-react";
+import { Search, Building2, UsersRound, ListChecks, ShieldCheck, FolderOpen } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { cn } from "@/lib/utils";
@@ -24,7 +24,6 @@ export function GlobalSearch() {
   const tasks = useAppStore((s) => s.tasks);
   const certificados = useAppStore((s) => s.certificados);
   const documentos = useAppStore((s) => s.documentos);
-  const obligations = useAppStore((s) => s.obligations);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -84,15 +83,6 @@ export function GlobalSearch() {
           .map((t) => ({ id: t.id, title: t.titulo, subtitle: t.clienteId ? (clientOf(t.clienteId)?.dados.nomeFantasia ?? "") : t.departamento, href: `/tarefas` })),
       },
       {
-        key: "obrigacoes",
-        label: "Obrigações",
-        icon: FileClock,
-        items: obligations
-          .filter((o) => o.tipo.toLowerCase().includes(q) || (o.protocolo ?? "").toLowerCase().includes(q))
-          .slice(0, 6)
-          .map((o) => ({ id: o.id, title: o.tipo, subtitle: clientOf(o.clienteId)?.dados.nomeFantasia ?? "", href: `/obrigacoes` })),
-      },
-      {
         key: "certificados",
         label: "Certificados",
         icon: ShieldCheck,
@@ -111,7 +101,7 @@ export function GlobalSearch() {
           .map((d) => ({ id: d.id, title: d.nome, subtitle: clientOf(d.clienteId)?.dados.nomeFantasia ?? "", href: `/documentos` })),
       },
     ].filter((g) => g.items.length > 0);
-  }, [query, clients, leads, tasks, obligations, certificados, documentos]);
+  }, [query, clients, leads, tasks, certificados, documentos]);
 
   function go(href: string) {
     setOpen(false);
@@ -152,7 +142,7 @@ export function GlobalSearch() {
             <div className="max-h-[60vh] overflow-y-auto p-2 scrollbar-thin">
               {query.trim() === "" && (
                 <p className="px-3 py-8 text-center text-xs text-sand-400">
-                  Digite para buscar em clientes, leads, tarefas, obrigações, certificados e documentos.
+                  Digite para buscar em clientes, leads, tarefas, certificados e documentos.
                 </p>
               )}
               {query.trim() !== "" && groups.length === 0 && (

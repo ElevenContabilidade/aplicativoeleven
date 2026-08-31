@@ -6,7 +6,6 @@ import {
   Building2,
   ClipboardCheck,
   ListChecks,
-  FileClock,
   Landmark,
   Calculator,
   UserCog,
@@ -37,7 +36,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Onboarding", href: "/onboarding", icon: ClipboardCheck, section: "principal" },
 
   { label: "Tarefas", href: "/tarefas", icon: ListChecks, section: "operacao" },
-  { label: "Obrigações", href: "/obrigacoes", icon: FileClock, section: "operacao" },
   { label: "Fiscal", href: "/fiscal", icon: Landmark, section: "operacao" },
   { label: "Contábil", href: "/contabil", icon: Calculator, section: "operacao" },
   { label: "Departamento Pessoal", href: "/dp", icon: UserCog, section: "operacao" },
