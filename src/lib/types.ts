@@ -505,14 +505,17 @@ export interface EnvioParcelamento {
 export type StatusEmissaoBoleto = "Emitido" | "Não emitido";
 
 /** Status de emissão do boleto de UM cliente em UMA competência. Valor e
- * vencimento não ficam salvos aqui — são sempre puxados ao vivo do cadastro
- * financeiro do cliente (client.financeiro), então acompanham qualquer
- * alteração feita lá. */
+ * vencimento vêm por padrão do cadastro financeiro do cliente (client.financeiro),
+ * mas podem ser ajustados aqui para aquela competência específica (valor/vencimento
+ * pontuais). "removido" tira o boleto da lista daquele mês (ex: cliente não precisou). */
 export interface BoletoMensal {
   id: string;
   clienteId: string;
   competencia: string; // "YYYY-MM"
   status: StatusEmissaoBoleto;
+  valor?: number;
+  vencimento?: string; // "YYYY-MM-DD"
+  removido?: boolean;
 }
 
 // ---------- Certificados digitais ----------
@@ -623,6 +626,7 @@ export const ROTINAS_FISCAIS_MENSAIS = [
   "Classificação de documentos fiscais",
   "Fechamento do PGDAS",
   "Envio da guia do DAS",
+  "Gerar DAS MEI",
   "Emissão de livros fiscais",
   "Emissão guia DAE",
   "DeSTDA",
@@ -648,6 +652,14 @@ export function obrigacaoAnualPorRegime(regime: DadosCadastrais["regimeTributari
 export function rotinasFiscaisAnuais(client: Pick<Client, "dados" | "tags">): string[] {
   const base = obrigacaoAnualPorRegime(client.dados.regimeTributario);
   return client.tags.includes("#Saúde") ? [base, "DMED"] : [base];
+}
+
+/** Rotinas fiscais mensais aplicáveis ao cliente — "Gerar DAS MEI" só entra
+ * para quem está cadastrado no regime MEI, seguindo o regime tributário
+ * cadastrado em Clientes. */
+export function rotinasFiscaisMensaisFor(client: Pick<Client, "dados">): string[] {
+  if (client.dados.regimeTributario === "MEI") return [...ROTINAS_FISCAIS_MENSAIS];
+  return ROTINAS_FISCAIS_MENSAIS.filter((r) => r !== "Gerar DAS MEI");
 }
 
 // ---------- Checklist de rotinas do Departamento Pessoal ----------

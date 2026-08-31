@@ -250,7 +250,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                               <Select value={etapa.status} onValueChange={(v) => setEtapaStatus(p.id, etapa.id, v as ChecklistStatus)}>
                                 <SelectTrigger
                                   className={cn(
-                                    "h-7 w-32 shrink-0 justify-center gap-1 border-0 px-1 text-[10px] font-bold uppercase text-white [&_svg]:text-white/70",
+                                    "h-7 w-32 shrink-0 justify-center gap-1 whitespace-nowrap border-0 px-1 text-[10px] font-bold uppercase text-white [&_svg]:text-white/70",
                                     CELL_STATUS_STYLE[etapa.status]
                                   )}
                                 >

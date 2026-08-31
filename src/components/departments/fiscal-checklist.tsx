@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -48,7 +48,7 @@ function pctColor(pct: number) {
 }
 
 function rotinasFor(client: Client, period: string): string[] {
-  return period === "anual" ? rotinasFiscaisAnuais(client) : [...ROTINAS_FISCAIS_MENSAIS];
+  return period === "anual" ? rotinasFiscaisAnuais(client) : rotinasFiscaisMensaisFor(client);
 }
 
 export function FiscalChecklist() {
@@ -60,7 +60,7 @@ export function FiscalChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
   const myClients = useMemo(
-    () => clients.filter((c) => c.responsaveis.fiscal && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding")),
+    () => clients.filter((c) => c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding"),
     [clients]
   );
 
@@ -99,7 +99,7 @@ export function FiscalChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients.map((c) => pctForList(c.id, comp, [...ROTINAS_FISCAIS_MENSAIS]));
+        const pcts = myClients.map((c) => pctForList(c.id, comp, rotinasFiscaisMensaisFor(c)));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
@@ -251,6 +251,7 @@ export function FiscalChecklist() {
                       key={c.id}
                       client={c}
                       columns={[...ROTINAS_FISCAIS_MENSAIS]}
+                      applicable={rotinasFiscaisMensaisFor(c)}
                       competencia={competencia}
                       statusFor={statusFor}
                       setChecklist={setChecklistFiscal}
@@ -313,7 +314,7 @@ function ClientRow({
               value={status ?? "—"}
               onValueChange={(v) => setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
             >
-              <SelectTrigger className={cn("h-7 w-28 mx-auto justify-center px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
+              <SelectTrigger className={cn("h-7 w-36 mx-auto justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

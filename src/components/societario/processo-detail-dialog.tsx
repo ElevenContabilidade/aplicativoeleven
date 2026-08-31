@@ -123,7 +123,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
                   <TableCell className="text-xs text-sand-500">{formatDate(e.prazo)}</TableCell>
                   <TableCell>
                     <Select value={e.status} onValueChange={(v) => setEtapaStatus(processo.id, e.id, v as ChecklistStatus)}>
-                      <SelectTrigger className={cn("h-7 w-28 justify-center px-2 text-[11px] font-semibold uppercase", ETAPA_STATUS_STYLE[e.status])}>
+                      <SelectTrigger className={cn("h-7 w-36 justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", ETAPA_STATUS_STYLE[e.status])}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

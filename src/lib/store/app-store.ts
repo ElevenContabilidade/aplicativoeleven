@@ -58,7 +58,6 @@ import type {
   EnvioParcelamento,
   StatusEnvioParcelamento,
   BoletoMensal,
-  StatusEmissaoBoleto,
 } from "@/lib/types";
 
 interface AppState {
@@ -126,7 +125,7 @@ interface AppState {
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
   deleteParcelamento: (id: string) => void;
   setEnvioParcelamento: (parcelamentoId: string, competencia: string, status: StatusEnvioParcelamento) => void;
-  setBoletoStatus: (clienteId: string, competencia: string, status: StatusEmissaoBoleto) => void;
+  updateBoleto: (clienteId: string, competencia: string, patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido">>) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -391,14 +390,14 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
-      setBoletoStatus: (clienteId, competencia, status) =>
+      updateBoleto: (clienteId, competencia, patch) =>
         set((s) => {
           const id = `bol-${clienteId}-${competencia}`;
           const exists = s.boletosMensais.some((b) => b.id === id);
           return {
             boletosMensais: exists
-              ? s.boletosMensais.map((b) => (b.id === id ? { ...b, status } : b))
-              : [...s.boletosMensais, { id, clienteId, competencia, status }],
+              ? s.boletosMensais.map((b) => (b.id === id ? { ...b, ...patch } : b))
+              : [...s.boletosMensais, { id, clienteId, competencia, status: "Não emitido", ...patch }],
           };
         }),
 

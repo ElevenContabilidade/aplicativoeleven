@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Send, Clock, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { CreditCard, Send, Clock, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { vencimentoDaCompetencia } from "@/lib/boleto";
 import type { Client, StatusEmissaoBoleto } from "@/lib/types";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -30,7 +30,7 @@ interface Linha {
   status: StatusEmissaoBoleto;
 }
 
-type SortColumn = "cliente" | "competencia" | "valor" | "vencimento" | "status";
+type SortColumn = "cliente" | "valor" | "vencimento" | "status";
 
 function SortableHead({
   label,
@@ -64,7 +64,7 @@ function SortableHead({
 export default function BoletosPage() {
   const clients = useAppStore((s) => s.clients);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
-  const setBoletoStatus = useAppStore((s) => s.setBoletoStatus);
+  const updateBoleto = useAppStore((s) => s.updateBoleto);
 
   const [busca, setBusca] = useState("");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
@@ -83,16 +83,18 @@ export default function BoletosPage() {
   const competencias = mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`];
 
   const linhas: Linha[] = useMemo(() => {
-    const statusMap = new Map(boletosMensais.map((b) => [`${b.clienteId}__${b.competencia}`, b.status]));
+    const entryMap = new Map(boletosMensais.map((b) => [`${b.clienteId}__${b.competencia}`, b]));
     const list: Linha[] = [];
     for (const cliente of clientesMensais) {
       for (const competencia of competencias) {
+        const entry = entryMap.get(`${cliente.id}__${competencia}`);
+        if (entry?.removido) continue;
         list.push({
           cliente,
           competencia,
-          valor: cliente.financeiro.valorMensal,
-          vencimento: vencimentoDaCompetencia(competencia, cliente.financeiro.vencimentoDia),
-          status: statusMap.get(`${cliente.id}__${competencia}`) ?? "Não emitido",
+          valor: entry?.valor ?? cliente.financeiro.valorMensal,
+          vencimento: entry?.vencimento ?? vencimentoDaCompetencia(competencia, cliente.financeiro.vencimentoDia),
+          status: entry?.status ?? "Não emitido",
         });
       }
     }
@@ -125,14 +127,21 @@ export default function BoletosPage() {
   const naoEmitidos = filtradas.filter((l) => l.status === "Não emitido").length;
 
   function toggleStatus(l: Linha) {
-    setBoletoStatus(l.cliente.id, l.competencia, l.status === "Emitido" ? "Não emitido" : "Emitido");
+    updateBoleto(l.cliente.id, l.competencia, { status: l.status === "Emitido" ? "Não emitido" : "Emitido" });
+  }
+
+  function handleDelete(l: Linha) {
+    const nome = l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial;
+    if (confirm(`Excluir o boleto de ${nome} em ${l.competencia}? Ele some da lista deste mês.`)) {
+      updateBoleto(l.cliente.id, l.competencia, { removido: true });
+    }
   }
 
   return (
     <div>
       <PageHeader
         title="Boletos"
-        description="Emissão mensal de boletos de todos os clientes com mensalidade — valor e vencimento vêm direto do cadastro do cliente."
+        description="Emissão mensal de boletos de todos os clientes com mensalidade — valor e vencimento vêm direto do cadastro do cliente, mas podem ser ajustados por competência."
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -172,22 +181,47 @@ export default function BoletosPage() {
             <TableHeader>
               <TableRow>
                 <SortableHead label="Cliente" column="cliente" sort={sort} onSort={toggleSort} />
-                <SortableHead label="Competência" column="competencia" sort={sort} onSort={toggleSort} />
-                <SortableHead label="Valor" column="valor" sort={sort} onSort={toggleSort} />
-                <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Valor" column="valor" sort={sort} onSort={toggleSort} className="w-32" />
+                <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} className="w-40" />
                 <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {sorted.map((l) => (
                 <TableRow key={`${l.cliente.id}-${l.competencia}`}>
                   <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
-                  <TableCell className="text-sand-500">{l.competencia}</TableCell>
-                  <TableCell>{formatCurrency(l.valor)}</TableCell>
-                  <TableCell className="text-sand-500">{formatDate(l.vencimento)}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={l.valor}
+                      onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { valor: Number(e.target.value) || 0 })}
+                      className="h-8 w-28 text-xs"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="date"
+                      value={l.vencimento}
+                      onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { vencimento: e.target.value })}
+                      className="h-8 w-36 text-xs"
+                    />
+                  </TableCell>
                   <TableCell>
                     <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de emissão">
                       <StatusBadge status={l.status} className="cursor-pointer" />
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(l)}
+                      title="Excluir boleto"
+                      className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                    >
+                      <Trash2 className="size-4" />
                     </button>
                   </TableCell>
                 </TableRow>

@@ -59,7 +59,7 @@ export function PessoalChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
   const myClients = useMemo(
-    () => clients.filter((c) => c.responsaveis.pessoal && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding")),
+    () => clients.filter((c) => c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding"),
     [clients]
   );
 
@@ -275,7 +275,7 @@ function RotinaTable({
                         value={status ?? "—"}
                         onValueChange={(v) => setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
                       >
-                        <SelectTrigger className={cn("h-7 w-28 mx-auto justify-center px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
+                        <SelectTrigger className={cn("h-7 w-36 mx-auto justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
