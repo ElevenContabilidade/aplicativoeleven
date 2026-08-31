@@ -500,6 +500,21 @@ export interface EnvioParcelamento {
   status: StatusEnvioParcelamento;
 }
 
+// ---------- Boletos mensais ----------
+
+export type StatusEmissaoBoleto = "Emitido" | "Não emitido";
+
+/** Status de emissão do boleto de UM cliente em UMA competência. Valor e
+ * vencimento não ficam salvos aqui — são sempre puxados ao vivo do cadastro
+ * financeiro do cliente (client.financeiro), então acompanham qualquer
+ * alteração feita lá. */
+export interface BoletoMensal {
+  id: string;
+  clienteId: string;
+  competencia: string; // "YYYY-MM"
+  status: StatusEmissaoBoleto;
+}
+
 // ---------- Certificados digitais ----------
 
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;

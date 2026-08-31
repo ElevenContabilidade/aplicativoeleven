@@ -74,6 +74,10 @@ const map: Record<string, BadgeTone> = {
   enviado: "success",
   "não enviado": "warning",
 
+  // boletos
+  emitido: "success",
+  "não emitido": "warning",
+
   // indicações
   novo: "outline",
   convertido: "success",

@@ -57,6 +57,8 @@ import type {
   Parcelamento,
   EnvioParcelamento,
   StatusEnvioParcelamento,
+  BoletoMensal,
+  StatusEmissaoBoleto,
 } from "@/lib/types";
 
 interface AppState {
@@ -78,6 +80,7 @@ interface AppState {
   recebimentos: Recebimento[];
   parcelamentos: Parcelamento[];
   enviosParcelamento: EnvioParcelamento[];
+  boletosMensais: BoletoMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -123,6 +126,7 @@ interface AppState {
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
   deleteParcelamento: (id: string) => void;
   setEnvioParcelamento: (parcelamentoId: string, competencia: string, status: StatusEnvioParcelamento) => void;
+  setBoletoStatus: (clienteId: string, competencia: string, status: StatusEmissaoBoleto) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -173,6 +177,7 @@ const initial = {
   recebimentos: [] as Recebimento[],
   parcelamentos: PARCELAMENTOS,
   enviosParcelamento: ENVIOS_PARCELAMENTO,
+  boletosMensais: [] as BoletoMensal[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -383,6 +388,17 @@ export const useAppStore = create<AppState>()(
             enviosParcelamento: exists
               ? s.enviosParcelamento.map((e) => (e.id === id ? { ...e, status } : e))
               : [...s.enviosParcelamento, { id, parcelamentoId, competencia, status }],
+          };
+        }),
+
+      setBoletoStatus: (clienteId, competencia, status) =>
+        set((s) => {
+          const id = `bol-${clienteId}-${competencia}`;
+          const exists = s.boletosMensais.some((b) => b.id === id);
+          return {
+            boletosMensais: exists
+              ? s.boletosMensais.map((b) => (b.id === id ? { ...b, status } : b))
+              : [...s.boletosMensais, { id, clienteId, competencia, status }],
           };
         }),
 
