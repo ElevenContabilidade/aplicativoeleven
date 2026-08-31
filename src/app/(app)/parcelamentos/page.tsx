@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Receipt, Plus, Send, Clock, Trash2 } from "lucide-react";
+import { Receipt, Plus, Send, Clock, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ParcelamentoFormDialog } from "@/components/parcelamentos/parcelamento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
+import type { Parcelamento } from "@/lib/types";
 import { cn, formatDate } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -21,12 +22,46 @@ const MESES = [
   { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
 ];
 
+type SortColumn = "clienteNome" | "nome" | "tipo" | "cnpj" | "dataInicio" | "quantidadeParcelas" | "status";
+
+function SortableHead({
+  label,
+  column,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  column: SortColumn;
+  sort: { column: SortColumn; direction: "asc" | "desc" } | null;
+  onSort: (column: SortColumn) => void;
+  className?: string;
+}) {
+  const active = sort?.column === column;
+  const Icon = active ? (sort!.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={cn("flex items-center gap-1 uppercase tracking-wide hover:text-wine-700", active && "text-wine-700")}
+      >
+        {label}
+        <Icon className={cn("size-3", !active && "text-sand-300")} />
+      </button>
+    </TableHead>
+  );
+}
+
 export default function ParcelamentosPage() {
   const parcelamentos = useAppStore((s) => s.parcelamentos);
   const updateParcelamento = useAppStore((s) => s.updateParcelamento);
   const deleteParcelamento = useAppStore((s) => s.deleteParcelamento);
 
   const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Parcelamento | null>(null);
+  const [formSession, setFormSession] = useState(0);
+  const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
 
   const [year, setYear] = useState(() => {
     const current = new Date().getFullYear().toString();
@@ -34,20 +69,49 @@ export default function ParcelamentosPage() {
   });
   const [mes, setMes] = useState<string>("anual");
 
+  function openCreate() {
+    setEditing(null);
+    setFormSession((n) => n + 1);
+    setFormOpen(true);
+  }
+
+  function openEdit(p: Parcelamento) {
+    setEditing(p);
+    setFormSession((n) => n + 1);
+    setFormOpen(true);
+  }
+
+  function toggleSort(column: SortColumn) {
+    setSort((s) => (s?.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));
+  }
+
   const filteredAno = useMemo(
-    () => parcelamentos.filter((p) => p.competencia.startsWith(year)),
+    () => parcelamentos.filter((p) => p.dataInicio.startsWith(year)),
     [parcelamentos, year]
   );
 
   const filtered = useMemo(
-    () => filteredAno.filter((p) => mes === "anual" || p.competencia === `${year}-${mes}`),
+    () => filteredAno.filter((p) => mes === "anual" || p.dataInicio.startsWith(`${year}-${mes}`)),
     [filteredAno, mes, year]
   );
+
+  const sorted = useMemo(() => {
+    if (!sort) return filtered;
+    const dir = sort.direction === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const { column } = sort;
+      if (column === "quantidadeParcelas") return ((a.quantidadeParcelas ?? 0) - (b.quantidadeParcelas ?? 0)) * dir;
+      const av = (a[column] ?? "") as string;
+      const bv = (b[column] ?? "") as string;
+      return av.localeCompare(bv, "pt-BR") * dir;
+    });
+  }, [filtered, sort]);
 
   const enviados = filteredAno.filter((p) => p.status === "Enviado").length;
   const naoEnviados = filteredAno.filter((p) => p.status === "Não enviado").length;
 
-  function toggleStatus(p: (typeof parcelamentos)[number]) {
+  function toggleStatus(e: React.MouseEvent, p: Parcelamento) {
+    e.stopPropagation();
     updateParcelamento(p.id, { status: p.status === "Enviado" ? "Não enviado" : "Enviado" });
   }
 
@@ -61,7 +125,7 @@ export default function ParcelamentosPage() {
       <PageHeader
         title="Parcelamentos"
         description="Controle de parcelamentos por cliente, tipo e envio."
-        actions={<Button size="sm" onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo parcelamento</Button>}
+        actions={<Button size="sm" onClick={openCreate}><Plus className="size-3.5" /> Novo parcelamento</Button>}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -71,7 +135,7 @@ export default function ParcelamentosPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-sand-500">Clique no status da tabela para marcar como enviado ou não enviado.</p>
+        <p className="text-xs text-sand-500">Clique em uma linha para editar. Clique no status para marcar como enviado ou não enviado.</p>
         <Select value={year} onValueChange={setYear}>
           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -97,23 +161,27 @@ export default function ParcelamentosPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Tipo de parcelamento</TableHead>
-                <TableHead>Competência</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHead label="Cliente" column="clienteNome" sort={sort} onSort={toggleSort} />
+                <SortableHead label="CNPJ" column="cnpj" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Nome do parcelamento" column="nome" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Tipo" column="tipo" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Início" column="dataInicio" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Parcelas" column="quantidadeParcelas" sort={sort} onSort={toggleSort} className="w-20" />
+                <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
+              {sorted.map((p) => (
+                <TableRow key={p.id} className="cursor-pointer" onClick={() => openEdit(p)}>
                   <TableCell className="font-medium">{p.clienteNome}</TableCell>
+                  <TableCell className="text-sand-500">{p.cnpj || "—"}</TableCell>
+                  <TableCell>{p.nome}</TableCell>
                   <TableCell>{p.tipo}</TableCell>
-                  <TableCell className="text-sand-500">{p.competencia}</TableCell>
-                  <TableCell className="text-sand-500">{formatDate(p.criadoEm)}</TableCell>
+                  <TableCell className="text-sand-500">{formatDate(p.dataInicio)}</TableCell>
+                  <TableCell className="text-sand-500">{p.quantidadeParcelas ? `${p.quantidadeParcelas}x` : "—"}</TableCell>
                   <TableCell>
-                    <button type="button" onClick={() => toggleStatus(p)} title="Alternar status de envio">
+                    <button type="button" onClick={(e) => toggleStatus(e, p)} title="Alternar status de envio">
                       <StatusBadge status={p.status} className="cursor-pointer" />
                     </button>
                   </TableCell>
@@ -129,15 +197,20 @@ export default function ParcelamentosPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-sand-400">Nenhum parcelamento neste período.</TableCell></TableRow>
+              {sorted.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum parcelamento neste período.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      <ParcelamentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <ParcelamentoFormDialog
+        key={`parcelamento-${editing?.id ?? "new"}-${formSession}`}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        parcelamento={editing ?? undefined}
+      />
     </div>
   );
 }

@@ -489,8 +489,11 @@ export const TIPOS_PARCELAMENTO_PADRAO = [
 export interface Parcelamento {
   id: string;
   clienteNome: string;
+  cnpj?: string;
+  nome: string;
   tipo: string;
-  competencia: string; // "YYYY-MM" — define em que mês/ano entra nos filtros
+  quantidadeParcelas?: number;
+  dataInicio: string; // "YYYY-MM-DD" — define em que ano/mês entra nos filtros
   status: StatusEnvioParcelamento;
   observacoes?: string;
   criadoEm: string;

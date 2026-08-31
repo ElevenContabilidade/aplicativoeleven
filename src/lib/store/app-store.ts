@@ -478,7 +478,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 8,
+      version: 9,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -568,6 +568,21 @@ export const useAppStore = create<AppState>()(
                   dataConclusao: match?.dataConclusao,
                 };
               }),
+            };
+          });
+        }
+        // Parcelamentos originally launched with only a "competencia" (YYYY-MM)
+        // field. It was replaced by a full "dataInicio" date (to match the
+        // "data de início do processo" pattern used elsewhere) plus new
+        // "nome"/"cnpj"/"quantidadeParcelas" fields — backfill old records so
+        // they don't disappear from the year/month filters.
+        if (state?.parcelamentos) {
+          state.parcelamentos = state.parcelamentos.map((p) => {
+            const old = p as unknown as { competencia?: string; nome?: string; dataInicio?: string; tipo: string };
+            return {
+              ...p,
+              nome: old.nome ?? old.tipo,
+              dataInicio: old.dataInicio ?? (old.competencia ? `${old.competencia}-01` : new Date().toISOString().slice(0, 10)),
             };
           });
         }
