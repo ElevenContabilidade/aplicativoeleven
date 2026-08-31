@@ -466,7 +466,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 6,
+      version: 7,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,

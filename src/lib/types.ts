@@ -178,23 +178,24 @@ export interface OnboardingChecklistItem {
 }
 
 export const ONBOARDING_TEMPLATE = [
-  "Cadastrar empresa na Fortes",
-  "Enviar Esocial",
-  "Criar Grupo do Whatsapp com logo do Cliente",
-  "Fazer o e-cnpj",
+  "Criar Grupo do WhatsApp com logo do Cliente",
+  "Fazer o contrato de prestação de serviços",
+  "Verificar se o contrato contábil foi assinado",
+  "Fazer o e-CNPJ",
+  "Cadastrar na Fortes",
+  "Enviar eventos Esocial",
+  "Adicionar Cliente no Nibo",
+  "Enviar convite Nibo",
+  "Enviar Vídeo do Nibo",
+  "Adicionar Cliente na Veri",
   "Fazer procuração ECAC",
   "Fazer procuração FGTS",
-  "Fazer o contrato de prestação de serviços",
   "Fazer a opção DET",
-  "Adicionar Cliente na Veri",
-  "Enviar convite Nibo",
-  "Enviar Vídeo Nibo",
-  "Marcar Reunião de Integração",
-  "Verificar se o contrato contábil foi assinado",
   "Cadastrar no banco para emissão de boletos",
   "Cadastrar na prefeitura para emissão de NFSE",
-  "Salvar documentos no Drive",
   "Salvar documentos no permanente do NIBO",
+  "Salvar documentos no Drive",
+  "Marcar Reunião de Integração",
 ] as const;
 
 export interface FinanceiroCliente {
