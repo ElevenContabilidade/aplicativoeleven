@@ -192,6 +192,7 @@ export interface FinanceiroCliente {
 export interface HistoricoFinanceiro {
   id: string;
   competencia: string;
+  servico?: string;
   valor: number;
   vencimento: string;
   pagamento?: string;

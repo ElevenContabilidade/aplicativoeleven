@@ -65,13 +65,14 @@ export default function FinanceiroPage() {
           <CardContent className="pt-4">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Cliente</TableHead><TableHead>Competência</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Status</TableHead></TableRow>
+                <TableRow><TableHead>Cliente</TableHead><TableHead>Competência</TableHead><TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Status</TableHead></TableRow>
               </TableHeader>
               <TableBody>
                 {ledger.map((h) => (
                   <TableRow key={h.id + h.cliente.id}>
                     <TableCell className="font-medium">{h.cliente.dados.nomeFantasia ?? h.cliente.dados.razaoSocial}</TableCell>
                     <TableCell>{h.competencia}</TableCell>
+                    <TableCell className="text-sand-500">{h.servico ?? "—"}</TableCell>
                     <TableCell>{formatCurrency(h.valor)}</TableCell>
                     <TableCell>{formatDate(h.vencimento)}</TableCell>
                     <TableCell><StatusBadge status={h.status} /></TableCell>

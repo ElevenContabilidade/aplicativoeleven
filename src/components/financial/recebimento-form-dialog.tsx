@@ -11,18 +11,23 @@ import type { HistoricoFinanceiro } from "@/lib/types";
 
 const STATUSES: HistoricoFinanceiro["status"][] = ["Pago", "Em aberto", "Atrasado", "Negociado", "Cancelado"];
 
+const SEM_SERVICO = "—";
+
 export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const clients = useAppStore((s) => s.clients);
+  const servicosPortfolio = useAppStore((s) => s.servicosPortfolio);
   const addRecebimento = useAppStore((s) => s.addRecebimento);
 
   const [clienteId, setClienteId] = useState(clients[0]?.id ?? "");
   const [competencia, setCompetencia] = useState(new Date().toISOString().slice(0, 7));
+  const [servico, setServico] = useState(SEM_SERVICO);
   const [valor, setValor] = useState("");
   const [vencimento, setVencimento] = useState(new Date().toISOString().slice(0, 10));
   const [status, setStatus] = useState<HistoricoFinanceiro["status"]>("Em aberto");
 
   function reset() {
     setCompetencia(new Date().toISOString().slice(0, 7));
+    setServico(SEM_SERVICO);
     setValor("");
     setVencimento(new Date().toISOString().slice(0, 10));
     setStatus("Em aberto");
@@ -34,6 +39,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
     const entry: HistoricoFinanceiro = {
       id: `hf-${Date.now()}`,
       competencia,
+      servico: servico === SEM_SERVICO ? undefined : servico,
       valor: Number(valor) || 0,
       vencimento,
       pagamento: status === "Pago" ? new Date().toISOString().slice(0, 10) : undefined,
@@ -66,6 +72,16 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
             <div>
               <Label className="mb-1 block">Competência</Label>
               <Input type="month" value={competencia} onChange={(e) => setCompetencia(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1 block">Tipo de serviço</Label>
+              <Select value={servico} onValueChange={setServico}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={SEM_SERVICO}>{SEM_SERVICO}</SelectItem>
+                  {servicosPortfolio.map((sp) => (<SelectItem key={sp.id} value={sp.nome}>{sp.nome}</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="mb-1 block">Valor (R$) *</Label>

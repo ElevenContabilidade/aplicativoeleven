@@ -255,12 +255,13 @@ export default function ClientProfilePage() {
             <CardContent className="pt-4">
               <Table>
                 <TableHeader>
-                  <TableRow><TableHead>Competência</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Pagamento</TableHead><TableHead>Status</TableHead></TableRow>
+                  <TableRow><TableHead>Competência</TableHead><TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Pagamento</TableHead><TableHead>Status</TableHead></TableRow>
                 </TableHeader>
                 <TableBody>
                   {client.historicoFinanceiro.map((h) => (
                     <TableRow key={h.id}>
                       <TableCell className="font-medium">{h.competencia}</TableCell>
+                      <TableCell className="text-sand-500">{h.servico ?? "—"}</TableCell>
                       <TableCell>{formatCurrency(h.valor)}</TableCell>
                       <TableCell>{formatDate(h.vencimento)}</TableCell>
                       <TableCell>{h.pagamento ? formatDate(h.pagamento) : "—"}</TableCell>
@@ -268,7 +269,7 @@ export default function ClientProfilePage() {
                     </TableRow>
                   ))}
                   {client.historicoFinanceiro.length === 0 && (
-                    <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Sem histórico financeiro.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="py-8 text-center text-sand-400">Sem histórico financeiro.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
