@@ -28,7 +28,6 @@ import type {
   LeadStage,
   Client,
   DadosCadastrais,
-  HistoricoFinanceiro,
   Task,
   Obligation,
   ProcessoSocietario,
@@ -47,6 +46,7 @@ import type {
   ChecklistEntry,
   ChecklistStatus,
   ServicoPortfolio,
+  Recebimento,
 } from "@/lib/types";
 
 interface AppState {
@@ -65,6 +65,7 @@ interface AppState {
   licencas: Licenca[];
   indicacoes: Indicacao[];
   servicosPortfolio: ServicoPortfolio[];
+  recebimentos: Recebimento[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -93,7 +94,8 @@ interface AppState {
   deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
   addCertificado: (certificado: Certificado) => void;
   updateCertificado: (id: string, patch: Partial<Certificado>) => void;
-  addRecebimento: (clientId: string, entry: HistoricoFinanceiro) => void;
+  addRecebimento: (entry: Recebimento) => void;
+  deleteRecebimento: (id: string) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -136,6 +138,7 @@ const initial = {
   licencas: LICENCAS,
   indicacoes: INDICACOES,
   servicosPortfolio: SERVICOS_PORTFOLIO,
+  recebimentos: [] as Recebimento[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -256,12 +259,8 @@ export const useAppStore = create<AppState>()(
           return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
         }),
 
-      addRecebimento: (clientId, entry) =>
-        set((s) => ({
-          clients: s.clients.map((c) =>
-            c.id === clientId ? { ...c, historicoFinanceiro: [entry, ...c.historicoFinanceiro] } : c
-          ),
-        })),
+      addRecebimento: (entry) => set((s) => ({ recebimentos: [entry, ...s.recebimentos] })),
+      deleteRecebimento: (id) => set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) })),
 
       updateNotaDepartamento: (clientId, depto, nota) =>
         set((s) => ({

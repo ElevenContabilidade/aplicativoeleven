@@ -199,6 +199,22 @@ export interface HistoricoFinanceiro {
   status: "Pago" | "Em aberto" | "Atrasado" | "Negociado" | "Cancelado";
 }
 
+export type TipoPessoaRecebimento = "PF" | "PJ";
+
+/** Recebimento avulso, não vinculado a um cadastro de cliente — nome digitado livremente. */
+export interface Recebimento {
+  id: string;
+  nome: string;
+  competencia: string;
+  servico?: string;
+  valor: number;
+  vencimento: string;
+  pagamento?: string;
+  status: "Pago" | "Em aberto" | "Atrasado" | "Negociado" | "Cancelado";
+  banco?: string;
+  tipoPessoa: TipoPessoaRecebimento;
+}
+
 export interface ServicoExtra {
   id: string;
   servico: string;

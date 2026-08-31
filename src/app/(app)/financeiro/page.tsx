@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
@@ -15,15 +16,21 @@ import { teamName } from "@/lib/data/seed";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+const TODOS = "todos";
+
 export default function FinanceiroPage() {
   const clients = useAppStore((s) => s.clients);
   const servicosExtras = useAppStore((s) => s.servicosExtras);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
+  const recebimentos = useAppStore((s) => s.recebimentos);
+  const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+  const [filtroBanco, setFiltroBanco] = useState(TODOS);
+  const [filtroTipo, setFiltroTipo] = useState(TODOS);
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/financeiro");
@@ -34,14 +41,39 @@ export default function FinanceiroPage() {
   const mrr = ativos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const ticketMedio = ativos.length ? mrr / ativos.length : 0;
 
-  const ledger = clients
-    .flatMap((c) => c.historicoFinanceiro.map((h) => ({ ...h, cliente: c })))
-    .sort((a, b) => b.vencimento.localeCompare(a.vencimento))
-    .slice(0, 30);
+  const ledgerAll = useMemo(() => {
+    const doClientes = clients.flatMap((c) =>
+      c.historicoFinanceiro.map((h) => ({
+        ...h,
+        key: `cliente-${c.id}-${h.id}`,
+        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+        banco: undefined as string | undefined,
+        tipoPessoa: undefined as "PF" | "PJ" | undefined,
+        avulso: false as const,
+      }))
+    );
+    const avulsos = recebimentos.map((r) => ({ ...r, key: `avulso-${r.id}`, avulso: true as const }));
+    return [...doClientes, ...avulsos];
+  }, [clients, recebimentos]);
 
-  const recebido = clients.flatMap((c) => c.historicoFinanceiro).filter((h) => h.status === "Pago").reduce((a, h) => a + h.valor, 0);
-  const emAberto = clients.flatMap((c) => c.historicoFinanceiro).filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
-  const inadimplencia = clients.flatMap((c) => c.historicoFinanceiro).filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
+  const bancosDisponiveis = useMemo(
+    () => [...new Set(recebimentos.map((r) => r.banco).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [recebimentos]
+  );
+
+  const ledgerFiltrado = ledgerAll.filter(
+    (h) => (filtroBanco === TODOS || h.banco === filtroBanco) && (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
+  );
+
+  const ledger = [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
+
+  const recebido = ledgerFiltrado.filter((h) => h.status === "Pago").reduce((a, h) => a + h.valor, 0);
+  const emAberto = ledgerFiltrado.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
+  const inadimplencia = ledgerFiltrado.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
+
+  function handleDeleteRecebimento(id: string, nome: string) {
+    if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
+  }
 
   return (
     <div>
@@ -61,23 +93,69 @@ export default function FinanceiroPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>Honorários — histórico recente</CardTitle></CardHeader>
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Honorários — histórico recente</CardTitle>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filtroBanco} onValueChange={setFiltroBanco}>
+                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Banco" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TODOS}>Todos os bancos</SelectItem>
+                  {bancosDisponiveis.map((b) => (<SelectItem key={b} value={b}>{b}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                <SelectTrigger className="h-8 w-28 text-xs"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TODOS}>PF e PJ</SelectItem>
+                  <SelectItem value="PJ">PJ</SelectItem>
+                  <SelectItem value="PF">PF</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
           <CardContent className="pt-4">
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Cliente</TableHead><TableHead>Competência</TableHead><TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Status</TableHead></TableRow>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Competência</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Banco</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Vencimento</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {ledger.map((h) => (
-                  <TableRow key={h.id + h.cliente.id}>
-                    <TableCell className="font-medium">{h.cliente.dados.nomeFantasia ?? h.cliente.dados.razaoSocial}</TableCell>
+                  <TableRow key={h.key}>
+                    <TableCell className="font-medium">{h.nome}</TableCell>
                     <TableCell>{h.competencia}</TableCell>
                     <TableCell className="text-sand-500">{h.servico ?? "—"}</TableCell>
+                    <TableCell className="text-sand-500">{h.banco ?? "—"}</TableCell>
+                    <TableCell className="text-sand-500">{h.tipoPessoa ?? "—"}</TableCell>
                     <TableCell>{formatCurrency(h.valor)}</TableCell>
                     <TableCell>{formatDate(h.vencimento)}</TableCell>
                     <TableCell><StatusBadge status={h.status} /></TableCell>
+                    <TableCell>
+                      {h.avulso && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecebimento(h.id, h.nome)}
+                          title="Excluir recebimento"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
+                {ledger.length === 0 && (
+                  <TableRow><TableCell colSpan={9} className="py-8 text-center text-sand-400">Nenhum recebimento encontrado.</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
