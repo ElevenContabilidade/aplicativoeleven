@@ -157,6 +157,8 @@ export interface DadosCadastrais {
   cnpj: string;
   inscricaoEstadual?: string;
   inscricaoMunicipal?: string;
+  nire?: string;
+  senhaPrefeituraPortalNacional?: string;
   cnaePrincipal: string;
   cnaesSecundarios: string[];
   naturezaJuridica: string;

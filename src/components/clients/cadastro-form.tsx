@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Loader2, Search } from "lucide-react";
+import { Check, Eye, EyeOff, Loader2, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ export function CadastroForm({ client }: { client: Client }) {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [buscaErro, setBuscaErro] = useState<string | null>(null);
+  const [showSenha, setShowSenha] = useState(false);
 
   function set<K extends keyof DadosCadastrais>(key: K, value: DadosCadastrais[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -86,6 +87,27 @@ export function CadastroForm({ client }: { client: Client }) {
           </Field>
           <Field label="Inscrição municipal">
             <Input value={form.inscricaoMunicipal ?? ""} onChange={(e) => set("inscricaoMunicipal", e.target.value)} />
+          </Field>
+          <Field label="NIRE">
+            <Input value={form.nire ?? ""} onChange={(e) => set("nire", e.target.value)} placeholder="Nº de Identificação do Registro de Empresas" />
+          </Field>
+          <Field label="Senha da prefeitura/portal nacional">
+            <div className="relative">
+              <Input
+                type={showSenha ? "text" : "password"}
+                value={form.senhaPrefeituraPortalNacional ?? ""}
+                onChange={(e) => set("senhaPrefeituraPortalNacional", e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSenha((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
+                tabIndex={-1}
+              >
+                {showSenha ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+              </button>
+            </div>
           </Field>
           <Field label="CNAE principal">
             <Input value={form.cnaePrincipal} onChange={(e) => set("cnaePrincipal", e.target.value)} />
