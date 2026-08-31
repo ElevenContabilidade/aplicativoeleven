@@ -1,25 +1,4 @@
-import type { Client, Lead } from "@/lib/types";
-
-const ONBOARDING_TEMPLATE = [
-  "Contrato enviado",
-  "Contrato assinado",
-  "Procuração solicitada",
-  "Procuração recebida",
-  "Certificado digital solicitado",
-  "Certificado recebido",
-  "Documentos societários recebidos",
-  "Acesso ao gov.br recebido",
-  "Acesso municipal recebido",
-  "Acesso estadual recebido",
-  "Dados da folha recebidos",
-  "Importação de dados",
-  "Cadastro nos sistemas",
-  "Responsáveis definidos",
-  "Financeiro configurado",
-  "Grupo/canal de atendimento criado",
-  "Reunião de boas-vindas realizada",
-  "Onboarding concluído",
-];
+import { ONBOARDING_TEMPLATE, type Client, type Lead } from "@/lib/types";
 
 /**
  * Automação: Lead → Fechado gera Cliente em Onboarding com checklist padrão,

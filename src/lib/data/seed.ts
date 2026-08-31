@@ -1,4 +1,4 @@
-import { ETAPAS_ABERTURA_EMPRESA } from "@/lib/types";
+import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import type {
   TeamMember,
   Lead,
@@ -112,27 +112,6 @@ const clientBase = (
   leadOrigemId: overrides.leadOrigemId,
   criadoEm: overrides.criadoEm ?? "2022-01-10",
 });
-
-const ONBOARDING_TEMPLATE = [
-  "Contrato enviado",
-  "Contrato assinado",
-  "Procuração solicitada",
-  "Procuração recebida",
-  "Certificado digital solicitado",
-  "Certificado recebido",
-  "Documentos societários recebidos",
-  "Acesso ao gov.br recebido",
-  "Acesso municipal recebido",
-  "Acesso estadual recebido",
-  "Dados da folha recebidos",
-  "Importação de dados",
-  "Cadastro nos sistemas",
-  "Responsáveis definidos",
-  "Financeiro configurado",
-  "Grupo/canal de atendimento criado",
-  "Reunião de boas-vindas realizada",
-  "Onboarding concluído",
-];
 
 function onboardingFrom(concluidos: number) {
   return ONBOARDING_TEMPLATE.map((label, i) => ({

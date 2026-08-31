@@ -177,6 +177,26 @@ export interface OnboardingChecklistItem {
   dataConclusao?: string;
 }
 
+export const ONBOARDING_TEMPLATE = [
+  "Cadastrar empresa na Fortes",
+  "Enviar Esocial",
+  "Criar Grupo do Whatsapp com logo do Cliente",
+  "Fazer o e-cnpj",
+  "Fazer procuração ECAC",
+  "Fazer procuração FGTS",
+  "Fazer o contrato de prestação de serviços",
+  "Fazer a opção DET",
+  "Adicionar Cliente na Veri",
+  "Enviar convite Nibo",
+  "Enviar Vídeo Nibo",
+  "Marcar Reunião de Integração",
+  "Verificar se o contrato contábil foi assinado",
+  "Cadastrar no banco para emissão de boletos",
+  "Cadastrar na prefeitura para emissão de NFSE",
+  "Salvar documentos no Drive",
+  "Salvar documentos no permanente do NIBO",
+] as const;
+
 export interface FinanceiroCliente {
   valorMensal: number;
   vencimentoDia: number;

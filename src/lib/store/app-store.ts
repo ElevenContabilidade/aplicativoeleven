@@ -22,7 +22,7 @@ import {
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
-import { ETAPAS_ABERTURA_EMPRESA } from "@/lib/types";
+import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import type {
   TeamMember,
   Lead,
@@ -466,7 +466,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 5,
+      version: 6,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -530,6 +530,22 @@ export const useAppStore = create<AppState>()(
             ...c,
             status: (legacyStatusMap[c.status] ?? c.status) as CertificadoStatus,
           }));
+        }
+        // Onboarding checklist was rewritten to match the real setup workflow
+        // (Fortes, e-Social, Nibo, etc.) — rebuild every client's checklist from
+        // the current template, keeping the saved status for any item whose
+        // label still matches and starting new items as pendente.
+        if (state?.clients) {
+          state.clients = state.clients.map((c) => {
+            const byLabel = new Map((c.onboarding ?? []).map((o) => [o.label, o]));
+            return {
+              ...c,
+              onboarding: ONBOARDING_TEMPLATE.map((label, i) => {
+                const match = byLabel.get(label);
+                return match ? { ...match, label } : { id: `ob-${c.id}-${i}`, label, concluido: false };
+              }),
+            };
+          });
         }
         return state;
       },
