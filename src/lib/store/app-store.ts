@@ -86,6 +86,7 @@ interface AppState {
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
+  checklistMei: ChecklistEntry[];
 
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
@@ -146,6 +147,7 @@ interface AppState {
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistFiscal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
+  setChecklistMei: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   resyncAlerts: () => void;
   resetData: () => void;
 }
@@ -188,6 +190,7 @@ const initial = {
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
+  checklistMei: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -273,6 +276,7 @@ export const useAppStore = create<AppState>()(
           checklistContabil: s.checklistContabil.filter((e) => e.clienteId !== clientId),
           checklistFiscal: s.checklistFiscal.filter((e) => e.clienteId !== clientId),
           checklistPessoal: s.checklistPessoal.filter((e) => e.clienteId !== clientId),
+          checklistMei: s.checklistMei.filter((e) => e.clienteId !== clientId),
         })),
       updateClientStatus: (clientId, status) =>
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) })),
@@ -549,6 +553,27 @@ export const useAppStore = create<AppState>()(
             checklistPessoal: [
               ...s.checklistPessoal,
               { id: `chkp-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
+            ],
+          };
+        }),
+
+      setChecklistMei: (clienteId, competencia, rotina, status) =>
+        set((s) => {
+          const existing = s.checklistMei.find(
+            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
+          );
+          if (!status) {
+            return { checklistMei: s.checklistMei.filter((e) => e !== existing) };
+          }
+          if (existing) {
+            return {
+              checklistMei: s.checklistMei.map((e) => (e === existing ? { ...e, status } : e)),
+            };
+          }
+          return {
+            checklistMei: [
+              ...s.checklistMei,
+              { id: `chkm-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
             ],
           };
         }),

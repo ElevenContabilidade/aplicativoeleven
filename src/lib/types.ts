@@ -752,3 +752,13 @@ export const ROTINA_PESSOAL_ANUAL = "DCTFWeb 13ª";
 export function possuiFuncionarios(client: Pick<Client, "numeroFuncionarios">): boolean {
   return (client.numeroFuncionarios ?? 0) > 0;
 }
+
+// ---------- Checklist mensal exclusivo do MEI ----------
+
+export const ROTINAS_MEI = [
+  "Emissão de DAS MEI",
+  "Solicitar extratos aos cliente",
+  "Conferir Notas Emitidas",
+  "Preencher a Planilha",
+  "Gerar o relatório",
+] as const;

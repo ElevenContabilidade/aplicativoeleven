@@ -22,6 +22,7 @@ import {
   Receipt,
   CreditCard,
   FileText,
+  Percent,
 } from "lucide-react";
 
 export interface NavItem {
@@ -40,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   { label: "Tarefas", href: "/tarefas", icon: ListChecks, section: "operacao" },
   { label: "Fiscal", href: "/fiscal", icon: Landmark, section: "operacao" },
+  { label: "MEI", href: "/mei", icon: Percent, section: "operacao" },
   { label: "Parcelamentos", href: "/parcelamentos", icon: Receipt, section: "operacao" },
   { label: "Contábil", href: "/contabil", icon: Calculator, section: "operacao" },
   { label: "Departamento Pessoal", href: "/dp", icon: UserCog, section: "operacao" },
