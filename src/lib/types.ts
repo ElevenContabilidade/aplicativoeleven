@@ -476,27 +476,24 @@ export interface ProcessoSocietario {
 
 export type StatusEnvioParcelamento = "Enviado" | "Não enviado";
 
-export const TIPOS_PARCELAMENTO_PADRAO = [
-  "Parcelamento Simples Nacional",
-  "Parcelamento PGFN",
-  "Parcelamento Receita Federal (Convencional)",
-  "Parcelamento INSS",
-  "Parcelamento FGTS",
-  "Parcelamento Municipal (ISS)",
-  "Parcelamento Estadual (ICMS)",
-] as const;
-
 export interface Parcelamento {
   id: string;
   clienteNome: string;
   cnpj?: string;
   nome: string;
-  tipo: string;
-  quantidadeParcelas?: number;
-  dataInicio: string; // "YYYY-MM-DD" — define em que ano/mês entra nos filtros
-  status: StatusEnvioParcelamento;
+  quantidadeParcelas?: number; // em quantas X — define por quantos meses o parcelamento se repete
+  dataInicio: string; // "YYYY-MM-DD" — mês/ano da 1ª parcela
   observacoes?: string;
   criadoEm: string;
+}
+
+/** Um parcelamento existe (e precisa ser enviado) em cada competência dentro de
+ * sua faixa de parcelas — este é o status de envio de UMA dessas competências. */
+export interface EnvioParcelamento {
+  id: string;
+  parcelamentoId: string;
+  competencia: string; // "YYYY-MM"
+  status: StatusEnvioParcelamento;
 }
 
 // ---------- Certificados digitais ----------

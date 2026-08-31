@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { maskCnpj } from "@/lib/cnpj";
-import { TIPOS_PARCELAMENTO_PADRAO, type Parcelamento, type StatusEnvioParcelamento } from "@/lib/types";
+import type { Parcelamento, StatusEnvioParcelamento } from "@/lib/types";
 
 export function ParcelamentoFormDialog({
   open,
@@ -20,9 +20,9 @@ export function ParcelamentoFormDialog({
   onOpenChange: (v: boolean) => void;
   parcelamento?: Parcelamento;
 }) {
-  const parcelamentos = useAppStore((s) => s.parcelamentos);
   const addParcelamento = useAppStore((s) => s.addParcelamento);
   const updateParcelamento = useAppStore((s) => s.updateParcelamento);
+  const setEnvioParcelamento = useAppStore((s) => s.setEnvioParcelamento);
 
   const isEdit = !!parcelamento;
   const today = new Date().toISOString().slice(0, 10);
@@ -30,38 +30,32 @@ export function ParcelamentoFormDialog({
   const [clienteNome, setClienteNome] = useState(parcelamento?.clienteNome ?? "");
   const [cnpj, setCnpj] = useState(parcelamento?.cnpj ?? "");
   const [nome, setNome] = useState(parcelamento?.nome ?? "");
-  const [tipo, setTipo] = useState<string>(parcelamento?.tipo ?? TIPOS_PARCELAMENTO_PADRAO[0]);
   const [quantidadeParcelas, setQuantidadeParcelas] = useState(
     parcelamento?.quantidadeParcelas ? String(parcelamento.quantidadeParcelas) : ""
   );
   const [dataInicio, setDataInicio] = useState(parcelamento?.dataInicio ?? today);
-  const [status, setStatus] = useState<StatusEnvioParcelamento>(parcelamento?.status ?? "Não enviado");
+  const [statusInicial, setStatusInicial] = useState<StatusEnvioParcelamento>("Não enviado");
   const [observacoes, setObservacoes] = useState(parcelamento?.observacoes ?? "");
-
-  const tipoOptions = useMemo(() => {
-    const usados = parcelamentos.map((p) => p.tipo);
-    return [...new Set([...TIPOS_PARCELAMENTO_PADRAO, ...usados])];
-  }, [parcelamentos]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clienteNome.trim() || !nome.trim() || !tipo.trim() || !dataInicio) return;
+    if (!clienteNome.trim() || !nome.trim() || !dataInicio) return;
 
     const patch = {
       clienteNome: clienteNome.trim(),
       cnpj: cnpj.trim() || undefined,
       nome: nome.trim(),
-      tipo: tipo.trim(),
       quantidadeParcelas: quantidadeParcelas ? Number(quantidadeParcelas) : undefined,
       dataInicio,
-      status,
       observacoes: observacoes || undefined,
     };
 
     if (isEdit) {
       updateParcelamento(parcelamento.id, patch);
     } else {
-      addParcelamento({ id: `pc-${Date.now()}`, criadoEm: today, ...patch });
+      const id = `pc-${Date.now()}`;
+      addParcelamento({ id, criadoEm: today, ...patch });
+      setEnvioParcelamento(id, dataInicio.slice(0, 7), statusInicial);
     }
     onOpenChange(false);
   }
@@ -84,40 +78,33 @@ export function ParcelamentoFormDialog({
             </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Nome do parcelamento *</Label>
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Simples Nacional 2026" required />
-            </div>
-            <div className="col-span-2">
-              <Label className="mb-1 block">Tipo de parcelamento *</Label>
-              <Input
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value)}
-                placeholder="Ex: Parcelamento Simples Nacional"
-                list="parcelamento-tipos"
-                required
-              />
-              <datalist id="parcelamento-tipos">
-                {tipoOptions.map((t) => (<option key={t} value={t} />))}
-              </datalist>
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Parcelamento Simples Nacional 2026" required />
             </div>
             <div>
               <Label className="mb-1 block">Data de início *</Label>
               <Input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} min="2026-01-01" max="2034-12-31" required />
-              <p className="mt-1 text-[11px] text-sand-500">Define em que ano/mês entra nos filtros.</p>
+              <p className="mt-1 text-[11px] text-sand-500">Mês/ano da 1ª parcela.</p>
             </div>
             <div>
               <Label className="mb-1 block">Em quantas X</Label>
               <Input type="number" min="1" step="1" value={quantidadeParcelas} onChange={(e) => setQuantidadeParcelas(e.target.value)} placeholder="Ex: 12" />
+              <p className="mt-1 text-[11px] text-sand-500">O parcelamento se repete nos meses seguintes.</p>
             </div>
-            <div className="col-span-2">
-              <Label className="mb-1 block">Enviado?</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as StatusEnvioParcelamento)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Não enviado">Não enviado</SelectItem>
-                  <SelectItem value="Enviado">Enviado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!isEdit && (
+              <div className="col-span-2">
+                <Label className="mb-1 block">Enviado? (1ª parcela)</Label>
+                <Select value={statusInicial} onValueChange={(v) => setStatusInicial(v as StatusEnvioParcelamento)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Não enviado">Não enviado</SelectItem>
+                    <SelectItem value="Enviado">Enviado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[11px] text-sand-500">
+                  As próximas parcelas nascem como &ldquo;Não enviado&rdquo; — marque cada uma na tabela conforme for enviando.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

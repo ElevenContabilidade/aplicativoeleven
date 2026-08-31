@@ -106,9 +106,9 @@ export function GlobalSearch() {
         label: "Parcelamentos",
         icon: Receipt,
         items: parcelamentos
-          .filter((p) => p.clienteNome.toLowerCase().includes(q) || p.tipo.toLowerCase().includes(q))
+          .filter((p) => p.clienteNome.toLowerCase().includes(q) || p.nome.toLowerCase().includes(q))
           .slice(0, 6)
-          .map((p) => ({ id: p.id, title: p.tipo, subtitle: p.clienteNome, href: `/parcelamentos` })),
+          .map((p) => ({ id: p.id, title: p.nome, subtitle: p.clienteNome, href: `/parcelamentos` })),
       },
     ].filter((g) => g.items.length > 0);
   }, [query, clients, leads, tasks, certificados, documentos, parcelamentos]);

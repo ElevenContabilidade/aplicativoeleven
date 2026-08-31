@@ -19,6 +19,7 @@ import {
   INDICACOES,
   SERVICOS_PORTFOLIO,
   PARCELAMENTOS,
+  ENVIOS_PARCELAMENTO,
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
@@ -54,6 +55,8 @@ import type {
   ServicoPortfolio,
   Recebimento,
   Parcelamento,
+  EnvioParcelamento,
+  StatusEnvioParcelamento,
 } from "@/lib/types";
 
 interface AppState {
@@ -74,6 +77,7 @@ interface AppState {
   servicosPortfolio: ServicoPortfolio[];
   recebimentos: Recebimento[];
   parcelamentos: Parcelamento[];
+  enviosParcelamento: EnvioParcelamento[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -117,6 +121,7 @@ interface AppState {
   addParcelamento: (parcelamento: Parcelamento) => void;
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
   deleteParcelamento: (id: string) => void;
+  setEnvioParcelamento: (parcelamentoId: string, competencia: string, status: StatusEnvioParcelamento) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -166,6 +171,7 @@ const initial = {
   servicosPortfolio: SERVICOS_PORTFOLIO,
   recebimentos: [] as Recebimento[],
   parcelamentos: PARCELAMENTOS,
+  enviosParcelamento: ENVIOS_PARCELAMENTO,
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -361,7 +367,21 @@ export const useAppStore = create<AppState>()(
       addParcelamento: (parcelamento) => set((s) => ({ parcelamentos: [parcelamento, ...s.parcelamentos] })),
       updateParcelamento: (id, patch) =>
         set((s) => ({ parcelamentos: s.parcelamentos.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
-      deleteParcelamento: (id) => set((s) => ({ parcelamentos: s.parcelamentos.filter((p) => p.id !== id) })),
+      deleteParcelamento: (id) =>
+        set((s) => ({
+          parcelamentos: s.parcelamentos.filter((p) => p.id !== id),
+          enviosParcelamento: s.enviosParcelamento.filter((e) => e.parcelamentoId !== id),
+        })),
+      setEnvioParcelamento: (parcelamentoId, competencia, status) =>
+        set((s) => {
+          const id = `env-${parcelamentoId}-${competencia}`;
+          const exists = s.enviosParcelamento.some((e) => e.id === id);
+          return {
+            enviosParcelamento: exists
+              ? s.enviosParcelamento.map((e) => (e.id === id ? { ...e, status } : e))
+              : [...s.enviosParcelamento, { id, parcelamentoId, competencia, status }],
+          };
+        }),
 
       updateNotaDepartamento: (clientId, depto, nota) =>
         set((s) => ({
@@ -478,7 +498,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 9,
+      version: 10,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -585,6 +605,23 @@ export const useAppStore = create<AppState>()(
               dataInicio: old.dataInicio ?? (old.competencia ? `${old.competencia}-01` : new Date().toISOString().slice(0, 10)),
             };
           });
+          // A parcelamento used to carry one send status for the whole plan. It now
+          // repeats every month for "quantidadeParcelas" months, with a separate
+          // Enviado/Não enviado status per competência (EnvioParcelamento) — split
+          // any legacy per-plan status into an entry for its first competência.
+          const legacyEnvios: EnvioParcelamento[] = [];
+          for (const p of state.parcelamentos) {
+            const old = p as unknown as { status?: StatusEnvioParcelamento; dataInicio: string };
+            if (old.status) {
+              const competencia = old.dataInicio.slice(0, 7);
+              legacyEnvios.push({ id: `env-${p.id}-${competencia}`, parcelamentoId: p.id, competencia, status: old.status });
+            }
+          }
+          const existingEnvioIds = new Set(((state.enviosParcelamento as EnvioParcelamento[]) ?? []).map((e) => e.id));
+          state.enviosParcelamento = [
+            ...((state.enviosParcelamento as EnvioParcelamento[]) ?? []),
+            ...legacyEnvios.filter((e) => !existingEnvioIds.has(e.id)),
+          ];
         }
         return state;
       },
