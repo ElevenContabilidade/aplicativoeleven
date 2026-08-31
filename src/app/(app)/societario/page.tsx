@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Scale, Plus, Wallet, CircleDollarSign, Hourglass } from "lucide-react";
+import { Scale, Plus, Wallet, CircleDollarSign, Hourglass, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,14 @@ const MESES = [
 export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
   const processos = useAppStore((s) => s.processosSocietarios);
+  const deleteProcessoSocietario = useAppStore((s) => s.deleteProcessoSocietario);
+
+  function handleDelete(e: React.MouseEvent, p: ProcessoSocietario, clienteNome: string) {
+    e.stopPropagation();
+    if (confirm(`Excluir o processo "${p.tipoServico}" de ${clienteNome}?`)) {
+      deleteProcessoSocietario(p.id);
+    }
+  }
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -129,25 +137,37 @@ export default function SocietarioPage() {
                   <TableHead>Responsável</TableHead>
                   <TableHead>Prazo</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredPeriodo.map((p) => {
                   const client = clients.find((c) => c.id === p.clienteId);
+                  const clienteNome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "cliente";
                   return (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
-                      <TableCell className="font-medium">{client?.dados.nomeFantasia ?? client?.dados.razaoSocial}</TableCell>
+                      <TableCell className="font-medium">{clienteNome}</TableCell>
                       <TableCell>{p.tipoServico}</TableCell>
                       <TableCell>{p.orgao ?? "—"}</TableCell>
                       <TableCell className="text-sand-500">{p.protocolo ?? "—"}</TableCell>
                       <TableCell>{teamName(p.responsavelId)}</TableCell>
                       <TableCell>{p.prazo ? formatDate(p.prazo) : "—"}</TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDelete(e, p, clienteNome)}
+                          title="Excluir processo"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
                 {filteredPeriodo.length === 0 && (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-sand-400">Nenhum processo neste período.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum processo neste período.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>
@@ -166,12 +186,23 @@ export default function SocietarioPage() {
               <div className="space-y-2">
                 {items.map((p) => {
                   const client = clients.find((c) => c.id === p.clienteId);
+                  const clienteNome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "cliente";
                   return (
                     <Card key={p.id} className="cursor-pointer transition-colors hover:border-wine-300" onClick={() => setSelected(p)}>
                       <CardContent className="space-y-1.5 p-3">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="truncate text-sm font-medium text-sand-900">{client?.dados.nomeFantasia ?? client?.dados.razaoSocial}</span>
-                          <StatusBadge status={p.status} />
+                          <span className="truncate text-sm font-medium text-sand-900">{clienteNome}</span>
+                          <div className="flex items-center gap-1">
+                            <StatusBadge status={p.status} />
+                            <button
+                              type="button"
+                              onClick={(e) => handleDelete(e, p, clienteNome)}
+                              title="Excluir processo"
+                              className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-[11px] text-sand-500">
                           <span>{p.orgao ?? "—"}</span>
