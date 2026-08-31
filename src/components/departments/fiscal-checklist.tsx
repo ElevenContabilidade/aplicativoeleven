@@ -26,6 +26,10 @@ const REGIME_GROUPS: { label: string; match: (c: Client) => boolean }[] = [
   { label: "Lucro Presumido / Lucro Real", match: (c) => c.dados.regimeTributario === "Lucro Presumido" || c.dados.regimeTributario === "Lucro Real" },
 ];
 
+const ROTINA_NOTE: Record<string, string> = {
+  "Encerramento ISS": "até dia 10 de cada mês",
+};
+
 const STATUS_STYLE: Record<ChecklistStatus, string> = {
   OK: "border-status-success bg-status-success-bg text-status-success",
   Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
@@ -233,6 +237,7 @@ export function FiscalChecklist() {
                     {ROTINAS_FISCAIS_MENSAIS.map((r) => (
                       <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                         {r}
+                        {ROTINA_NOTE[r] && <span className="block normal-case font-normal tracking-normal text-cream-50/60">({ROTINA_NOTE[r]})</span>}
                       </th>
                     ))}
                     <th className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">

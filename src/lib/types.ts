@@ -501,7 +501,7 @@ export interface Documento {
 
 // ---------- Notificações ----------
 
-export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca";
+export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca" | "fiscal";
 
 export interface AppNotification {
   id: string;
@@ -563,6 +563,7 @@ export const ROTINAS_FISCAIS_MENSAIS = [
   "EFD-ICMS",
   "EFD-Reinf",
   "GIA-ST",
+  "Encerramento ISS",
   "Checar recebimento das guias pelo cliente",
   "Contabilizar movimentos",
   "Exportar pro contábil",

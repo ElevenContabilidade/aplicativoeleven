@@ -21,6 +21,7 @@ import {
 } from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
+import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
 import { ETAPAS_ABERTURA_EMPRESA } from "@/lib/types";
 import type {
   TeamMember,
@@ -131,9 +132,14 @@ function syncAllAlerts(
   notifications: AppNotification[],
   licencas: Licenca[],
   certificados: Certificado[],
-  clients: Client[]
+  clients: Client[],
+  checklistFiscal: ChecklistEntry[]
 ): AppNotification[] {
-  return syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients);
+  return syncFiscalAlerts(
+    syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients),
+    checklistFiscal,
+    clients
+  );
 }
 
 const initial = {
@@ -147,7 +153,7 @@ const initial = {
   documentos: DOCUMENTOS,
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
-  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS),
+  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, []),
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
@@ -416,19 +422,17 @@ export const useAppStore = create<AppState>()(
           const existing = s.checklistFiscal.find(
             (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
           );
-          if (!status) {
-            return { checklistFiscal: s.checklistFiscal.filter((e) => e !== existing) };
-          }
-          if (existing) {
-            return {
-              checklistFiscal: s.checklistFiscal.map((e) => (e === existing ? { ...e, status } : e)),
-            };
-          }
+          const checklistFiscal = !status
+            ? s.checklistFiscal.filter((e) => e !== existing)
+            : existing
+              ? s.checklistFiscal.map((e) => (e === existing ? { ...e, status } : e))
+              : [
+                  ...s.checklistFiscal,
+                  { id: `chkf-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
+                ];
           return {
-            checklistFiscal: [
-              ...s.checklistFiscal,
-              { id: `chkf-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
-            ],
+            checklistFiscal,
+            notifications: syncFiscalAlerts(s.notifications, checklistFiscal, s.clients),
           };
         }),
 
@@ -454,7 +458,9 @@ export const useAppStore = create<AppState>()(
         }),
 
       resyncAlerts: () =>
-        set((s) => ({ notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients) })),
+        set((s) => ({
+          notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal),
+        })),
 
       resetData: () => set(initial),
     }),
