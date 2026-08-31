@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+import { maskCnpjCpf } from "@/lib/cnpj";
 import type { Recebimento, TipoPessoaRecebimento } from "@/lib/types";
 
 const STATUSES: Recebimento["status"][] = ["Pago", "Em aberto", "Atrasado", "Negociado", "Cancelado"];
@@ -33,6 +34,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
   const addRecebimento = useAppStore((s) => s.addRecebimento);
 
   const [nome, setNome] = useState("");
+  const [cnpjCpf, setCnpjCpf] = useState("");
   const [competencia, setCompetencia] = useState(new Date().toISOString().slice(0, 7));
   const [servico, setServico] = useState(SEM_SERVICO);
   const [valor, setValor] = useState("");
@@ -48,6 +50,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
 
   function reset() {
     setNome("");
+    setCnpjCpf("");
     setCompetencia(new Date().toISOString().slice(0, 7));
     setServico(SEM_SERVICO);
     setValor("");
@@ -63,6 +66,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
     const entry: Recebimento = {
       id: `rec-${Date.now()}`,
       nome: nome.trim(),
+      cnpjCpf: cnpjCpf.trim() || undefined,
       competencia,
       servico: servico === SEM_SERVICO ? undefined : servico,
       valor: Number(valor) || 0,
@@ -98,6 +102,13 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
                 <option key={c.id} value={c.dados.nomeFantasia ?? c.dados.razaoSocial} />
               ))}
             </datalist>
+          </div>
+          <div>
+            <Label className="mb-1 block">CNPJ/CPF</Label>
+            <Input value={cnpjCpf} onChange={(e) => setCnpjCpf(maskCnpjCpf(e.target.value))} placeholder="CNPJ ou CPF do cliente" />
+            <p className="mt-1 text-[11px] text-sand-500">
+              Quando bate com um cliente cadastrado, o recebimento aparece automaticamente no Histórico de honorários dele assim que marcado como Pago.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

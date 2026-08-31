@@ -220,10 +220,13 @@ export interface HistoricoFinanceiro {
 
 export type TipoPessoaRecebimento = "PF" | "PJ";
 
-/** Recebimento avulso, não vinculado a um cadastro de cliente — nome digitado livremente. */
+/** Recebimento avulso, não vinculado a um cadastro de cliente — nome digitado livremente.
+ * Quando o CNPJ/CPF bate com um cliente cadastrado, aparece automaticamente no
+ * "Histórico de honorários" do perfil dele assim que marcado como Pago. */
 export interface Recebimento {
   id: string;
   nome: string;
+  cnpjCpf?: string;
   competencia: string;
   servico?: string;
   valor: number;

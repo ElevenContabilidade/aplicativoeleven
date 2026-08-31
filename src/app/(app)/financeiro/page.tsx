@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2 } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function FinanceiroPage() {
   const servicosExtras = useAppStore((s) => s.servicosExtras);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const recebimentos = useAppStore((s) => s.recebimentos);
+  const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
 
@@ -73,6 +74,10 @@ export default function FinanceiroPage() {
 
   function handleDeleteRecebimento(id: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
+  }
+
+  function marcarComoRecebido(id: string) {
+    updateRecebimento(id, { status: "Pago", pagamento: new Date().toISOString().slice(0, 10) });
   }
 
   return (
@@ -141,14 +146,26 @@ export default function FinanceiroPage() {
                     <TableCell><StatusBadge status={h.status} /></TableCell>
                     <TableCell>
                       {h.avulso && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteRecebimento(h.id, h.nome)}
-                          title="Excluir recebimento"
-                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          {h.status !== "Pago" && (
+                            <button
+                              type="button"
+                              onClick={() => marcarComoRecebido(h.id)}
+                              title="Marcar como recebido"
+                              className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-success-bg hover:text-status-success"
+                            >
+                              <Check className="size-4" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRecebimento(h.id, h.nome)}
+                            title="Excluir recebimento"
+                            className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>

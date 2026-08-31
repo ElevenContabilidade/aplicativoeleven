@@ -117,6 +117,7 @@ interface AppState {
   addCertificado: (certificado: Certificado) => void;
   updateCertificado: (id: string, patch: Partial<Certificado>) => void;
   addRecebimento: (entry: Recebimento) => void;
+  updateRecebimento: (id: string, patch: Partial<Recebimento>) => void;
   deleteRecebimento: (id: string) => void;
   addParcelamento: (parcelamento: Parcelamento) => void;
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
@@ -362,6 +363,8 @@ export const useAppStore = create<AppState>()(
         }),
 
       addRecebimento: (entry) => set((s) => ({ recebimentos: [entry, ...s.recebimentos] })),
+      updateRecebimento: (id, patch) =>
+        set((s) => ({ recebimentos: s.recebimentos.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
       deleteRecebimento: (id) => set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) })),
 
       addParcelamento: (parcelamento) => set((s) => ({ parcelamentos: [parcelamento, ...s.parcelamentos] })),

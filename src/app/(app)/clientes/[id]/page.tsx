@@ -28,6 +28,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
 import type { Socio, Contato, HistoricoFinanceiro } from "@/lib/types";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
+import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 const MARKERS: Record<string, string> = { atencao: "⚠️ Atenção", estrategico: "⭐ Cliente estratégico", oportunidade: "💰 Oportunidade", documento: "📄 Documento pendente", urgente: "🚨 Urgente" };
@@ -45,6 +46,7 @@ export default function ClientProfilePage() {
   const licencas = useAppStore((s) => s.licencas);
   const indicacoes = useAppStore((s) => s.indicacoes);
   const parcelamentos = useAppStore((s) => s.parcelamentos);
+  const recebimentos = useAppStore((s) => s.recebimentos);
   const toggleOnboardingItem = useAppStore((s) => s.toggleOnboardingItem);
   const addAnotacao = useAppStore((s) => s.addAnotacao);
   const deleteLicenca = useAppStore((s) => s.deleteLicenca);
@@ -123,9 +125,27 @@ export default function ClientProfilePage() {
   const myNotes = anotacoes.filter((n) => n.clienteId === client.id);
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myIndicacoes = indicacoes.filter((i) => i.clienteId === client.id);
-  const myParcelamentos = parcelamentos.filter((p) =>
-    parcelamentoPertenceAoCliente(p, { nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj })
-  );
+  const clienteRef = { nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj };
+  const myParcelamentos = parcelamentos.filter((p) => parcelamentoPertenceAoCliente(p, clienteRef));
+  const myRecebimentos = recebimentos.filter((r) => recebimentoPertenceAoCliente(r, clienteRef));
+
+  // Honorários lançados manualmente aqui + recebimentos batidos automaticamente
+  // pelo CNPJ/CPF (ou nome) lá em Financeiro — assim que um recebimento é
+  // marcado como Pago, ele aparece aqui sem precisar cadastrar de novo.
+  const honorarios = [
+    ...client.historicoFinanceiro.map((h) => ({ ...h, key: `manual-${h.id}`, origem: "manual" as const, historico: h })),
+    ...myRecebimentos.map((r) => ({
+      key: `financeiro-${r.id}`,
+      competencia: r.competencia,
+      servico: r.servico,
+      valor: r.valor,
+      vencimento: r.vencimento,
+      pagamento: r.pagamento,
+      status: r.status,
+      origem: "financeiro" as const,
+      historico: undefined,
+    })),
+  ].sort((a, b) => b.competencia.localeCompare(a.competencia));
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
 
   const parceriaMeses = Math.max(
@@ -425,8 +445,8 @@ export default function ClientProfilePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {client.historicoFinanceiro.map((h) => (
-                    <TableRow key={h.id}>
+                  {honorarios.map((h) => (
+                    <TableRow key={h.key}>
                       <TableCell className="font-medium">{h.competencia}</TableCell>
                       <TableCell className="text-sand-500">{h.servico ?? "—"}</TableCell>
                       <TableCell>{formatCurrency(h.valor)}</TableCell>
@@ -434,23 +454,27 @@ export default function ClientProfilePage() {
                       <TableCell>{h.pagamento ? formatDate(h.pagamento) : "—"}</TableCell>
                       <TableCell><StatusBadge status={h.status} /></TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <button type="button" onClick={() => openEditLancamento(h)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">
-                            <Pencil className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => confirm("Excluir este lançamento?") && deleteHistoricoCliente(client.id, h.id)}
-                            title="Excluir"
-                            className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
+                        {h.origem === "manual" ? (
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => openEditLancamento(h.historico!)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => confirm("Excluir este lançamento?") && deleteHistoricoCliente(client.id, h.historico!.id)}
+                              title="Excluir"
+                              className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <Badge variant="outline" title="Vindo do recebimento cadastrado em Financeiro">Financeiro</Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
-                  {client.historicoFinanceiro.length === 0 && (
+                  {honorarios.length === 0 && (
                     <TableRow><TableCell colSpan={7} className="py-8 text-center text-sand-400">Sem histórico financeiro.</TableCell></TableRow>
                   )}
                 </TableBody>

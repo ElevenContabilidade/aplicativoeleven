@@ -1,4 +1,4 @@
-import { onlyDigits } from "@/lib/cnpj";
+import { pertenceAoCliente, type ClienteRef } from "@/lib/cliente-match";
 import type { Parcelamento } from "@/lib/types";
 
 /** Um parcelamento existe (e precisa ser enviado) em uma competência por mês,
@@ -24,14 +24,6 @@ export function isParcelamentoAtivo(p: Parcelamento): boolean {
  * os dígitos, ignorando pontuação) — o identificador mais confiável, já que
  * não muda com abreviações ou diferenças de maiúsculas no nome. Sem CNPJ/CPF
  * cadastrado no parcelamento, cai para o nome (fantasia ou razão social). */
-export function parcelamentoPertenceAoCliente(
-  p: Parcelamento,
-  cliente: { nomeFantasia?: string; razaoSocial?: string; cnpj?: string }
-): boolean {
-  const docParcelamento = p.cnpjCpf ? onlyDigits(p.cnpjCpf) : "";
-  if (docParcelamento && cliente.cnpj) {
-    return docParcelamento === onlyDigits(cliente.cnpj);
-  }
-  const alvo = p.clienteNome.trim().toLowerCase();
-  return [cliente.nomeFantasia, cliente.razaoSocial].some((n) => !!n && n.trim().toLowerCase() === alvo);
+export function parcelamentoPertenceAoCliente(p: Parcelamento, cliente: ClienteRef): boolean {
+  return pertenceAoCliente(p.clienteNome, p.cnpjCpf, cliente);
 }
