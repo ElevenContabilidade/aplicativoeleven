@@ -218,7 +218,7 @@ export default function ClientProfilePage() {
               <div className="flex flex-wrap gap-2">
                 {myCerts.map((c) => (
                   <Badge key={c.id} variant="outline" className="gap-1.5 py-1">
-                    {c.tipo} <StatusBadge status={c.status} />
+                    {c.tipo} · válido até {formatDate(c.dataVencimento)} <StatusBadge status={c.status} />
                   </Badge>
                 ))}
                 {myCerts.length === 0 && <p className="text-xs text-sand-400">Nenhum certificado cadastrado.</p>}
