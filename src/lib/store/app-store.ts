@@ -466,7 +466,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 7,
+      version: 8,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -534,7 +534,14 @@ export const useAppStore = create<AppState>()(
         // Onboarding checklist was rewritten to match the real setup workflow
         // (Fortes, e-Social, Nibo, etc.) — rebuild every client's checklist from
         // the current template, keeping the saved status for any item whose
-        // label still matches and starting new items as pendente.
+        // label still matches and starting new items as pendente. The id is
+        // always regenerated from the item's current position: an earlier
+        // version of this migration reused a matched item's old id (assigned
+        // under a previous template's ordering) while giving unmatched items a
+        // fresh id based on the *new* position — two different items could end
+        // up sharing an id across repeated reorders, so checking one silently
+        // checked both (toggleOnboardingItem updates every item whose id
+        // matches). Ids generated purely from the current index can't collide.
         if (state?.clients) {
           state.clients = state.clients.map((c) => {
             const byLabel = new Map((c.onboarding ?? []).map((o) => [o.label, o]));
@@ -542,7 +549,12 @@ export const useAppStore = create<AppState>()(
               ...c,
               onboarding: ONBOARDING_TEMPLATE.map((label, i) => {
                 const match = byLabel.get(label);
-                return match ? { ...match, label } : { id: `ob-${c.id}-${i}`, label, concluido: false };
+                return {
+                  id: `ob-${c.id}-${i}`,
+                  label,
+                  concluido: match?.concluido ?? false,
+                  dataConclusao: match?.dataConclusao,
+                };
               }),
             };
           });
