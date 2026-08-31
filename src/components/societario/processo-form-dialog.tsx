@@ -12,6 +12,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { CLIENTS } from "@/lib/data/seed";
 import {
   ETAPAS_ABERTURA_EMPRESA,
+  ONBOARDING_TEMPLATE,
   type Client,
   type EtapaProcesso,
   type ProcessoSocietario,
@@ -84,7 +85,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
           statusFinanceiro: "Em aberto",
         },
         historicoFinanceiro: [],
-        onboarding: [],
+        onboarding: ONBOARDING_TEMPLATE.map((label, i) => ({ id: `ob-${finalClienteId}-${i}`, label, concluido: false })),
         criadoEm: today,
       };
       addClient(novoCliente);

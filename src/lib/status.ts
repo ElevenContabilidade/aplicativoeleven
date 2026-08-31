@@ -78,6 +78,10 @@ const map: Record<string, BadgeTone> = {
   emitido: "success",
   "não emitido": "warning",
 
+  // nfse
+  emitida: "success",
+  "não emitida": "warning",
+
   // indicações
   novo: "outline",
   convertido: "success",

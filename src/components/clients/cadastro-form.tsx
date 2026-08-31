@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Client, DadosCadastrais } from "@/lib/types";
@@ -143,6 +144,24 @@ export function CadastroForm({ client }: { client: Client }) {
               </SelectContent>
             </Select>
           </Field>
+          {form.regimeTributario === "MEI" && (
+            <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
+              <label className="flex items-center gap-2 text-xs text-sand-700">
+                <Checkbox
+                  checked={form.contabilidadeRegular ?? false}
+                  onCheckedChange={(v) => set("contabilidadeRegular", v === true)}
+                />
+                MEI com contabilidade regular (libera as rotinas fiscais/contábeis completas)
+              </label>
+              <label className="flex items-center gap-2 text-xs text-sand-700">
+                <Checkbox
+                  checked={form.possuiFolhaMei ?? false}
+                  onCheckedChange={(v) => set("possuiFolhaMei", v === true)}
+                />
+                MEI possui folha de pagamento (libera as rotinas mensais do Departamento Pessoal)
+              </label>
+            </div>
+          )}
           <Field label="Município">
             <Input value={form.municipio} onChange={(e) => set("municipio", e.target.value)} />
           </Field>

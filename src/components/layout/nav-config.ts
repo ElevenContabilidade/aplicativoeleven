@@ -21,6 +21,7 @@ import {
   Layers,
   Receipt,
   CreditCard,
+  FileText,
 } from "lucide-react";
 
 export interface NavItem {
@@ -48,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
 
   { label: "Financeiro", href: "/financeiro", icon: Wallet, section: "gestao" },
   { label: "Boletos", href: "/boletos", icon: CreditCard, section: "gestao" },
+  { label: "NFSe", href: "/nfse", icon: FileText, section: "gestao" },
   { label: "Portfólio", href: "/portfolio", icon: Layers, section: "gestao" },
   { label: "Atendimento", href: "/atendimento", icon: Headset, section: "gestao" },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3, section: "gestao" },

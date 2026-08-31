@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -63,12 +63,15 @@ export function ContabilChecklist() {
     return Math.round((done / list.length) * 100);
   }
 
-  const totalCells = myClients.length * rotinas.length;
-  const okCells = myClients.reduce((sum, c) => sum + rotinas.filter((r) => isDone(statusFor(c.id, competencia, r))).length, 0);
+  const totalCells = myClients.reduce((sum, c) => sum + rotinasContabeisFor(c, rotinas).length, 0);
+  const okCells = myClients.reduce((sum, c) => sum + rotinasContabeisFor(c, rotinas).filter((r) => isDone(statusFor(c.id, competencia, r))).length, 0);
   const overallPct = totalCells > 0 ? Math.round((okCells / totalCells) * 100) : 0;
 
   const clientPcts = useMemo(
-    () => myClients.map((c) => ({ cliente: (c.dados.nomeFantasia ?? c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c.id, competencia, rotinas) })),
+    () =>
+      myClients
+        .filter((c) => rotinasContabeisFor(c, rotinas).length > 0)
+        .map((c) => ({ cliente: (c.dados.nomeFantasia ?? c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c.id, competencia, rotinasContabeisFor(c, rotinas)) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [myClients, checklist, competencia, rotinas]
   );
@@ -79,7 +82,9 @@ export function ContabilChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients.map((c) => pctFor(c.id, comp, ROTINAS_CONTABEIS_MENSAIS));
+        const pcts = myClients
+          .filter((c) => rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS).length > 0)
+          .map((c) => pctFor(c.id, comp, rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS)));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
@@ -174,10 +179,11 @@ export function ContabilChecklist() {
                     key={c.id}
                     client={c}
                     rotinas={rotinas}
+                    applicable={rotinasContabeisFor(c, rotinas)}
                     competencia={competencia}
                     statusFor={statusFor}
                     setChecklistContabil={setChecklistContabil}
-                    pct={pctFor(c.id, competencia, rotinas)}
+                    pct={pctFor(c.id, competencia, rotinasContabeisFor(c, rotinas))}
                   />
                 ))}
                 {myClients.length === 0 && (
@@ -199,6 +205,7 @@ export function ContabilChecklist() {
 function ClientRow({
   client: c,
   rotinas,
+  applicable,
   competencia,
   statusFor,
   setChecklistContabil,
@@ -206,6 +213,7 @@ function ClientRow({
 }: {
   client: Client;
   rotinas: readonly string[];
+  applicable?: string[];
   competencia: string;
   statusFor: (clienteId: string, competencia: string, rotina: string) => ChecklistStatus | null;
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
@@ -219,6 +227,13 @@ function ClientRow({
         </Link>
       </td>
       {rotinas.map((r) => {
+        if (applicable && !applicable.includes(r)) {
+          return (
+            <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5 text-center text-sand-300">
+              —
+            </td>
+          );
+        }
         const status = statusFor(c.id, competencia, r);
         return (
           <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5">

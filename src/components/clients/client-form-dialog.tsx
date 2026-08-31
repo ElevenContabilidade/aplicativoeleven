@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { CLIENT_STATUS, type Client, type ClientStatus, type DadosCadastrais } from "@/lib/types";
+import { CLIENT_STATUS, ONBOARDING_TEMPLATE, type Client, type ClientStatus, type DadosCadastrais } from "@/lib/types";
 import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
 const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
@@ -101,7 +101,7 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         statusFinanceiro: "Em aberto",
       },
       historicoFinanceiro: [],
-      onboarding: [],
+      onboarding: ONBOARDING_TEMPLATE.map((label, i) => ({ id: `ob-${id}-${i}`, label, concluido: false })),
       criadoEm: today,
     };
     addClient(client);

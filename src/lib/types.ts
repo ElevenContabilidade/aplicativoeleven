@@ -169,6 +169,12 @@ export interface DadosCadastrais {
   municipio: string;
   estado: string;
   endereco: string;
+  /** Só faz sentido para regime MEI — libera as rotinas fiscais/contábeis de
+   * quem normalmente é dispensado delas (PGDAS, DAS, EFDs, balancete etc.). */
+  contabilidadeRegular?: boolean;
+  /** Só faz sentido para regime MEI — libera as rotinas mensais fixas/variáveis
+   * do Departamento Pessoal para quem tem folha de pagamento. */
+  possuiFolhaMei?: boolean;
 }
 
 export interface OnboardingChecklistItem {
@@ -518,6 +524,23 @@ export interface BoletoMensal {
   removido?: boolean;
 }
 
+// ---------- NFSe mensal ----------
+
+export type StatusEmissaoNfse = "Emitida" | "Não emitida";
+
+/** Controle de emissão da nota fiscal de serviço eletrônica que o escritório
+ * emite pro cliente todo mês. Valor vem por padrão do cadastro financeiro do
+ * cliente (client.financeiro), mas pode ser ajustado por competência. */
+export interface NotaFiscalMensal {
+  id: string;
+  clienteId: string;
+  competencia: string; // "YYYY-MM"
+  status: StatusEmissaoNfse;
+  valor?: number;
+  numeroNota?: string;
+  removido?: boolean;
+}
+
 // ---------- Certificados digitais ----------
 
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;
@@ -654,12 +677,46 @@ export function rotinasFiscaisAnuais(client: Pick<Client, "dados" | "tags">): st
   return client.tags.includes("#Saúde") ? [base, "DMED"] : [base];
 }
 
-/** Rotinas fiscais mensais aplicáveis ao cliente — "Gerar DAS MEI" só entra
- * para quem está cadastrado no regime MEI, seguindo o regime tributário
- * cadastrado em Clientes. */
+/** Rotinas exclusivas de quem apura pelo regime normal (PGDAS, DAS, EFDs,
+ * livros fiscais...) — um MEI "puro" não faz nada disso, só quando o
+ * cadastro marca "contabilidade regular" (cliente que, mesmo sendo MEI,
+ * mantém contabilidade completa). */
+const ROTINAS_EXCLUSIVAS_REGIME_NORMAL = [
+  "Fechamento do PGDAS",
+  "Envio da guia do DAS",
+  "Emissão de livros fiscais",
+  "DeSTDA",
+  "EFD-ICMS",
+  "EFD-Reinf",
+  "GIA-ST",
+  "Encerramento ISS",
+] as const;
+
+/** Rotinas fiscais mensais aplicáveis ao cliente, seguindo o regime tributário
+ * cadastrado em Clientes: "Gerar DAS MEI" só entra para quem está no MEI;
+ * as rotinas do regime normal (PGDAS, DAS, EFDs etc.) só entram para o MEI
+ * se o cadastro marcar "contabilidade regular" — sem isso, ficam travadas. */
 export function rotinasFiscaisMensaisFor(client: Pick<Client, "dados">): string[] {
-  if (client.dados.regimeTributario === "MEI") return [...ROTINAS_FISCAIS_MENSAIS];
-  return ROTINAS_FISCAIS_MENSAIS.filter((r) => r !== "Gerar DAS MEI");
+  const isMei = client.dados.regimeTributario === "MEI";
+  if (!isMei) return ROTINAS_FISCAIS_MENSAIS.filter((r) => r !== "Gerar DAS MEI");
+  if (client.dados.contabilidadeRegular) return [...ROTINAS_FISCAIS_MENSAIS];
+  return ROTINAS_FISCAIS_MENSAIS.filter((r) => !(ROTINAS_EXCLUSIVAS_REGIME_NORMAL as readonly string[]).includes(r));
+}
+
+/** Rotinas contábeis (mensais ou anuais) aplicáveis ao cliente — um MEI só
+ * tem contabilidade formal (e, portanto, essas rotinas) quando o cadastro
+ * marca "contabilidade regular"; sem isso, nenhuma rotina contábil se aplica. */
+export function rotinasContabeisFor(client: Pick<Client, "dados">, rotinas: readonly string[]): string[] {
+  if (client.dados.regimeTributario === "MEI" && !client.dados.contabilidadeRegular) return [];
+  return [...rotinas];
+}
+
+/** Rotinas mensais fixas/variáveis do Departamento Pessoal aplicáveis ao
+ * cliente — um MEI só tem folha de pagamento (e, portanto, essas rotinas)
+ * quando o cadastro marca "possui folha"; sem isso, nenhuma se aplica. */
+export function rotinasPessoalMensalFor(client: Pick<Client, "dados">, rotinas: readonly string[]): string[] {
+  if (client.dados.regimeTributario === "MEI" && !client.dados.possuiFolhaMei) return [];
+  return [...rotinas];
 }
 
 // ---------- Checklist de rotinas do Departamento Pessoal ----------

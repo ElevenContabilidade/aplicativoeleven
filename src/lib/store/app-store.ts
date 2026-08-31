@@ -59,6 +59,7 @@ import type {
   EnvioParcelamento,
   StatusEnvioParcelamento,
   BoletoMensal,
+  NotaFiscalMensal,
 } from "@/lib/types";
 
 interface AppState {
@@ -81,6 +82,7 @@ interface AppState {
   parcelamentos: Parcelamento[];
   enviosParcelamento: EnvioParcelamento[];
   boletosMensais: BoletoMensal[];
+  notasFiscaisMensais: NotaFiscalMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -130,6 +132,7 @@ interface AppState {
   deleteParcelamento: (id: string) => void;
   setEnvioParcelamento: (parcelamentoId: string, competencia: string, status: StatusEnvioParcelamento) => void;
   updateBoleto: (clienteId: string, competencia: string, patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido">>) => void;
+  updateNotaFiscal: (clienteId: string, competencia: string, patch: Partial<Pick<NotaFiscalMensal, "status" | "valor" | "numeroNota" | "removido">>) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -181,6 +184,7 @@ const initial = {
   parcelamentos: PARCELAMENTOS,
   enviosParcelamento: ENVIOS_PARCELAMENTO,
   boletosMensais: [] as BoletoMensal[],
+  notasFiscaisMensais: [] as NotaFiscalMensal[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -432,6 +436,17 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
+      updateNotaFiscal: (clienteId, competencia, patch) =>
+        set((s) => {
+          const id = `nfse-${clienteId}-${competencia}`;
+          const exists = s.notasFiscaisMensais.some((n) => n.id === id);
+          return {
+            notasFiscaisMensais: exists
+              ? s.notasFiscaisMensais.map((n) => (n.id === id ? { ...n, ...patch } : n))
+              : [...s.notasFiscaisMensais, { id, clienteId, competencia, status: "Não emitida", ...patch }],
+          };
+        }),
+
       updateNotaDepartamento: (clientId, depto, nota) =>
         set((s) => ({
           clients: s.clients.map((c) =>
@@ -547,7 +562,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 11,
+      version: 12,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,

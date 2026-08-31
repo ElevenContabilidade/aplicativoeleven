@@ -12,6 +12,7 @@ import {
   ROTINAS_PESSOAL_VARIAVEIS,
   ROTINA_PESSOAL_ANUAL,
   possuiFuncionarios,
+  rotinasPessoalMensalFor,
   type ChecklistStatus,
   type Client,
 } from "@/lib/types";
@@ -47,7 +48,7 @@ function pctColor(pct: number) {
 
 function rotinasFor(client: Client, period: string): string[] {
   if (period === "anual") return possuiFuncionarios(client) ? [ROTINA_PESSOAL_ANUAL] : [];
-  return [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS];
+  return rotinasPessoalMensalFor(client, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS]);
 }
 
 export function PessoalChecklist() {
@@ -100,7 +101,9 @@ export function PessoalChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients.map((c) => pctForList(c.id, comp, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS]));
+        const pcts = myClients
+          .filter((c) => rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS]).length > 0)
+          .map((c) => pctForList(c.id, comp, rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS])));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
@@ -199,10 +202,11 @@ export function PessoalChecklist() {
                 <RotinaTable
                   clients={myClients}
                   columns={[...ROTINAS_PESSOAL_FIXAS]}
+                  applicableFor={(c) => rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_FIXAS)}
                   competencia={competencia}
                   statusFor={statusFor}
                   setChecklist={setChecklistPessoal}
-                  pctForClient={(c) => pctForList(c.id, competencia, [...ROTINAS_PESSOAL_FIXAS])}
+                  pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_FIXAS))}
                 />
               </div>
               <div>
@@ -210,10 +214,11 @@ export function PessoalChecklist() {
                 <RotinaTable
                   clients={myClients}
                   columns={[...ROTINAS_PESSOAL_VARIAVEIS]}
+                  applicableFor={(c) => rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_VARIAVEIS)}
                   competencia={competencia}
                   statusFor={statusFor}
                   setChecklist={setChecklistPessoal}
-                  pctForClient={(c) => pctForList(c.id, competencia, [...ROTINAS_PESSOAL_VARIAVEIS])}
+                  pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_VARIAVEIS))}
                 />
               </div>
             </div>
@@ -227,6 +232,7 @@ export function PessoalChecklist() {
 function RotinaTable({
   clients,
   columns,
+  applicableFor,
   competencia,
   statusFor,
   setChecklist,
@@ -234,6 +240,7 @@ function RotinaTable({
 }: {
   clients: Client[];
   columns: string[];
+  applicableFor?: (client: Client) => string[];
   competencia: string;
   statusFor: (clienteId: string, competencia: string, rotina: string) => ChecklistStatus | null;
   setChecklist: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
@@ -260,6 +267,7 @@ function RotinaTable({
         <tbody>
           {clients.map((c) => {
             const pct = pctForClient(c);
+            const applicable = applicableFor?.(c);
             return (
               <tr key={c.id} className="odd:bg-sand-50/60">
                 <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
@@ -268,6 +276,13 @@ function RotinaTable({
                   </Link>
                 </td>
                 {columns.map((r) => {
+                  if (applicable && !applicable.includes(r)) {
+                    return (
+                      <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5 text-center text-sand-300">
+                        —
+                      </td>
+                    );
+                  }
                   const status = statusFor(c.id, competencia, r);
                   return (
                     <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5">
