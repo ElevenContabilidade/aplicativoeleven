@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { maskCnpj } from "@/lib/cnpj";
+import { maskCnpjCpf } from "@/lib/cnpj";
 import type { Parcelamento, StatusEnvioParcelamento } from "@/lib/types";
 
 export function ParcelamentoFormDialog({
@@ -28,7 +28,7 @@ export function ParcelamentoFormDialog({
   const today = new Date().toISOString().slice(0, 10);
 
   const [clienteNome, setClienteNome] = useState(parcelamento?.clienteNome ?? "");
-  const [cnpj, setCnpj] = useState(parcelamento?.cnpj ?? "");
+  const [cnpjCpf, setCnpjCpf] = useState(parcelamento?.cnpjCpf ?? "");
   const [nome, setNome] = useState(parcelamento?.nome ?? "");
   const [quantidadeParcelas, setQuantidadeParcelas] = useState(
     parcelamento?.quantidadeParcelas ? String(parcelamento.quantidadeParcelas) : ""
@@ -43,7 +43,7 @@ export function ParcelamentoFormDialog({
 
     const patch = {
       clienteNome: clienteNome.trim(),
-      cnpj: cnpj.trim() || undefined,
+      cnpjCpf: cnpjCpf.trim() || undefined,
       nome: nome.trim(),
       quantidadeParcelas: quantidadeParcelas ? Number(quantidadeParcelas) : undefined,
       dataInicio,
@@ -73,8 +73,9 @@ export function ParcelamentoFormDialog({
               <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome do cliente" required />
             </div>
             <div>
-              <Label className="mb-1 block">CNPJ</Label>
-              <Input value={cnpj} onChange={(e) => setCnpj(maskCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
+              <Label className="mb-1 block">CNPJ/CPF</Label>
+              <Input value={cnpjCpf} onChange={(e) => setCnpjCpf(maskCnpjCpf(e.target.value))} placeholder="CNPJ ou CPF do cliente" />
+              <p className="mt-1 text-[11px] text-sand-500">Usado para identificar automaticamente o cliente no perfil dele.</p>
             </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Nome do parcelamento *</Label>

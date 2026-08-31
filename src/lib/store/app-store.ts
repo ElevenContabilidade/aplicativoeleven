@@ -498,7 +498,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 10,
+      version: 11,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -598,11 +598,14 @@ export const useAppStore = create<AppState>()(
         // they don't disappear from the year/month filters.
         if (state?.parcelamentos) {
           state.parcelamentos = state.parcelamentos.map((p) => {
-            const old = p as unknown as { competencia?: string; nome?: string; dataInicio?: string; tipo: string };
+            const old = p as unknown as { competencia?: string; nome?: string; dataInicio?: string; tipo: string; cnpj?: string; cnpjCpf?: string };
             return {
               ...p,
               nome: old.nome ?? old.tipo,
               dataInicio: old.dataInicio ?? (old.competencia ? `${old.competencia}-01` : new Date().toISOString().slice(0, 10)),
+              // O campo "cnpj" foi renomeado para "cnpjCpf" para deixar claro que
+              // também aceita CPF, usado para identificar o cliente do parcelamento.
+              cnpjCpf: old.cnpjCpf ?? old.cnpj,
             };
           });
           // A parcelamento used to carry one send status for the whole plan. It now

@@ -480,7 +480,7 @@ export type StatusEnvioParcelamento = "Enviado" | "Não enviado";
 export interface Parcelamento {
   id: string;
   clienteNome: string;
-  cnpj?: string;
+  cnpjCpf?: string; // identifica o cliente do parcelamento (CNPJ ou CPF)
   nome: string;
   quantidadeParcelas?: number; // em quantas X — define por quantos meses o parcelamento se repete
   dataInicio: string; // "YYYY-MM-DD" — mês/ano da 1ª parcela

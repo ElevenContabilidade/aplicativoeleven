@@ -31,7 +31,7 @@ interface Ocorrencia {
   status: StatusEnvioParcelamento;
 }
 
-type SortColumn = "clienteNome" | "cnpj" | "nome" | "competencia" | "parcelaAtual" | "status";
+type SortColumn = "clienteNome" | "cnpjCpf" | "nome" | "competencia" | "parcelaAtual" | "status";
 
 function SortableHead({
   label,
@@ -195,7 +195,7 @@ export default function ParcelamentosPage() {
             <TableHeader>
               <TableRow>
                 <SortableHead label="Cliente" column="clienteNome" sort={sort} onSort={toggleSort} />
-                <SortableHead label="CNPJ" column="cnpj" sort={sort} onSort={toggleSort} />
+                <SortableHead label="CNPJ/CPF" column="cnpjCpf" sort={sort} onSort={toggleSort} />
                 <SortableHead label="Nome do parcelamento" column="nome" sort={sort} onSort={toggleSort} />
                 <SortableHead label="Parcela" column="parcelaAtual" sort={sort} onSort={toggleSort} className="w-20" />
                 <SortableHead label="Competência" column="competencia" sort={sort} onSort={toggleSort} />
@@ -211,7 +211,7 @@ export default function ParcelamentosPage() {
                   onClick={() => openEdit(o.parcelamento)}
                 >
                   <TableCell className="font-medium">{o.parcelamento.clienteNome}</TableCell>
-                  <TableCell className="text-sand-500">{o.parcelamento.cnpj || "—"}</TableCell>
+                  <TableCell className="text-sand-500">{o.parcelamento.cnpjCpf || "—"}</TableCell>
                   <TableCell>{o.parcelamento.nome}</TableCell>
                   <TableCell className="text-sand-500">{o.parcelaAtual}/{o.totalParcelas}</TableCell>
                   <TableCell className="text-sand-500">{o.competencia}</TableCell>

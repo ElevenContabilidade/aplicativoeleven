@@ -493,10 +493,10 @@ export const SERVICOS_PORTFOLIO: ServicoPortfolio[] = [
 // ---------------- Parcelamentos ----------------
 
 export const PARCELAMENTOS: Parcelamento[] = [
-  { id: "pc1", clienteNome: "Studio Movimento", cnpj: "12.345.678/0001-90", nome: "Parcelamento Simples 2026", quantidadeParcelas: 12, dataInicio: "2026-08-05", criadoEm: iso(-10) },
-  { id: "pc2", clienteNome: "Bittencourt Advocacia", cnpj: "23.456.789/0001-01", nome: "PGFN débitos 2025", quantidadeParcelas: 60, dataInicio: "2026-08-12", criadoEm: iso(-4) },
-  { id: "pc3", clienteNome: "Kimura Tech", cnpj: "34.567.890/0001-12", nome: "INSS folha atrasada", quantidadeParcelas: 24, dataInicio: "2026-07-02", criadoEm: iso(-30) },
-  { id: "pc4", clienteNome: "Salgado Materiais", cnpj: "45.678.901/0001-23", nome: "ISS municipal 2026", quantidadeParcelas: 18, dataInicio: "2026-09-01", criadoEm: iso(-1) },
+  { id: "pc1", clienteNome: "Studio Movimento", cnpjCpf: "31.244.887/0001-02", nome: "Parcelamento Simples 2026", quantidadeParcelas: 12, dataInicio: "2026-08-05", criadoEm: iso(-10) },
+  { id: "pc2", clienteNome: "Bittencourt Advocacia", cnpjCpf: "22.887.665/0001-40", nome: "PGFN débitos 2025", quantidadeParcelas: 60, dataInicio: "2026-08-12", criadoEm: iso(-4) },
+  { id: "pc3", clienteNome: "Kimura Tech", cnpjCpf: "38.221.100/0001-88", nome: "INSS folha atrasada", quantidadeParcelas: 24, dataInicio: "2026-07-02", criadoEm: iso(-30) },
+  { id: "pc4", clienteNome: "Salgado Materiais", cnpjCpf: "40.112.998/0001-77", nome: "ISS municipal 2026", quantidadeParcelas: 18, dataInicio: "2026-09-01", criadoEm: iso(-1) },
 ];
 
 // Um envio registrado marca aquela competência como "Enviado"; sem registro, a

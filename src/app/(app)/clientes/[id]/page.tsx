@@ -123,7 +123,9 @@ export default function ClientProfilePage() {
   const myNotes = anotacoes.filter((n) => n.clienteId === client.id);
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myIndicacoes = indicacoes.filter((i) => i.clienteId === client.id);
-  const myParcelamentos = parcelamentos.filter((p) => parcelamentoPertenceAoCliente(p, [client.dados.nomeFantasia, client.dados.razaoSocial]));
+  const myParcelamentos = parcelamentos.filter((p) =>
+    parcelamentoPertenceAoCliente(p, { nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj })
+  );
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
 
   const parceriaMeses = Math.max(
@@ -220,6 +222,20 @@ export default function ClientProfilePage() {
                   </Badge>
                 ))}
                 {myCerts.length === 0 && <p className="text-xs text-sand-400">Nenhum certificado cadastrado.</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Award className="size-4 text-wine-600" /> Licenças</CardTitle></CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-2">
+                {myLicencas.map((l) => (
+                  <Badge key={l.id} variant="outline" className="gap-1.5 py-1">
+                    {l.nome} · válida até {formatDate(l.dataVencimento)} <StatusBadge status={l.status} />
+                  </Badge>
+                ))}
+                {myLicencas.length === 0 && <p className="text-xs text-sand-400">Nenhuma licença cadastrada.</p>}
               </div>
             </CardContent>
           </Card>

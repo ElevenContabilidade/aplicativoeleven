@@ -11,6 +11,19 @@ export function maskCnpj(value: string) {
     .replace(/(\d{4})(\d)/, "$1-$2");
 }
 
+export function maskCpf(value: string) {
+  const d = onlyDigits(value).slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+/** Formata como CPF enquanto tiver até 11 dígitos, e vira CNPJ a partir do 12º. */
+export function maskCnpjCpf(value: string) {
+  return onlyDigits(value).length > 11 ? maskCnpj(value) : maskCpf(value);
+}
+
 export interface CnpjLookupResult {
   razaoSocial: string;
   nomeFantasia?: string;
