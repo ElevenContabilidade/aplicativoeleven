@@ -45,16 +45,27 @@ export function MeiChecklist() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [mes, setMes] = useState<string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const myClients = useMemo(
-    () =>
-      clients.filter(
-        (c) => c.dados.regimeTributario === "MEI" && (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding")
-      ),
-    [clients]
-  );
-
   const rotinas = ROTINAS_MEI;
   const competencia = `${year}-${mes}`;
+
+  /** Cliente só entra no checklist a partir do mês em que foi cadastrado
+   * (criadoEm) — chegou no escritório em agosto, só aparece de agosto em
+   * diante, mesmo que a empresa tenha aberto antes. Deixa de aparecer
+   * quando o status muda para algo fora da carteira ativa (ex.: Encerrado). */
+  function clientesMeiEm(comp: string) {
+    return clients.filter(
+      (c) =>
+        c.dados.regimeTributario === "MEI" &&
+        (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
+        c.criadoEm.slice(0, 7) <= comp
+    );
+  }
+
+  const myClients = useMemo(
+    () => clientesMeiEm(competencia),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clients, competencia]
+  );
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -81,7 +92,7 @@ export function MeiChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients.map((c) => pctFor(c.id, comp));
+        const pcts = clientesMeiEm(comp).map((c) => pctFor(c.id, comp));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
