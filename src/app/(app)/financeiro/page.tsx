@@ -14,15 +14,25 @@ import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-d
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { vencimentoDaCompetencia } from "@/lib/boleto";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const TODOS = "todos";
+
+const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
+const MESES = [
+  { value: "01", label: "Jan" }, { value: "02", label: "Fev" }, { value: "03", label: "Mar" },
+  { value: "04", label: "Abr" }, { value: "05", label: "Mai" }, { value: "06", label: "Jun" },
+  { value: "07", label: "Jul" }, { value: "08", label: "Ago" }, { value: "09", label: "Set" },
+  { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
+];
 
 export default function FinanceiroPage() {
   const clients = useAppStore((s) => s.clients);
   const servicosExtras = useAppStore((s) => s.servicosExtras);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const recebimentos = useAppStore((s) => s.recebimentos);
+  const boletosMensais = useAppStore((s) => s.boletosMensais);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
@@ -32,6 +42,11 @@ export default function FinanceiroPage() {
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
   const [filtroBanco, setFiltroBanco] = useState(TODOS);
   const [filtroTipo, setFiltroTipo] = useState(TODOS);
+  const [year, setYear] = useState(() => {
+    const current = new Date().getFullYear().toString();
+    return YEARS.includes(current) ? current : YEARS[0];
+  });
+  const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/financeiro");
@@ -41,6 +56,11 @@ export default function FinanceiroPage() {
   const ativos = clients.filter((c) => c.status === "Ativo");
   const mrr = ativos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const ticketMedio = ativos.length ? mrr / ativos.length : 0;
+
+  const competenciasPeriodo = useMemo(
+    () => (mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`]),
+    [year, mes]
+  );
 
   const ledgerAll = useMemo(() => {
     const doClientes = clients.flatMap((c) =>
@@ -54,8 +74,30 @@ export default function FinanceiroPage() {
       }))
     );
     const avulsos = recebimentos.map((r) => ({ ...r, key: `avulso-${r.id}`, avulso: true as const }));
-    return [...doClientes, ...avulsos];
-  }, [clients, recebimentos]);
+    const boletos = clients.flatMap((c) => {
+      const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
+      return emitidos.map((b) => {
+        const valor = b.recebido ? (b.valorRecebido ?? b.valor ?? c.financeiro.valorMensal) : (b.valor ?? c.financeiro.valorMensal);
+        const vencimento = b.vencimento ?? vencimentoDaCompetencia(b.competencia, c.financeiro.vencimentoDia);
+        const status: "Pago" | "Em aberto" | "Atrasado" = b.recebido ? "Pago" : vencimento < new Date().toISOString().slice(0, 10) ? "Atrasado" : "Em aberto";
+        return {
+          id: b.id,
+          key: `boleto-${b.id}`,
+          nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+          competencia: b.competencia,
+          servico: "Boleto mensal",
+          valor,
+          vencimento,
+          pagamento: b.dataRecebimento,
+          status,
+          banco: undefined as string | undefined,
+          tipoPessoa: undefined as "PF" | "PJ" | undefined,
+          avulso: false as const,
+        };
+      });
+    });
+    return [...doClientes, ...avulsos, ...boletos];
+  }, [clients, recebimentos, boletosMensais]);
 
   const bancosDisponiveis = useMemo(
     () => [...new Set(recebimentos.map((r) => r.banco).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, "pt-BR")),
@@ -63,7 +105,10 @@ export default function FinanceiroPage() {
   );
 
   const ledgerFiltrado = ledgerAll.filter(
-    (h) => (filtroBanco === TODOS || h.banco === filtroBanco) && (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
+    (h) =>
+      competenciasPeriodo.includes(h.competencia) &&
+      (filtroBanco === TODOS || h.banco === filtroBanco) &&
+      (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
   );
 
   const ledger = [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
@@ -88,9 +133,24 @@ export default function FinanceiroPage() {
         actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo recebimento</Button>}
       />
 
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
+          {MESES.map((m) => (
+            <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
+          ))}
+        </div>
+        <Select value={year} onValueChange={setYear}>
+          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <MetricCard label="MRR" value={formatCurrency(mrr)} icon={Repeat} tone="wine" />
-        <MetricCard label="Recebido" value={formatCurrency(recebido)} icon={CircleDollarSign} tone="success" />
+        <MetricCard label={`Recebido — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`} value={formatCurrency(recebido)} icon={CircleDollarSign} tone="success" />
         <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Wallet} tone="warning" />
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
         <MetricCard label="Ticket médio" value={formatCurrency(ticketMedio)} icon={Receipt} />
@@ -99,7 +159,7 @@ export default function FinanceiroPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>Honorários — histórico recente</CardTitle>
+            <CardTitle>Honorários — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
             <div className="flex flex-wrap gap-2">
               <Select value={filtroBanco} onValueChange={setFiltroBanco}>
                 <SelectTrigger className="h-8 w-36 text-xs"><SelectValue placeholder="Banco" /></SelectTrigger>
@@ -238,5 +298,20 @@ export default function FinanceiroPage() {
 
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
     </div>
+  );
+}
+
+function PeriodChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+        active ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+      )}
+    >
+      {label}
+    </button>
   );
 }

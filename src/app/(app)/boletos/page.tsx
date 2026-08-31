@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Send, Clock, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from "lucide-react";
+import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -12,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { vencimentoDaCompetencia } from "@/lib/boleto";
 import type { Client, StatusEmissaoBoleto } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -28,6 +29,9 @@ interface Linha {
   valor: number;
   vencimento: string;
   status: StatusEmissaoBoleto;
+  recebido: boolean;
+  dataRecebimento: string;
+  valorRecebido: number;
 }
 
 type SortColumn = "cliente" | "valor" | "vencimento" | "status";
@@ -89,12 +93,16 @@ export default function BoletosPage() {
       for (const competencia of competencias) {
         const entry = entryMap.get(`${cliente.id}__${competencia}`);
         if (entry?.removido) continue;
+        const valor = entry?.valor ?? cliente.financeiro.valorMensal;
         list.push({
           cliente,
           competencia,
-          valor: entry?.valor ?? cliente.financeiro.valorMensal,
+          valor,
           vencimento: entry?.vencimento ?? vencimentoDaCompetencia(competencia, cliente.financeiro.vencimentoDia),
           status: entry?.status ?? "Não emitido",
+          recebido: entry?.recebido ?? false,
+          dataRecebimento: entry?.dataRecebimento ?? "",
+          valorRecebido: entry?.valorRecebido ?? valor,
         });
       }
     }
@@ -125,9 +133,18 @@ export default function BoletosPage() {
 
   const emitidos = filtradas.filter((l) => l.status === "Emitido").length;
   const naoEmitidos = filtradas.filter((l) => l.status === "Não emitido").length;
+  const recebidoTotal = filtradas.filter((l) => l.recebido).reduce((a, l) => a + l.valorRecebido, 0);
 
   function toggleStatus(l: Linha) {
     updateBoleto(l.cliente.id, l.competencia, { status: l.status === "Emitido" ? "Não emitido" : "Emitido" });
+  }
+
+  function toggleRecebido(l: Linha) {
+    const recebido = !l.recebido;
+    updateBoleto(l.cliente.id, l.competencia, {
+      recebido,
+      dataRecebimento: recebido && !l.dataRecebimento ? new Date().toISOString().slice(0, 10) : l.dataRecebimento,
+    });
   }
 
   function handleDelete(l: Linha) {
@@ -144,10 +161,11 @@ export default function BoletosPage() {
         description="Emissão mensal de boletos de todos os clientes com mensalidade — valor e vencimento vêm direto do cadastro do cliente, mas podem ser ajustados por competência."
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <MetricCard label="Boletos no período" value={filtradas.length} icon={CreditCard} tone="wine" />
         <MetricCard label="Emitidos" value={emitidos} icon={Send} tone="success" />
         <MetricCard label="Não emitidos" value={naoEmitidos} icon={Clock} tone="warning" />
+        <MetricCard label="Recebido" value={formatCurrency(recebidoTotal)} icon={CircleDollarSign} tone="success" />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -177,59 +195,92 @@ export default function BoletosPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <SortableHead label="Cliente" column="cliente" sort={sort} onSort={toggleSort} />
-                <SortableHead label="Valor" column="valor" sort={sort} onSort={toggleSort} className="w-32" />
-                <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} className="w-40" />
-                <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.map((l) => (
-                <TableRow key={`${l.cliente.id}-${l.competencia}`}>
-                  <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={l.valor}
-                      onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { valor: Number(e.target.value) || 0 })}
-                      className="h-8 w-28 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="date"
-                      value={l.vencimento}
-                      onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { vencimento: e.target.value })}
-                      className="h-8 w-36 text-xs"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de emissão">
-                      <StatusBadge status={l.status} className="cursor-pointer" />
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(l)}
-                      title="Excluir boleto"
-                      className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
-                  </TableCell>
+          <Table className="min-w-[1080px]">
+              <TableHeader>
+                <TableRow>
+                  <SortableHead label="Cliente" column="cliente" sort={sort} onSort={toggleSort} />
+                  <SortableHead label="Valor" column="valor" sort={sort} onSort={toggleSort} className="w-32" />
+                  <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} className="w-40" />
+                  <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
+                  <TableHead className="w-24 text-center">Recebido</TableHead>
+                  <TableHead className="w-40">Data recebimento</TableHead>
+                  <TableHead className="w-32">Valor recebido</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
-              ))}
-              {sorted.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
-              )}
-            </TableBody>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((l) => (
+                  <TableRow key={`${l.cliente.id}-${l.competencia}`}>
+                    <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.valor}
+                        onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { valor: Number(e.target.value) || 0 })}
+                        className="h-8 w-28 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="date"
+                        value={l.vencimento}
+                        onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { vencimento: e.target.value })}
+                        className="h-8 w-36 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de emissão">
+                        <StatusBadge status={l.status} className="cursor-pointer" />
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Checkbox
+                        checked={l.recebido}
+                        disabled={l.status !== "Emitido"}
+                        onCheckedChange={() => toggleRecebido(l)}
+                        title={l.status !== "Emitido" ? "Emita o boleto antes de marcar como recebido" : "Marcar como recebido"}
+                        className="mx-auto"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="date"
+                        value={l.dataRecebimento}
+                        disabled={!l.recebido}
+                        onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { dataRecebimento: e.target.value })}
+                        className="h-8 w-36 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.valorRecebido}
+                        disabled={!l.recebido}
+                        onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { valorRecebido: Number(e.target.value) || 0 })}
+                        className="h-8 w-28 text-xs"
+                        title="Pode diferir do valor original por juros/multa ou desconto"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(l)}
+                        title="Excluir boleto"
+                        className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {sorted.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
+                )}
+              </TableBody>
           </Table>
         </CardContent>
       </Card>

@@ -522,6 +522,12 @@ export interface BoletoMensal {
   valor?: number;
   vencimento?: string; // "YYYY-MM-DD"
   removido?: boolean;
+  /** Marcado quando o cliente efetivamente pagou o boleto. Alimenta o
+   * dashboard do Financeiro (some para "Recebido" em vez de "Em aberto"). */
+  recebido?: boolean;
+  dataRecebimento?: string; // "YYYY-MM-DD"
+  /** Valor efetivamente recebido — pode diferir de "valor" por juros/multa ou desconto. */
+  valorRecebido?: number;
 }
 
 // ---------- NFSe mensal ----------

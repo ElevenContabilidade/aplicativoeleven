@@ -132,7 +132,11 @@ interface AppState {
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
   deleteParcelamento: (id: string) => void;
   setEnvioParcelamento: (parcelamentoId: string, competencia: string, status: StatusEnvioParcelamento) => void;
-  updateBoleto: (clienteId: string, competencia: string, patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido">>) => void;
+  updateBoleto: (
+    clienteId: string,
+    competencia: string,
+    patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido" | "recebido" | "dataRecebimento" | "valorRecebido">>
+  ) => void;
   updateNotaFiscal: (clienteId: string, competencia: string, patch: Partial<Pick<NotaFiscalMensal, "status" | "valor" | "numeroNota" | "removido">>) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
