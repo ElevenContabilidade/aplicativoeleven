@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ParcelamentoFormDialog } from "@/components/parcelamentos/parcelamento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Parcelamento, StatusEnvioParcelamento } from "@/lib/types";
+import { competenciasDoPlano } from "@/lib/parcelamento";
 import { cn } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -21,17 +22,6 @@ const MESES = [
   { value: "07", label: "Jul" }, { value: "08", label: "Ago" }, { value: "09", label: "Set" },
   { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
 ];
-
-/** Um parcelamento existe (e precisa ser enviado) em cada mês dentro da sua
- * quantidade de parcelas, a partir do mês de início. */
-function competenciasDoPlano(p: Parcelamento): string[] {
-  const [ano, mes] = p.dataInicio.slice(0, 7).split("-").map(Number);
-  const total = Math.max(1, p.quantidadeParcelas ?? 1);
-  return Array.from({ length: total }, (_, i) => {
-    const d = new Date(ano, mes - 1 + i, 1);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-}
 
 interface Ocorrencia {
   parcelamento: Parcelamento;

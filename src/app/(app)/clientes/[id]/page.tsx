@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -27,6 +27,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
 import type { Socio, Contato, HistoricoFinanceiro } from "@/lib/types";
+import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 const MARKERS: Record<string, string> = { atencao: "⚠️ Atenção", estrategico: "⭐ Cliente estratégico", oportunidade: "💰 Oportunidade", documento: "📄 Documento pendente", urgente: "🚨 Urgente" };
@@ -43,6 +44,7 @@ export default function ClientProfilePage() {
   const anotacoes = useAppStore((s) => s.anotacoes);
   const licencas = useAppStore((s) => s.licencas);
   const indicacoes = useAppStore((s) => s.indicacoes);
+  const parcelamentos = useAppStore((s) => s.parcelamentos);
   const toggleOnboardingItem = useAppStore((s) => s.toggleOnboardingItem);
   const addAnotacao = useAppStore((s) => s.addAnotacao);
   const deleteLicenca = useAppStore((s) => s.deleteLicenca);
@@ -121,6 +123,7 @@ export default function ClientProfilePage() {
   const myNotes = anotacoes.filter((n) => n.clienteId === client.id);
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myIndicacoes = indicacoes.filter((i) => i.clienteId === client.id);
+  const myParcelamentos = parcelamentos.filter((p) => parcelamentoPertenceAoCliente(p, [client.dados.nomeFantasia, client.dados.razaoSocial]));
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
 
   const parceriaMeses = Math.max(
@@ -217,6 +220,20 @@ export default function ClientProfilePage() {
                   </Badge>
                 ))}
                 {myCerts.length === 0 && <p className="text-xs text-sand-400">Nenhum certificado cadastrado.</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="size-4 text-wine-600" /> Parcelamentos</CardTitle></CardHeader>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-2">
+                {myParcelamentos.map((p) => (
+                  <Badge key={p.id} variant="outline" className="gap-1.5 py-1">
+                    {p.nome} <StatusBadge status={isParcelamentoAtivo(p) ? "Ativo" : "Finalizado"} />
+                  </Badge>
+                ))}
+                {myParcelamentos.length === 0 && <p className="text-xs text-sand-400">Nenhum parcelamento cadastrado.</p>}
               </div>
             </CardContent>
           </Card>
