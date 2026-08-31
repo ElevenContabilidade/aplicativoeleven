@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -17,11 +17,16 @@ import { CadastroForm } from "@/components/clients/cadastro-form";
 import { DepartmentNotesCard } from "@/components/clients/department-notes-card";
 import { LicencaFormDialog } from "@/components/clients/licenca-form-dialog";
 import { IndicacaoFormDialog } from "@/components/clients/indicacao-form-dialog";
+import { SocioFormDialog } from "@/components/clients/socio-form-dialog";
+import { ContatoFormDialog } from "@/components/clients/contato-form-dialog";
+import { FinanceiroClienteForm } from "@/components/clients/financeiro-cliente-form";
+import { HistoricoFinanceiroFormDialog } from "@/components/clients/historico-financeiro-form-dialog";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
+import type { Socio, Contato, HistoricoFinanceiro } from "@/lib/types";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
 const MARKERS: Record<string, string> = { atencao: "⚠️ Atenção", estrategico: "⭐ Cliente estratégico", oportunidade: "💰 Oportunidade", documento: "📄 Documento pendente", urgente: "🚨 Urgente" };
@@ -42,11 +47,62 @@ export default function ClientProfilePage() {
   const addAnotacao = useAppStore((s) => s.addAnotacao);
   const deleteLicenca = useAppStore((s) => s.deleteLicenca);
   const deleteIndicacao = useAppStore((s) => s.deleteIndicacao);
+  const deleteSocio = useAppStore((s) => s.deleteSocio);
+  const deleteContato = useAppStore((s) => s.deleteContato);
+  const deleteHistoricoCliente = useAppStore((s) => s.deleteHistoricoCliente);
   const { userId } = useAuthStore();
   const [noteText, setNoteText] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
+  const [socioOpen, setSocioOpen] = useState(false);
+  const [editingSocio, setEditingSocio] = useState<Socio | null>(null);
+  const [socioSession, setSocioSession] = useState(0);
+  const [contatoOpen, setContatoOpen] = useState(false);
+  const [editingContato, setEditingContato] = useState<Contato | null>(null);
+  const [contatoSession, setContatoSession] = useState(0);
+  const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [editingHistorico, setEditingHistorico] = useState<HistoricoFinanceiro | null>(null);
+  const [historicoSession, setHistoricoSession] = useState(0);
+  const [revealedSenhas, setRevealedSenhas] = useState<Set<string>>(new Set());
+
+  function openNovoSocio() {
+    setEditingSocio(null);
+    setSocioSession((n) => n + 1);
+    setSocioOpen(true);
+  }
+  function openEditSocio(s: Socio) {
+    setEditingSocio(s);
+    setSocioSession((n) => n + 1);
+    setSocioOpen(true);
+  }
+  function openNovoContato() {
+    setEditingContato(null);
+    setContatoSession((n) => n + 1);
+    setContatoOpen(true);
+  }
+  function openEditContato(c: Contato) {
+    setEditingContato(c);
+    setContatoSession((n) => n + 1);
+    setContatoOpen(true);
+  }
+  function openNovoLancamento() {
+    setEditingHistorico(null);
+    setHistoricoSession((n) => n + 1);
+    setHistoricoOpen(true);
+  }
+  function openEditLancamento(h: HistoricoFinanceiro) {
+    setEditingHistorico(h);
+    setHistoricoSession((n) => n + 1);
+    setHistoricoOpen(true);
+  }
+  function toggleSenha(id: string) {
+    setRevealedSenhas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   const client = clients.find((c) => c.id === id);
   if (!client) {
@@ -198,29 +254,99 @@ export default function ClientProfilePage() {
 
         <TabsContent value="socios" className="grid gap-4 lg:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle>Sócios</CardTitle></CardHeader>
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle>Sócios</CardTitle>
+              <Button size="sm" onClick={openNovoSocio}><Plus className="size-3.5" /> Novo sócio</Button>
+            </CardHeader>
             <CardContent className="space-y-2 pt-4">
-              {client.socios.map((s) => (
-                <div key={s.id} className="rounded-lg border border-sand-200 p-3 text-xs">
-                  <p className="font-semibold text-sand-900">{s.nome} {s.administrador && <Badge variant="cream" className="ml-1">Administrador</Badge>}</p>
-                  <p className="mt-1 text-sand-500">CPF {s.cpf} • {s.percentual}% • desde {formatDate(s.dataEntrada)}</p>
-                </div>
-              ))}
+              {client.socios.map((s) => {
+                const revealed = revealedSenhas.has(s.id);
+                return (
+                  <div key={s.id} className="rounded-lg border border-sand-200 p-3 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-sand-900">
+                        {s.nome} {s.administrador && <Badge variant="cream" className="ml-1">Administrador</Badge>}
+                      </p>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button type="button" onClick={() => openEditSocio(s)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => confirm(`Excluir o sócio "${s.nome}"?`) && deleteSocio(client.id, s.id)}
+                          title="Excluir"
+                          className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-sand-500">CPF {s.cpf} • {s.percentual}% • desde {formatDate(s.dataEntrada)}</p>
+                    {(s.telefone || s.email) && <p className="mt-0.5 text-sand-500">{s.telefone ?? "—"} • {s.email ?? "—"}</p>}
+                    {s.senhaGovBr && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-[11px] text-sand-400">Senha gov.br</span>
+                        <span className="font-mono text-xs text-sand-600">{revealed ? s.senhaGovBr : "••••••"}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSenha(s.id)}
+                          title={revealed ? "Ocultar a senha" : "Exibir a senha"}
+                          className="text-sand-400 hover:text-sand-600"
+                        >
+                          {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {client.socios.length === 0 && <p className="text-xs text-sand-400">Nenhum sócio cadastrado.</p>}
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Contatos</CardTitle></CardHeader>
+            <CardHeader className="flex items-center justify-between">
+              <CardTitle>Contatos</CardTitle>
+              <Button size="sm" onClick={openNovoContato}><Plus className="size-3.5" /> Novo contato</Button>
+            </CardHeader>
             <CardContent className="space-y-2 pt-4">
               {client.contatos.map((c) => (
                 <div key={c.id} className="rounded-lg border border-sand-200 p-3 text-xs">
-                  <p className="font-semibold text-sand-900">{c.nome} <Badge variant="outline" className="ml-1">{c.papel}</Badge></p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-sand-900">{c.nome} <Badge variant="outline" className="ml-1">{c.papel}</Badge></p>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button type="button" onClick={() => openEditContato(c)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => confirm(`Excluir o contato "${c.nome}"?`) && deleteContato(client.id, c.id)}
+                        title="Excluir"
+                        className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
                   <p className="mt-1 text-sand-500">{c.telefone ?? "—"} • {c.email ?? "—"}</p>
                 </div>
               ))}
               {client.contatos.length === 0 && <p className="text-xs text-sand-400">Nenhum contato cadastrado.</p>}
             </CardContent>
           </Card>
+          <SocioFormDialog
+            key={`socio-${editingSocio?.id ?? "new"}-${socioSession}`}
+            open={socioOpen}
+            onOpenChange={setSocioOpen}
+            clienteId={client.id}
+            socio={editingSocio}
+          />
+          <ContatoFormDialog
+            key={`contato-${editingContato?.id ?? "new"}-${contatoSession}`}
+            open={contatoOpen}
+            onOpenChange={setContatoOpen}
+            clienteId={client.id}
+            contato={editingContato}
+          />
         </TabsContent>
 
         <TabsContent value="onboarding">
@@ -244,18 +370,24 @@ export default function ClientProfilePage() {
         </TabsContent>
 
         <TabsContent value="financeiro" className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <MiniCard label="Valor mensal" value={formatCurrency(client.financeiro.valorMensal)} />
-            <MiniCard label="Vencimento" value={`Dia ${client.financeiro.vencimentoDia}`} />
-            <MiniCard label="Forma de pagamento" value={client.financeiro.formaPagamento} />
-            <MiniCard label="Início do contrato" value={formatDate(client.financeiro.inicioContrato)} />
-          </div>
+          <FinanceiroClienteForm client={client} />
           <Card>
-            <CardHeader><CardTitle>Histórico de honorários</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Histórico de honorários</CardTitle>
+              <Button size="sm" onClick={openNovoLancamento}><Plus className="size-3.5" /> Novo lançamento</Button>
+            </CardHeader>
             <CardContent className="pt-4">
               <Table>
                 <TableHeader>
-                  <TableRow><TableHead>Competência</TableHead><TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>Vencimento</TableHead><TableHead>Pagamento</TableHead><TableHead>Status</TableHead></TableRow>
+                  <TableRow>
+                    <TableHead>Competência</TableHead>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-16" />
+                  </TableRow>
                 </TableHeader>
                 <TableBody>
                   {client.historicoFinanceiro.map((h) => (
@@ -266,15 +398,37 @@ export default function ClientProfilePage() {
                       <TableCell>{formatDate(h.vencimento)}</TableCell>
                       <TableCell>{h.pagamento ? formatDate(h.pagamento) : "—"}</TableCell>
                       <TableCell><StatusBadge status={h.status} /></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => openEditLancamento(h)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirm("Excluir este lançamento?") && deleteHistoricoCliente(client.id, h.id)}
+                            title="Excluir"
+                            className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {client.historicoFinanceiro.length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="py-8 text-center text-sand-400">Sem histórico financeiro.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="py-8 text-center text-sand-400">Sem histórico financeiro.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+          <HistoricoFinanceiroFormDialog
+            key={`historico-${editingHistorico?.id ?? "new"}-${historicoSession}`}
+            open={historicoOpen}
+            onOpenChange={setHistoricoOpen}
+            clienteId={client.id}
+            entry={editingHistorico}
+          />
         </TabsContent>
 
         <TabsContent value="licencas">
@@ -443,16 +597,5 @@ function MiniStat({ icon: Icon, label, value }: { icon: React.ElementType; label
         <span className="block font-medium text-sand-800">{value}</span>
       </span>
     </div>
-  );
-}
-
-function MiniCard({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-[11px] text-sand-500">{label}</p>
-        <p className="mt-1 text-sm font-semibold text-sand-900">{value}</p>
-      </CardContent>
-    </Card>
   );
 }

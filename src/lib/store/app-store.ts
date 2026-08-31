@@ -28,6 +28,10 @@ import type {
   LeadStage,
   Client,
   DadosCadastrais,
+  Socio,
+  Contato,
+  FinanceiroCliente,
+  HistoricoFinanceiro,
   Task,
   Obligation,
   ProcessoSocietario,
@@ -84,6 +88,16 @@ interface AppState {
   markAllNotificationsRead: () => void;
   addClient: (client: Client) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
+  addSocio: (clientId: string, socio: Socio) => void;
+  updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
+  deleteSocio: (clientId: string, socioId: string) => void;
+  addContato: (clientId: string, contato: Contato) => void;
+  updateContato: (clientId: string, contatoId: string, patch: Partial<Contato>) => void;
+  deleteContato: (clientId: string, contatoId: string) => void;
+  updateFinanceiroCliente: (clientId: string, patch: Partial<FinanceiroCliente>) => void;
+  addHistoricoCliente: (clientId: string, entry: HistoricoFinanceiro) => void;
+  updateHistoricoCliente: (clientId: string, entryId: string, patch: Partial<HistoricoFinanceiro>) => void;
+  deleteHistoricoCliente: (clientId: string, entryId: string) => void;
   addDocumento: (doc: Documento) => void;
   deleteDocumento: (id: string) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
@@ -208,6 +222,75 @@ export const useAppStore = create<AppState>()(
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
+        })),
+
+      addSocio: (clientId, socio) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, socios: [socio, ...c.socios] } : c)),
+        })),
+      updateSocio: (clientId, socioId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? { ...c, socios: c.socios.map((so) => (so.id === socioId ? { ...so, ...patch } : so)) }
+              : c
+          ),
+        })),
+      deleteSocio: (clientId, socioId) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, socios: c.socios.filter((so) => so.id !== socioId) } : c
+          ),
+        })),
+
+      addContato: (clientId, contato) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, contatos: [contato, ...c.contatos] } : c)),
+        })),
+      updateContato: (clientId, contatoId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? { ...c, contatos: c.contatos.map((co) => (co.id === contatoId ? { ...co, ...patch } : co)) }
+              : c
+          ),
+        })),
+      deleteContato: (clientId, contatoId) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, contatos: c.contatos.filter((co) => co.id !== contatoId) } : c
+          ),
+        })),
+
+      updateFinanceiroCliente: (clientId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, financeiro: { ...c.financeiro, ...patch } } : c)),
+        })),
+
+      addHistoricoCliente: (clientId, entry) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, historicoFinanceiro: [entry, ...c.historicoFinanceiro] } : c
+          ),
+        })),
+      updateHistoricoCliente: (clientId, entryId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? {
+                  ...c,
+                  historicoFinanceiro: c.historicoFinanceiro.map((h) => (h.id === entryId ? { ...h, ...patch } : h)),
+                }
+              : c
+          ),
+        })),
+      deleteHistoricoCliente: (clientId, entryId) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId
+              ? { ...c, historicoFinanceiro: c.historicoFinanceiro.filter((h) => h.id !== entryId) }
+              : c
+          ),
         })),
 
       addDocumento: (doc) => set((s) => ({ documentos: [doc, ...s.documentos] })),

@@ -131,6 +131,7 @@ export interface Socio {
   id: string;
   nome: string;
   cpf: string;
+  senhaGovBr?: string;
   percentual: number;
   telefone?: string;
   email?: string;
