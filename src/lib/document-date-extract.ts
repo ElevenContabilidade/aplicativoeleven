@@ -1,6 +1,29 @@
 /** Finds a Brazilian-format date (dd/mm/yyyy or dd-mm-yyyy) and returns it as ISO yyyy-mm-dd. */
 const DATE_RE = /(\d{2})[/-](\d{2})[/-](\d{4})/;
 
+/**
+ * Repeated background watermarks (e.g. a municipal seal like "PMF PMF PMF…")
+ * are often real text in the PDF's text layer, not an image — and PDF.js
+ * extracts text in the document's internal paint order, not visual reading
+ * order. A dense watermark can land between a label ("Data Emissão") and its
+ * value in the extracted string, pushing them far enough apart that the
+ * proximity search below misses them entirely. Strip any short, all-caps
+ * token that repeats suspiciously often before searching for dates — this
+ * targets watermark-style stamps generically, not any specific word.
+ */
+function stripWatermarkNoise(text: string): string {
+  const counts = new Map<string, number>();
+  for (const token of text.split(/\s+/)) {
+    if (/^[A-ZÀ-Ú]{2,8}$/.test(token)) counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  const noisy = new Set([...counts.entries()].filter(([, n]) => n >= 8).map(([w]) => w));
+  if (noisy.size === 0) return text;
+  return text
+    .split(/\s+/)
+    .filter((part) => !noisy.has(part))
+    .join(" ");
+}
+
 function toIso(match: RegExpMatchArray | RegExpExecArray): string {
   const [, dd, mm, yyyy] = match;
   return `${yyyy}-${mm}-${dd}`;
@@ -68,10 +91,20 @@ function findDatesByOrdinalPairing(text: string, window = 400): { dataEmissao?: 
     : { dataEmissao: dates[1], dataVencimento: dates[0] };
 }
 
-const EMISSAO_KEYWORDS = ["data de emissão", "data de expedição", "emitido em", "expedida em", "expedido em", "emissão"];
+const EMISSAO_KEYWORDS = [
+  "data de emissão",
+  "data emissão",
+  "data de expedição",
+  "emitido em",
+  "expedida em",
+  "expedido em",
+  "emissão",
+];
 const VENCIMENTO_KEYWORDS = [
   "data de validade",
+  "data validade",
   "data de vencimento",
+  "data vencimento",
   "válido até",
   "valido ate",
   "vence em",
@@ -85,7 +118,8 @@ export interface ExtractedDocumentDates {
 }
 
 /** Best-effort extraction of emissão/vencimento dates from a document's raw text. */
-export function extractDocumentDates(text: string): ExtractedDocumentDates {
+export function extractDocumentDates(rawText: string): ExtractedDocumentDates {
+  const text = stripWatermarkNoise(rawText);
   const nearEmissao = findDateNear(text, EMISSAO_KEYWORDS);
   const nearVencimento = findDateNear(text, VENCIMENTO_KEYWORDS);
 
