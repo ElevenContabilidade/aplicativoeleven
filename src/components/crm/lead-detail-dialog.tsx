@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ const SERVICOS: ServicoInteresse[] = [
   "Departamento pessoal",
   "Certificado digital",
   "Consultoria",
-  "Outros",
 ];
 
 const ORIGENS: LeadOrigem[] = ["Instagram", "Google", "Site", "WhatsApp", "Indicação", "Prospecção ativa", "Parceiro", "Evento", "Outro"];
@@ -35,12 +34,20 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
   const router = useRouter();
   const addClient = useAppStore((s) => s.addClient);
   const clients = useAppStore((s) => s.clients);
+  const leads = useAppStore((s) => s.leads);
   const updateLead = useAppStore((s) => s.updateLead);
   const deleteLead = useAppStore((s) => s.deleteLead);
   const alreadyClient = lead ? clients.some((c) => c.leadOrigemId === lead.id) : false;
 
   const [form, setForm] = useState<Lead | null>(lead);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [novoServico, setNovoServico] = useState("");
+
+  const servicosCadastrados = useMemo(
+    () => [...new Set(leads.flatMap((l) => l.servicosInteresse))].filter((s) => !SERVICOS.includes(s)).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [leads]
+  );
+  const todosServicos = [...SERVICOS, ...servicosCadastrados];
 
   if (!lead || !form) return null;
 
@@ -52,6 +59,13 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
     setForm((f) =>
       f ? { ...f, servicosInteresse: f.servicosInteresse.includes(s) ? f.servicosInteresse.filter((x) => x !== s) : [...f.servicosInteresse, s] } : f
     );
+  }
+
+  function adicionarServico() {
+    const nome = novoServico.trim();
+    if (!nome || todosServicos.includes(nome)) return;
+    setForm((f) => (f ? { ...f, servicosInteresse: [...f.servicosInteresse, nome] } : f));
+    setNovoServico("");
   }
 
   function handleSave(e: React.FormEvent) {
@@ -141,12 +155,24 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
           <div>
             <Label className="mb-1.5 block">Serviços de interesse</Label>
             <div className="grid grid-cols-2 gap-1.5">
-              {SERVICOS.map((s) => (
+              {todosServicos.map((s) => (
                 <label key={s} className="flex items-center gap-2 text-xs text-sand-700">
                   <Checkbox checked={form.servicosInteresse.includes(s)} onCheckedChange={() => toggleServico(s)} />
                   {s}
                 </label>
               ))}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={novoServico}
+                onChange={(e) => setNovoServico(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarServico(); } }}
+                placeholder="Cadastrar novo serviço…"
+                className="h-8 text-xs"
+              />
+              <Button type="button" size="icon" variant="outline" onClick={adicionarServico} className="h-8 w-8 shrink-0">
+                <Plus className="size-3.5" />
+              </Button>
             </div>
           </div>
 

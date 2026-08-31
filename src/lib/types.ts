@@ -59,17 +59,10 @@ export type LeadOrigem =
   | "Evento"
   | "Outro";
 
-export type ServicoInteresse =
-  | "Contabilidade mensal"
-  | "Abertura de empresa"
-  | "Alteração empresarial"
-  | "Regularização"
-  | "Desenquadramento MEI"
-  | "Planejamento tributário"
-  | "Departamento pessoal"
-  | "Certificado digital"
-  | "Consultoria"
-  | "Outros";
+/** Serviço de interesse comercial de um lead. Além da lista sugerida, o
+ *  usuário pode cadastrar serviços novos direto no formulário — por isso
+ *  é texto livre, não uma união fixa. */
+export type ServicoInteresse = string;
 
 export interface LeadHistoricoEntry {
   id: string;
@@ -136,6 +129,7 @@ export interface Socio {
   telefone?: string;
   email?: string;
   administrador: boolean;
+  representanteLegal?: boolean;
   dataEntrada: string;
 }
 

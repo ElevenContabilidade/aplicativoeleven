@@ -265,7 +265,9 @@ export default function ClientProfilePage() {
                   <div key={s.id} className="rounded-lg border border-sand-200 p-3 text-xs">
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-sand-900">
-                        {s.nome} {s.administrador && <Badge variant="cream" className="ml-1">Administrador</Badge>}
+                        {s.nome}{" "}
+                        {s.administrador && <Badge variant="cream" className="ml-1">Administrador</Badge>}
+                        {s.representanteLegal && <Badge variant="outline" className="ml-1">Representante legal</Badge>}
                       </p>
                       <div className="flex shrink-0 items-center gap-1">
                         <button type="button" onClick={() => openEditSocio(s)} title="Editar" className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700">

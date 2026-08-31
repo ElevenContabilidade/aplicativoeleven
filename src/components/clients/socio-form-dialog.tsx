@@ -35,6 +35,7 @@ export function SocioFormDialog({
   const [email, setEmail] = useState(socio?.email ?? "");
   const [percentual, setPercentual] = useState(socio ? String(socio.percentual) : "");
   const [administrador, setAdministrador] = useState(socio?.administrador ?? false);
+  const [representanteLegal, setRepresentanteLegal] = useState(socio?.representanteLegal ?? false);
   const [dataEntrada, setDataEntrada] = useState(socio?.dataEntrada ?? new Date().toISOString().slice(0, 10));
 
   function handleSubmit(e: React.FormEvent) {
@@ -48,6 +49,7 @@ export function SocioFormDialog({
       email: email || undefined,
       percentual: Number(percentual) || 0,
       administrador,
+      representanteLegal,
       dataEntrada,
     };
     if (socio) {
@@ -90,10 +92,14 @@ export function SocioFormDialog({
               <Label className="mb-1 block">Data de entrada</Label>
               <Input type="date" value={dataEntrada} onChange={(e) => setDataEntrada(e.target.value)} />
             </div>
-            <div className="flex items-end pb-1.5">
+            <div className="col-span-2 flex items-center gap-4 pb-1">
               <label className="flex items-center gap-2 text-xs font-medium text-sand-700">
                 <Checkbox checked={administrador} onCheckedChange={(v) => setAdministrador(!!v)} />
                 Administrador
+              </label>
+              <label className="flex items-center gap-2 text-xs font-medium text-sand-700">
+                <Checkbox checked={representanteLegal} onCheckedChange={(v) => setRepresentanteLegal(!!v)} />
+                Representante legal
               </label>
             </div>
             <div className="col-span-2">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -22,13 +23,13 @@ const SERVICOS: ServicoInteresse[] = [
   "Departamento pessoal",
   "Certificado digital",
   "Consultoria",
-  "Outros",
 ];
 
 const ORIGENS: LeadOrigem[] = ["Instagram", "Google", "Site", "WhatsApp", "Indicação", "Prospecção ativa", "Parceiro", "Evento", "Outro"];
 
 export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addLead = useAppStore((s) => s.addLead);
+  const leads = useAppStore((s) => s.leads);
   const { userId } = useAuthStore();
 
   const [nome, setNome] = useState("");
@@ -41,14 +42,28 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [origem, setOrigem] = useState<LeadOrigem>("Site");
   const [valorEstimado, setValorEstimado] = useState("");
   const [servicos, setServicos] = useState<ServicoInteresse[]>([]);
+  const [novoServico, setNovoServico] = useState("");
+
+  const servicosCadastrados = useMemo(
+    () => [...new Set(leads.flatMap((l) => l.servicosInteresse))].filter((s) => !SERVICOS.includes(s)).sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [leads]
+  );
+  const todosServicos = [...SERVICOS, ...servicosCadastrados];
 
   function toggleServico(s: ServicoInteresse) {
     setServicos((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
   }
 
+  function adicionarServico() {
+    const nome = novoServico.trim();
+    if (!nome || todosServicos.includes(nome)) return;
+    setServicos((prev) => [...prev, nome]);
+    setNovoServico("");
+  }
+
   function reset() {
     setNome(""); setEmpresa(""); setTelefone(""); setEmail(""); setCidade(""); setEstado("");
-    setSegmento(""); setOrigem("Site"); setValorEstimado(""); setServicos([]);
+    setSegmento(""); setOrigem("Site"); setValorEstimado(""); setServicos([]); setNovoServico("");
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -141,12 +156,24 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-sand-400">Interesse</p>
             <div className="grid grid-cols-2 gap-2">
-              {SERVICOS.map((s) => (
+              {todosServicos.map((s) => (
                 <label key={s} className="flex items-center gap-2 text-xs text-sand-700">
                   <Checkbox checked={servicos.includes(s)} onCheckedChange={() => toggleServico(s)} />
                   {s}
                 </label>
               ))}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={novoServico}
+                onChange={(e) => setNovoServico(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarServico(); } }}
+                placeholder="Cadastrar novo serviço…"
+                className="h-8 text-xs"
+              />
+              <Button type="button" size="icon" variant="outline" onClick={adicionarServico} className="h-8 w-8 shrink-0">
+                <Plus className="size-3.5" />
+              </Button>
             </div>
           </div>
 
