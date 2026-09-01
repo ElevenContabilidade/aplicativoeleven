@@ -53,9 +53,13 @@ export default function FinanceiroPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const ativos = clients.filter((c) => c.status === "Ativo");
-  const mrr = ativos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
-  const ticketMedio = ativos.length ? mrr / ativos.length : 0;
+  /** MRR = soma das assessorias mensais dos clientes que aparecem na aba
+   * Boletos (mesma regra de lá: valorMensal > 0) — um cliente cadastrado com
+   * assessoria mensal já entra automaticamente no MRR e em Boletos, mesmo
+   * antes de virar "Ativo". */
+  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0);
+  const mrr = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
+  const ticketMedio = clientesAssessoriaMensal.length ? mrr / clientesAssessoriaMensal.length : 0;
 
   const competenciasPeriodo = useMemo(
     () => (mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`]),
