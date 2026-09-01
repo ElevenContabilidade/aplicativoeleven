@@ -33,6 +33,7 @@ export default function FinanceiroPage() {
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const recebimentos = useAppStore((s) => s.recebimentos);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
+  const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
@@ -53,12 +54,12 @@ export default function FinanceiroPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** MRR = soma das assessorias mensais dos clientes que aparecem na aba
-   * Boletos (mesma regra de lá: valorMensal > 0, exceto clientes de
-   * parceiro — esses pagam via PIX e entram no Financeiro pela aba
-   * Parceiros) — um cliente cadastrado com assessoria mensal já entra
-   * automaticamente no MRR e em Boletos, mesmo antes de virar "Ativo". */
-  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0 && !c.dados.clienteParceiro);
+  /** MRR = soma das assessorias mensais de todo cliente com mensalidade
+   * cadastrada (valorMensal > 0) — tanto os que aparecem em Boletos quanto
+   * os clientes de parceiro (pagam via PIX, controlados em Parceiros) — um
+   * cliente cadastrado com assessoria mensal já entra automaticamente no
+   * MRR, mesmo antes de virar "Ativo". */
+  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0);
   const mrr = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const ticketMedio = clientesAssessoriaMensal.length ? mrr / clientesAssessoriaMensal.length : 0;
 
@@ -100,15 +101,32 @@ export default function FinanceiroPage() {
         };
       });
     });
-    return [...doClientes, ...avulsos, ...boletos];
-  }, [clients, recebimentos, boletosMensais]);
+    const parceiros = clients.flatMap((c) => {
+      const entradas = recebimentosParceiro.filter((r) => r.clienteId === c.id && !r.removido);
+      return entradas.map((r) => ({
+        id: r.id,
+        key: `parceiro-${r.id}`,
+        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+        competencia: r.competencia,
+        servico: "Recebimento parceiro (PIX)",
+        valor: r.valor ?? c.financeiro.valorMensal,
+        vencimento: "",
+        pagamento: r.dataPagamento,
+        status: r.status,
+        banco: r.banco,
+        tipoPessoa: r.tipoPessoa,
+        avulso: false as const,
+      }));
+    });
+    return [...doClientes, ...avulsos, ...boletos, ...parceiros];
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro]);
 
   const bancosDisponiveis = useMemo(
     () =>
-      [...new Set([...recebimentos.map((r) => r.banco), ...boletosMensais.map((b) => b.banco)].filter((b): b is string => !!b))].sort((a, b) =>
-        a.localeCompare(b, "pt-BR")
-      ),
-    [recebimentos, boletosMensais]
+      [...new Set([...recebimentos.map((r) => r.banco), ...boletosMensais.map((b) => b.banco), ...recebimentosParceiro.map((r) => r.banco)].filter(
+        (b): b is string => !!b
+      ))].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [recebimentos, boletosMensais, recebimentosParceiro]
   );
 
   const ledgerFiltrado = ledgerAll.filter(
@@ -209,7 +227,7 @@ export default function FinanceiroPage() {
                     <TableCell className="text-sand-500">{h.banco ?? "—"}</TableCell>
                     <TableCell className="text-sand-500">{h.tipoPessoa ?? "—"}</TableCell>
                     <TableCell>{formatCurrency(h.valor)}</TableCell>
-                    <TableCell>{formatDate(h.vencimento)}</TableCell>
+                    <TableCell>{h.vencimento ? formatDate(h.vencimento) : "—"}</TableCell>
                     <TableCell><StatusBadge status={h.status} /></TableCell>
                     <TableCell>
                       {h.avulso && (
