@@ -328,7 +328,16 @@ export const useAppStore = create<AppState>()(
         })),
       addTeamMember: (member) =>
         set((s) => ({
-          team: [...s.team, { ...member, historico: [novaHistoricoEntry(s.team, "Cadastro criado")] }],
+          team: [
+            ...s.team,
+            {
+              ...member,
+              historico: [
+                novaHistoricoEntry(s.team, "Cadastro criado"),
+                ...(member.senhaDefinida === false ? [novaHistoricoEntry(s.team, "Convite de acesso gerado (senha temporária)")] : []),
+              ],
+            },
+          ],
         })),
       updateTeamMember: (memberId, patch) =>
         set((s) => ({

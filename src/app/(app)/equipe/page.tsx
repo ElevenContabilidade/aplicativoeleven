@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Mail, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +29,20 @@ export default function EquipePage() {
   const [perms, setPerms] = useState<Record<string, boolean>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   const selected = team.find((m) => m.id === selectedId);
+
+  async function copiarConvitePendente(m: TeamMember) {
+    const texto = `Acesso Eleven Hub\nE-mail: ${m.email}\nSenha temporária: ${m.senhaTemporaria ?? ""}`;
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiedInviteId(m.id);
+      setTimeout(() => setCopiedInviteId((cur) => (cur === m.id ? null : cur)), 2000);
+    } catch {
+      // clipboard indisponível — sem feedback visual nesse caso
+    }
+  }
 
   function defaultPerm(key: string, p: Record<string, boolean>) {
     if (key in p) return p[key];
@@ -96,9 +108,26 @@ export default function EquipePage() {
                   <AvatarFallback style={{ backgroundColor: `${m.avatarColor}1a`, color: m.avatarColor }}>{initials(m.nome)}</AvatarFallback>
                 </Avatar>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-sand-900">{m.nome}</span>
+                  <span className="flex items-center gap-1.5 truncate text-sm font-medium text-sand-900">
+                    {m.nome}
+                    {m.senhaDefinida === false && (
+                      <Badge variant="outline" className="border-status-warning/40 bg-status-warning-bg text-[10px] text-status-warning">
+                        Convite pendente
+                      </Badge>
+                    )}
+                  </span>
                   <span className="block truncate text-[11px] text-sand-500">{m.perfil}</span>
                 </span>
+                {m.senhaDefinida === false && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); copiarConvitePendente(m); }}
+                    title="Copiar credenciais do convite"
+                    className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-sand-100 hover:text-sand-700"
+                  >
+                    {copiedInviteId === m.id ? <Check className="size-3.5" /> : <Mail className="size-3.5" />}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openEdit(m); }}

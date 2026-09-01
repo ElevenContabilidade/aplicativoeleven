@@ -34,6 +34,11 @@ export interface TeamMember {
    * os clientes (padrão); preenchido = fica restrito só a esses. */
   clientesVinculados?: string[];
   historico?: HistoricoAcaoUsuario[];
+  /** Convite de acesso ainda não ativado pelo colaborador (senha temporária
+   * abaixo). Envio de e-mail real ainda não está configurado — por enquanto
+   * a senha é exibida na tela para quem cadastrou repassar manualmente. */
+  senhaDefinida?: boolean;
+  senhaTemporaria?: string;
 }
 
 export interface HistoricoAcaoUsuario {

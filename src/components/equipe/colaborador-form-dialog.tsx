@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,13 @@ const DEPARTAMENTOS: Departamento[] = [
   "Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento",
 ];
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
+
+function gerarSenhaTemporaria() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let out = "";
+  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
 
 export function ColaboradorFormDialog({
   open,
@@ -36,9 +44,19 @@ export function ColaboradorFormDialog({
   const [celular, setCelular] = useState(colaborador?.celular ?? "");
   const [perfil, setPerfil] = useState<PerfilEquipe>(colaborador?.perfil ?? "Comercial");
   const [departamentos, setDepartamentos] = useState<Departamento[]>(colaborador?.departamentos ?? []);
+  const [convite, setConvite] = useState<{ email: string; senha: string } | null>(null);
+  const [copiado, setCopiado] = useState(false);
 
   function toggleDepartamento(d: Departamento) {
     setDepartamentos((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
+  }
+
+  function handleClose(v: boolean) {
+    if (!v) {
+      setConvite(null);
+      setCopiado(false);
+    }
+    onOpenChange(v);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -53,19 +71,66 @@ export function ColaboradorFormDialog({
     };
     if (colaborador) {
       updateTeamMember(colaborador.id, patch);
+      onOpenChange(false);
     } else {
+      const senha = gerarSenhaTemporaria();
       addTeamMember({
         id: `u-${Date.now()}`,
         ...patch,
         avatarColor: AVATAR_COLORS[team.length % AVATAR_COLORS.length],
         ativo: true,
+        senhaDefinida: false,
+        senhaTemporaria: senha,
       });
+      // Ainda não temos envio de e-mail configurado — exibe o convite na
+      // tela pra quem cadastrou repassar manualmente pro colaborador.
+      setConvite({ email: patch.email, senha });
     }
-    onOpenChange(false);
+  }
+
+  async function copiarConvite() {
+    if (!convite) return;
+    const texto = `Acesso Eleven Hub\nE-mail: ${convite.email}\nSenha temporária: ${convite.senha}`;
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // clipboard indisponível — usuário copia manualmente pelo texto exibido
+    }
+  }
+
+  if (convite) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Convite gerado</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-xs">
+            <p className="text-sand-600">
+              O envio automático de e-mail ainda não está configurado. Copie as credenciais abaixo e repasse
+              manualmente para o colaborador — no primeiro acesso ele deve trocar essa senha temporária.
+            </p>
+            <div className="space-y-1.5 rounded-lg border border-sand-200 bg-sand-50 p-3">
+              <p><span className="text-sand-500">E-mail:</span> <span className="font-medium text-sand-900">{convite.email}</span></p>
+              <p><span className="text-sand-500">Senha temporária:</span> <span className="font-mono font-medium text-sand-900">{convite.senha}</span></p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={copiarConvite} className="gap-1.5">
+              {copiado ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+              {copiado ? "Copiado!" : "Copiar credenciais"}
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => handleClose(false)}>Concluir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{colaborador ? "Editar colaborador" : "Novo colaborador"}</DialogTitle>
@@ -106,7 +171,7 @@ export function ColaboradorFormDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
             <Button type="submit">{colaborador ? "Salvar alterações" : "Cadastrar colaborador"}</Button>
           </DialogFooter>
         </form>
