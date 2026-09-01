@@ -32,12 +32,24 @@ export default function EquipePage() {
 
   const selected = team.find((m) => m.id === selectedId);
 
-  function togglePerm(key: string) {
-    setPerms((p) => ({ ...p, [key]: !defaultPerm(key, p) }));
-  }
   function defaultPerm(key: string, p: Record<string, boolean>) {
     if (key in p) return p[key];
     return true;
+  }
+  // Desmarcar "Visualizar" de um módulo desmarca automaticamente as demais
+  // ações desse módulo (não faz sentido criar/editar/excluir/exportar algo
+  // que o usuário não pode nem visualizar).
+  function togglePerm(memberId: string, mod: string, acao: string) {
+    const key = `${memberId}-${mod}-${acao}`;
+    setPerms((p) => {
+      const next = { ...p, [key]: !defaultPerm(key, p) };
+      if (acao === "Visualizar" && !next[key]) {
+        for (const outra of ACOES) {
+          if (outra !== "Visualizar") next[`${memberId}-${mod}-${outra}`] = false;
+        }
+      }
+      return next;
+    });
   }
 
   function openNovo() {
@@ -159,7 +171,7 @@ export default function EquipePage() {
                             const key = `${selected.id}-${mod}-${a}`;
                             return (
                               <td key={a} className="px-2 py-2 text-center">
-                                <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(key)} />
+                                <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(selected.id, mod, a)} />
                               </td>
                             );
                           })}
@@ -177,7 +189,7 @@ export default function EquipePage() {
                             const key = `${selected.id}-${mod}-${a}`;
                             return (
                               <td key={a} className="px-2 py-2 text-center">
-                                <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(key)} />
+                                <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(selected.id, mod, a)} />
                               </td>
                             );
                           })}
@@ -193,6 +205,28 @@ export default function EquipePage() {
       </div>
 
       {selected && <EmpresasVinculadas key={selected.id} memberId={selected.id} />}
+
+      {selected && (
+        <Card className="mt-4">
+          <CardHeader><CardTitle>Histórico do cadastro</CardTitle></CardHeader>
+          <CardContent className="pt-4">
+            {selected.historico && selected.historico.length > 0 ? (
+              <ul className="space-y-2">
+                {[...selected.historico].reverse().map((h) => (
+                  <li key={h.id} className="flex items-center justify-between border-b border-sand-100 pb-2 text-xs last:border-0 last:pb-0">
+                    <span className="text-sand-800">{h.acao}</span>
+                    <span className="text-sand-400">
+                      {h.autor} · {new Date(h.data).toLocaleString("pt-BR")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-sand-400">Sem registros ainda.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <ColaboradorFormDialog key={editing?.id ?? "new"} open={formOpen} onOpenChange={setFormOpen} colaborador={editing} />
     </div>

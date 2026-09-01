@@ -33,6 +33,14 @@ export interface TeamMember {
   /** Clientes que esse colaborador pode visualizar. Vazio/ausente = vê todos
    * os clientes (padrão); preenchido = fica restrito só a esses. */
   clientesVinculados?: string[];
+  historico?: HistoricoAcaoUsuario[];
+}
+
+export interface HistoricoAcaoUsuario {
+  id: string;
+  acao: string;
+  autor: string;
+  data: string;
 }
 
 // ---------- Comercial / CRM ----------

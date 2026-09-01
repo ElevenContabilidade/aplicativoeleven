@@ -63,6 +63,7 @@ export default function ClientProfilePage() {
   const deleteClient = useAppStore((s) => s.deleteClient);
   const updateClientStatus = useAppStore((s) => s.updateClientStatus);
   const updateClientTags = useAppStore((s) => s.updateClientTags);
+  const updateClientResponsaveis = useAppStore((s) => s.updateClientResponsaveis);
   const { userId, kind } = useAuthStore();
   const team = useAppStore((s) => s.team);
   const [noteText, setNoteText] = useState("");
@@ -315,8 +316,19 @@ export default function ClientProfilePage() {
             <CardContent className="grid grid-cols-2 gap-3 pt-4 text-xs">
               {(["comercial", "relacionamento", "fiscal", "contabil", "pessoal", "societario", "financeiro"] as const).map((k) => (
                 <div key={k}>
-                  <p className="text-[10px] uppercase tracking-wide text-sand-400">{k}</p>
-                  <p className="font-medium text-sand-800">{client.responsaveis[k] ? teamName(client.responsaveis[k]!) : "—"}</p>
+                  <p className="mb-1 text-[10px] uppercase tracking-wide text-sand-400">{k}</p>
+                  <Select
+                    value={client.responsaveis[k] ?? "none"}
+                    onValueChange={(v) => updateClientResponsaveis(client.id, { [k]: v === "none" ? undefined : v })}
+                  >
+                    <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {team.filter((m) => m.ativo).map((m) => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ))}
             </CardContent>

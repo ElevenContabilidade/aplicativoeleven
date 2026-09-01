@@ -25,13 +25,31 @@ import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
 import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
+import { useAuthStore } from "@/lib/store/auth-store";
+
+/** Nome de quem está logado no momento, para registrar no histórico de
+ * ações do colaborador (quem criou/editou o quê). */
+function autorAtual(team: TeamMember[]): string {
+  const { kind, userId, email } = useAuthStore.getState();
+  if (kind === "equipe" && userId) {
+    const m = team.find((t) => t.id === userId);
+    if (m) return m.nome;
+  }
+  return email ?? "Sistema";
+}
+
+function novaHistoricoEntry(team: TeamMember[], acao: string): HistoricoAcaoUsuario {
+  return { id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, acao, autor: autorAtual(team), data: new Date().toISOString() };
+}
 import type {
   TeamMember,
+  HistoricoAcaoUsuario,
   Lead,
   LeadStage,
   Client,
   ClientStatus,
   DadosCadastrais,
+  Responsaveis,
   Socio,
   Contato,
   FinanceiroCliente,
@@ -111,6 +129,7 @@ interface AppState {
   updateTeamMember: (memberId: string, patch: Partial<TeamMember>) => void;
   deleteTeamMember: (memberId: string) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
+  updateClientResponsaveis: (clientId: string, patch: Partial<Responsaveis>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
   deleteSocio: (clientId: string, socioId: string) => void;
@@ -300,14 +319,35 @@ export const useAppStore = create<AppState>()(
       updateClientTags: (clientId, tags) =>
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
       updateTeamMemberClientes: (memberId, clientIds) =>
-        set((s) => ({ team: s.team.map((m) => (m.id === memberId ? { ...m, clientesVinculados: clientIds } : m)) })),
-      addTeamMember: (member) => set((s) => ({ team: [...s.team, member] })),
+        set((s) => ({
+          team: s.team.map((m) =>
+            m.id === memberId
+              ? { ...m, clientesVinculados: clientIds, historico: [...(m.historico ?? []), novaHistoricoEntry(s.team, "Empresas vinculadas atualizadas")] }
+              : m
+          ),
+        })),
+      addTeamMember: (member) =>
+        set((s) => ({
+          team: [...s.team, { ...member, historico: [novaHistoricoEntry(s.team, "Cadastro criado")] }],
+        })),
       updateTeamMember: (memberId, patch) =>
-        set((s) => ({ team: s.team.map((m) => (m.id === memberId ? { ...m, ...patch } : m)) })),
+        set((s) => ({
+          team: s.team.map((m) =>
+            m.id === memberId
+              ? { ...m, ...patch, historico: [...(m.historico ?? []), novaHistoricoEntry(s.team, "Dados atualizados")] }
+              : m
+          ),
+        })),
       deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
+        })),
+      updateClientResponsaveis: (clientId, patch) =>
+        set((s) => ({
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, responsaveis: { ...c.responsaveis, ...patch } } : c
+          ),
         })),
 
       addSocio: (clientId, socio) =>
