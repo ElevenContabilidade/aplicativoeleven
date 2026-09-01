@@ -32,6 +32,7 @@ interface Linha {
   recebido: boolean;
   dataRecebimento: string;
   valorRecebido: number;
+  banco: string;
 }
 
 type SortColumn = "cliente" | "valor" | "vencimento" | "status";
@@ -68,7 +69,13 @@ function SortableHead({
 export default function BoletosPage() {
   const clients = useAppStore((s) => s.clients);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
+  const recebimentos = useAppStore((s) => s.recebimentos);
   const updateBoleto = useAppStore((s) => s.updateBoleto);
+
+  const bancoOptions = useMemo(() => {
+    const usados = [...boletosMensais.map((b) => b.banco), ...recebimentos.map((r) => r.banco)].filter((b): b is string => !!b);
+    return [...new Set(usados)].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [boletosMensais, recebimentos]);
 
   const [busca, setBusca] = useState("");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
@@ -103,6 +110,7 @@ export default function BoletosPage() {
           recebido: entry?.recebido ?? false,
           dataRecebimento: entry?.dataRecebimento ?? "",
           valorRecebido: entry?.valorRecebido ?? valor,
+          banco: entry?.banco ?? "",
         });
       }
     }
@@ -202,6 +210,7 @@ export default function BoletosPage() {
                   <SortableHead label="Valor" column="valor" sort={sort} onSort={toggleSort} className="w-32" />
                   <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} className="w-40" />
                   <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
+                  <TableHead className="w-36">Banco</TableHead>
                   <TableHead className="w-24 text-center">Recebido</TableHead>
                   <TableHead className="w-40">Data recebimento</TableHead>
                   <TableHead className="w-32">Valor recebido</TableHead>
@@ -234,6 +243,15 @@ export default function BoletosPage() {
                       <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de emissão">
                         <StatusBadge status={l.status} className="cursor-pointer" />
                       </button>
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={l.banco}
+                        onChange={(e) => updateBoleto(l.cliente.id, l.competencia, { banco: e.target.value })}
+                        placeholder="Em qual banco"
+                        list="boletos-bancos"
+                        className="h-8 w-32 text-xs"
+                      />
                     </TableCell>
                     <TableCell className="text-center">
                       <Checkbox
@@ -278,10 +296,13 @@ export default function BoletosPage() {
                   </TableRow>
                 ))}
                 {sorted.length === 0 && (
-                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
                 )}
               </TableBody>
           </Table>
+          <datalist id="boletos-bancos">
+            {bancoOptions.map((b) => (<option key={b} value={b} />))}
+          </datalist>
         </CardContent>
       </Card>
     </div>

@@ -528,6 +528,8 @@ export interface BoletoMensal {
   dataRecebimento?: string; // "YYYY-MM-DD"
   /** Valor efetivamente recebido — pode diferir de "valor" por juros/multa ou desconto. */
   valorRecebido?: number;
+  /** Banco em que o boleto caiu — alimenta o filtro de banco do Financeiro. */
+  banco?: string;
 }
 
 // ---------- NFSe mensal ----------

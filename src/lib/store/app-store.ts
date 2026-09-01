@@ -135,7 +135,7 @@ interface AppState {
   updateBoleto: (
     clienteId: string,
     competencia: string,
-    patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido" | "recebido" | "dataRecebimento" | "valorRecebido">>
+    patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido" | "recebido" | "dataRecebimento" | "valorRecebido" | "banco">>
   ) => void;
   updateNotaFiscal: (clienteId: string, competencia: string, patch: Partial<Pick<NotaFiscalMensal, "status" | "valor" | "numeroNota" | "removido">>) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;

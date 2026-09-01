@@ -90,8 +90,9 @@ export default function FinanceiroPage() {
           vencimento,
           pagamento: b.dataRecebimento,
           status,
-          banco: undefined as string | undefined,
-          tipoPessoa: undefined as "PF" | "PJ" | undefined,
+          banco: b.banco,
+          // Boleto de assessoria mensal é sempre recebimento de pessoa jurídica.
+          tipoPessoa: "PJ" as const,
           avulso: false as const,
         };
       });
@@ -100,8 +101,11 @@ export default function FinanceiroPage() {
   }, [clients, recebimentos, boletosMensais]);
 
   const bancosDisponiveis = useMemo(
-    () => [...new Set(recebimentos.map((r) => r.banco).filter((b): b is string => !!b))].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [recebimentos]
+    () =>
+      [...new Set([...recebimentos.map((r) => r.banco), ...boletosMensais.map((b) => b.banco)].filter((b): b is string => !!b))].sort((a, b) =>
+        a.localeCompare(b, "pt-BR")
+      ),
+    [recebimentos, boletosMensais]
   );
 
   const ledgerFiltrado = ledgerAll.filter(
