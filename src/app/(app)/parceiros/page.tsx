@@ -52,23 +52,30 @@ export default function ParceirosPage() {
     [clients]
   );
 
-  const competencia = `${year}-${mes}`;
+  const competencias = mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`];
 
+  /** Cliente só entra a partir do mês de início do contrato — contrato
+   * começado em 09/2026 não aparece em competências anteriores. */
   const linhas: Linha[] = useMemo(() => {
     const entryMap = new Map(recebimentosParceiro.map((r) => [`${r.clienteId}__${r.competencia}`, r]));
-    return clientesParceiro
-      .map((cliente) => {
-        const entry = entryMap.get(`${cliente.id}__${competencia}`);
-        if (entry?.removido) return null;
-        return {
+    const list: Linha[] = [];
+    for (const cliente of clientesParceiro) {
+      const inicio = cliente.financeiro.inicioContrato?.slice(0, 7);
+      for (const comp of competencias) {
+        if (inicio && comp < inicio) continue;
+        const entry = entryMap.get(`${cliente.id}__${comp}`);
+        if (entry?.removido) continue;
+        list.push({
           cliente,
-          competencia,
+          competencia: comp,
           valor: entry?.valor ?? cliente.financeiro.valorMensal,
           status: entry?.status ?? "Em aberto",
-        };
-      })
-      .filter((l): l is Linha => l !== null);
-  }, [clientesParceiro, recebimentosParceiro, competencia]);
+        });
+      }
+    }
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientesParceiro, recebimentosParceiro, year, mes]);
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -89,12 +96,13 @@ export default function ParceirosPage() {
     return [...porParceiro.entries()]
       .map(([parceiro, linhas]) => ({
         parceiro,
-        linhas: linhas.sort((a, b) =>
-          (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
+        linhas: linhas.sort((a, b) => {
+          const nomeCompare = (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
             b.cliente.dados.nomeFantasia ?? b.cliente.dados.razaoSocial,
             "pt-BR"
-          )
-        ),
+          );
+          return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
+        }),
         total: linhas.reduce((sum, l) => sum + l.valor, 0),
       }))
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
@@ -136,6 +144,7 @@ export default function ParceirosPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
+        <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
         {MESES.map((m) => (
           <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
         ))}
@@ -144,7 +153,7 @@ export default function ParceirosPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Recebimentos de parceiros — {MESES.find((m) => m.value === mes)?.label}/{year}
+            Recebimentos de parceiros — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
@@ -152,6 +161,7 @@ export default function ParceirosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Empresa do parceiro</TableHead>
+                {mes === "anual" && <TableHead className="w-24">Competência</TableHead>}
                 <TableHead className="w-32">Valor</TableHead>
                 <TableHead className="w-36">Início do contrato</TableHead>
                 <TableHead className="w-32">Pagamento</TableHead>
@@ -160,13 +170,16 @@ export default function ParceirosPage() {
             {grupos.map((g) => (
               <TableBody key={g.parceiro}>
                 <TableRow className="bg-wine-50/60 hover:bg-wine-50/60">
-                  <TableCell colSpan={4} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
+                  <TableCell colSpan={mes === "anual" ? 5 : 4} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
                     {g.parceiro}
                   </TableCell>
                 </TableRow>
                 {g.linhas.map((l) => (
                   <TableRow key={`${l.cliente.id}-${l.competencia}`}>
                     <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
+                    {mes === "anual" && (
+                      <TableCell className="text-sand-500">{inicioContratoLabel(l.competencia)}</TableCell>
+                    )}
                     <TableCell>
                       <Input
                         type="number"
@@ -186,7 +199,8 @@ export default function ParceirosPage() {
                   </TableRow>
                 ))}
                 <TableRow className="bg-cream-100 hover:bg-cream-100">
-                  <TableCell className="font-semibold text-wine-700">Total {g.parceiro}</TableCell>
+                  <TableCell className="font-semibold text-wine-700">Total</TableCell>
+                  {mes === "anual" && <TableCell />}
                   <TableCell className="font-semibold text-wine-700">{formatCurrency(g.total)}</TableCell>
                   <TableCell />
                   <TableCell />
@@ -195,7 +209,7 @@ export default function ParceirosPage() {
             ))}
             {grupos.length === 0 && (
               <TableBody>
-                <TableRow><TableCell colSpan={4} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={mes === "anual" ? 5 : 4} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
               </TableBody>
             )}
           </Table>
