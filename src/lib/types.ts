@@ -191,6 +191,7 @@ export interface OnboardingChecklistItem {
 }
 
 export const ONBOARDING_TEMPLATE = [
+  "Cadastrar no aplicativo de gestão",
   "Criar Grupo do WhatsApp com logo do Cliente",
   "Fazer o contrato de prestação de serviços",
   "Verificar se o contrato contábil foi assinado",
