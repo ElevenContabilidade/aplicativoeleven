@@ -10,7 +10,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
-import type { Client, StatusPagamentoParceiro } from "@/lib/types";
+import type { Client, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -26,6 +26,8 @@ interface Linha {
   competencia: string;
   valor: number;
   status: StatusPagamentoParceiro;
+  banco: string;
+  tipoPessoa: TipoPessoaRecebimento | "";
 }
 
 function inicioContratoLabel(iso: string) {
@@ -38,7 +40,18 @@ function inicioContratoLabel(iso: string) {
 export default function ParceirosPage() {
   const clients = useAppStore((s) => s.clients);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const boletosMensais = useAppStore((s) => s.boletosMensais);
+  const recebimentos = useAppStore((s) => s.recebimentos);
   const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
+
+  const bancoOptions = useMemo(() => {
+    const usados = [
+      ...recebimentosParceiro.map((r) => r.banco),
+      ...boletosMensais.map((b) => b.banco),
+      ...recebimentos.map((r) => r.banco),
+    ].filter((b): b is string => !!b);
+    return [...new Set(usados)].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [recebimentosParceiro, boletosMensais, recebimentos]);
 
   const [busca, setBusca] = useState("");
   const [year, setYear] = useState(() => {
@@ -70,6 +83,8 @@ export default function ParceirosPage() {
           competencia: comp,
           valor: entry?.valor ?? cliente.financeiro.valorMensal,
           status: entry?.status ?? "Em aberto",
+          banco: entry?.banco ?? "",
+          tipoPessoa: entry?.tipoPessoa ?? "",
         });
       }
     }
@@ -163,13 +178,15 @@ export default function ParceirosPage() {
                 {mes === "anual" && <TableHead className="w-24">Competência</TableHead>}
                 <TableHead className="w-32">Valor</TableHead>
                 <TableHead className="w-36">Início do contrato</TableHead>
+                <TableHead className="w-36">Banco</TableHead>
+                <TableHead className="w-24">Tipo</TableHead>
                 <TableHead className="w-32">Pagamento</TableHead>
               </TableRow>
             </TableHeader>
             {grupos.map((g) => (
               <TableBody key={g.parceiro}>
                 <TableRow className="bg-wine-50/60 hover:bg-wine-50/60">
-                  <TableCell colSpan={mes === "anual" ? 5 : 4} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
+                  <TableCell colSpan={mes === "anual" ? 7 : 6} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
                     {g.parceiro}
                   </TableCell>
                 </TableRow>
@@ -191,6 +208,28 @@ export default function ParceirosPage() {
                     </TableCell>
                     <TableCell className="text-sand-500">{inicioContratoLabel(l.cliente.financeiro.inicioContrato)}</TableCell>
                     <TableCell>
+                      <Input
+                        value={l.banco}
+                        onChange={(e) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { banco: e.target.value })}
+                        placeholder="Em qual banco"
+                        list="parceiros-bancos"
+                        className="h-8 w-32 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={l.tipoPessoa || "—"}
+                        onValueChange={(v) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { tipoPessoa: v === "—" ? undefined : (v as TipoPessoaRecebimento) })}
+                      >
+                        <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="—">—</SelectItem>
+                          <SelectItem value="PF">PF</SelectItem>
+                          <SelectItem value="PJ">PJ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
                       <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de pagamento">
                         <StatusBadge status={l.status} className="cursor-pointer" />
                       </button>
@@ -203,15 +242,20 @@ export default function ParceirosPage() {
                   <TableCell className="font-semibold text-wine-700">{formatCurrency(g.total)}</TableCell>
                   <TableCell />
                   <TableCell />
+                  <TableCell />
+                  <TableCell />
                 </TableRow>
               </TableBody>
             ))}
             {grupos.length === 0 && (
               <TableBody>
-                <TableRow><TableCell colSpan={mes === "anual" ? 5 : 4} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={mes === "anual" ? 7 : 6} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
               </TableBody>
             )}
           </Table>
+          <datalist id="parceiros-bancos">
+            {bancoOptions.map((b) => (<option key={b} value={b} />))}
+          </datalist>
         </CardContent>
       </Card>
     </div>

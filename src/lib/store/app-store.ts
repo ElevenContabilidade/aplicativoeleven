@@ -107,6 +107,9 @@ interface AppState {
   updateClientStatus: (clientId: string, status: ClientStatus) => void;
   updateClientTags: (clientId: string, tags: string[]) => void;
   updateTeamMemberClientes: (memberId: string, clientIds: string[]) => void;
+  addTeamMember: (member: TeamMember) => void;
+  updateTeamMember: (memberId: string, patch: Partial<TeamMember>) => void;
+  deleteTeamMember: (memberId: string) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
@@ -144,7 +147,7 @@ interface AppState {
   updateRecebimentoParceiro: (
     clienteId: string,
     competencia: string,
-    patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido">>
+    patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
   ) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
@@ -298,6 +301,10 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
       updateTeamMemberClientes: (memberId, clientIds) =>
         set((s) => ({ team: s.team.map((m) => (m.id === memberId ? { ...m, clientesVinculados: clientIds } : m)) })),
+      addTeamMember: (member) => set((s) => ({ team: [...s.team, member] })),
+      updateTeamMember: (memberId, patch) =>
+        set((s) => ({ team: s.team.map((m) => (m.id === memberId ? { ...m, ...patch } : m)) })),
+      deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

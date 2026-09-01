@@ -25,6 +25,7 @@ export interface TeamMember {
   id: string;
   nome: string;
   email: string;
+  celular?: string;
   perfil: PerfilEquipe;
   departamentos: Departamento[];
   avatarColor: string;
@@ -582,6 +583,9 @@ export interface RecebimentoParceiroMensal {
   valor?: number;
   dataPagamento?: string; // "YYYY-MM-DD"
   removido?: boolean;
+  /** Banco em que o PIX caiu. */
+  banco?: string;
+  tipoPessoa?: TipoPessoaRecebimento;
 }
 
 // ---------- Certificados digitais ----------
