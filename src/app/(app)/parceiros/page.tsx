@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Handshake, CircleDollarSign, Clock, Search } from "lucide-react";
+import { Repeat, CircleDollarSign, Wallet, Search } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -108,9 +108,9 @@ export default function ParceirosPage() {
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
   }, [filtradas]);
 
-  const pagos = filtradas.filter((l) => l.status === "Pago").length;
-  const emAberto = filtradas.filter((l) => l.status === "Em aberto").length;
+  const mrr = clientesParceiro.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const totalRecebido = filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0);
+  const totalEmAberto = filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0);
 
   function toggleStatus(l: Linha) {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
@@ -123,11 +123,10 @@ export default function ParceirosPage() {
         description="Recebimentos via PIX das empresas de parceiros que a Eleven atende — não entram na emissão de boletos."
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <MetricCard label="Empresas no período" value={filtradas.length} icon={Handshake} tone="wine" />
-        <MetricCard label="Pagos" value={pagos} icon={CircleDollarSign} tone="success" />
-        <MetricCard label="Em aberto" value={emAberto} icon={Clock} tone="warning" />
-        <MetricCard label="Total recebido" value={formatCurrency(totalRecebido)} icon={CircleDollarSign} tone="success" />
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <MetricCard label="MRR" value={formatCurrency(mrr)} icon={Repeat} tone="wine" />
+        <MetricCard label="Recebido" value={formatCurrency(totalRecebido)} icon={CircleDollarSign} tone="success" />
+        <MetricCard label="Em aberto" value={formatCurrency(totalEmAberto)} icon={Wallet} tone="warning" />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
