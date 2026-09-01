@@ -71,6 +71,9 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
           municipio: "—",
           estado: "—",
           endereco: "—",
+          // Cadastro rápido só com o nome — fica de fora da tela de Clientes
+          // até alguém completar os dados de verdade no cadastro do cliente.
+          criadoViaSocietario: true,
         },
         socios: [],
         contatos: [],
@@ -170,7 +173,8 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
                   required
                 />
                 <p className="mt-1 text-[11px] text-sand-500">
-                  Cria um cadastro de cliente novo (status Onboarding). CNPJ e demais dados dá pra completar depois, direto no cadastro do cliente.
+                  Cria um cadastro de cliente novo (status Onboarding), mas ele não aparece na tela de Clientes até alguém completar
+                  CNPJ e demais dados de verdade lá no cadastro do cliente.
                 </p>
               </div>
             )}

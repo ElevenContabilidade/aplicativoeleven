@@ -72,7 +72,10 @@ export function CadastroForm({ client }: { client: Client }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    updateClientDados(client.id, form);
+    // Salvar o cadastro aqui é o sinal de que o cliente criado via fluxo
+    // rápido do Societário foi completado de verdade — passa a aparecer
+    // normalmente na tela de Clientes.
+    updateClientDados(client.id, { ...form, criadoViaSocietario: false });
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
   }

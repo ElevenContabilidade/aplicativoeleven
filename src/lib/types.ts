@@ -185,6 +185,10 @@ export interface DadosCadastrais {
   clienteParceiro?: boolean;
   nomeParceiro?: string;
   setoresAtendidos?: DepartamentoChave[];
+  /** Marcado quando este cadastro nasceu do fluxo rápido "novo cliente" do
+   * Societário (só nome, sem os demais dados) — fica de fora da tela de
+   * Clientes até alguém completar o cadastro de verdade lá. */
+  criadoViaSocietario?: boolean;
 }
 
 export interface OnboardingChecklistItem {

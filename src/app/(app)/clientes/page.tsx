@@ -61,13 +61,16 @@ export default function ClientesPage() {
   const authUserId = useAuthStore((s) => s.userId);
 
   /** Um colaborador com "empresas vinculadas" cadastradas em Equipe só vê
-   * essas — sem nenhuma vinculada, vê a carteira toda normalmente. */
+   * essas — sem nenhuma vinculada, vê a carteira toda normalmente. Clientes
+   * criados pelo fluxo rápido do Societário (só o nome, sem cadastro de
+   * verdade) ficam de fora até alguém completar o cadastro deles. */
   const clients = useMemo(() => {
-    if (authKind !== "equipe") return allClients;
+    const base = allClients.filter((c) => !c.dados.criadoViaSocietario);
+    if (authKind !== "equipe") return base;
     const vinculados = team.find((m) => m.id === authUserId)?.clientesVinculados;
-    if (!vinculados || vinculados.length === 0) return allClients;
+    if (!vinculados || vinculados.length === 0) return base;
     const allowed = new Set(vinculados);
-    return allClients.filter((c) => allowed.has(c.id));
+    return base.filter((c) => allowed.has(c.id));
   }, [allClients, team, authKind, authUserId]);
 
   const [query, setQuery] = useState("");
