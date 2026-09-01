@@ -14,7 +14,7 @@ import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-d
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/data/seed";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
-import { vencimentoDaCompetencia } from "@/lib/boleto";
+import { resolveBoletoLedger } from "@/lib/boleto";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const TODOS = "todos";
@@ -82,9 +82,7 @@ export default function FinanceiroPage() {
     const boletos = clients.flatMap((c) => {
       const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
       return emitidos.map((b) => {
-        const valor = b.recebido ? (b.valorRecebido ?? b.valor ?? c.financeiro.valorMensal) : (b.valor ?? c.financeiro.valorMensal);
-        const vencimento = b.vencimento ?? vencimentoDaCompetencia(b.competencia, c.financeiro.vencimentoDia);
-        const status: "Pago" | "Em aberto" | "Atrasado" = b.recebido ? "Pago" : vencimento < new Date().toISOString().slice(0, 10) ? "Atrasado" : "Em aberto";
+        const { valor, vencimento, pagamento, status } = resolveBoletoLedger(b, c);
         return {
           id: b.id,
           key: `boleto-${b.id}`,
@@ -93,7 +91,7 @@ export default function FinanceiroPage() {
           servico: "Boleto mensal",
           valor,
           vencimento,
-          pagamento: b.dataRecebimento,
+          pagamento,
           status,
           banco: b.banco,
           // Boleto de assessoria mensal é sempre recebimento de pessoa jurídica.

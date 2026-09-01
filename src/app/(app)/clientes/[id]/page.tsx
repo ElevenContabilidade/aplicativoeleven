@@ -31,6 +31,7 @@ import { teamName } from "@/lib/data/seed";
 import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro } from "@/lib/types";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
+import { resolveBoletoLedger } from "@/lib/boleto";
 import { toneFor } from "@/lib/status";
 import { cn, formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 
@@ -50,6 +51,8 @@ export default function ClientProfilePage() {
   const indicacoes = useAppStore((s) => s.indicacoes);
   const parcelamentos = useAppStore((s) => s.parcelamentos);
   const recebimentos = useAppStore((s) => s.recebimentos);
+  const boletosMensais = useAppStore((s) => s.boletosMensais);
+  const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const toggleOnboardingItem = useAppStore((s) => s.toggleOnboardingItem);
   const addAnotacao = useAppStore((s) => s.addAnotacao);
   const deleteLicenca = useAppStore((s) => s.deleteLicenca);
@@ -135,12 +138,22 @@ export default function ClientProfilePage() {
   const clienteRef = { nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj };
   const myParcelamentos = parcelamentos.filter((p) => parcelamentoPertenceAoCliente(p, clienteRef));
   const myRecebimentos = recebimentos.filter((r) => recebimentoPertenceAoCliente(r, clienteRef));
+  const myBoletos = boletosMensais.filter((b) => b.clienteId === client.id && b.status === "Emitido" && !b.removido);
+  const myRecebimentosParceiro = recebimentosParceiro.filter((r) => r.clienteId === client.id && !r.removido);
 
   // Honorários lançados manualmente aqui + recebimentos batidos automaticamente
-  // pelo CNPJ/CPF (ou nome) lá em Financeiro — assim que um recebimento é
-  // marcado como Pago, ele aparece aqui sem precisar cadastrar de novo.
+  // pelo CNPJ/CPF (ou nome) lá em Financeiro, boletos emitidos em Boletos e
+  // recebimentos via PIX em Parceiros — assim que qualquer um deles é
+  // marcado como pago, aparece aqui sem precisar cadastrar de novo. "atraso"
+  // marca quando o pagamento caiu depois do vencimento.
   const honorarios = [
-    ...client.historicoFinanceiro.map((h) => ({ ...h, key: `manual-${h.id}`, origem: "manual" as const, historico: h })),
+    ...client.historicoFinanceiro.map((h) => ({
+      ...h,
+      key: `manual-${h.id}`,
+      origem: "manual" as const,
+      historico: h,
+      atraso: !!(h.pagamento && h.vencimento && h.pagamento > h.vencimento),
+    })),
     ...myRecebimentos.map((r) => ({
       key: `financeiro-${r.id}`,
       competencia: r.competencia,
@@ -151,6 +164,34 @@ export default function ClientProfilePage() {
       status: r.status,
       origem: "financeiro" as const,
       historico: undefined,
+      atraso: !!(r.pagamento && r.vencimento && r.pagamento > r.vencimento),
+    })),
+    ...myBoletos.map((b) => {
+      const { valor, vencimento, pagamento, status, atraso } = resolveBoletoLedger(b, client);
+      return {
+        key: `boleto-${b.id}`,
+        competencia: b.competencia,
+        servico: "Boleto mensal",
+        valor,
+        vencimento,
+        pagamento,
+        status,
+        origem: "boleto" as const,
+        historico: undefined,
+        atraso,
+      };
+    }),
+    ...myRecebimentosParceiro.map((r) => ({
+      key: `parceiro-${r.id}`,
+      competencia: r.competencia,
+      servico: "Recebimento parceiro (PIX)",
+      valor: r.valor ?? client.financeiro.valorMensal,
+      vencimento: "",
+      pagamento: r.dataPagamento,
+      status: r.status,
+      origem: "parceiro" as const,
+      historico: undefined,
+      atraso: false,
     })),
   ].sort((a, b) => b.competencia.localeCompare(a.competencia));
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
@@ -506,8 +547,24 @@ export default function ClientProfilePage() {
                       <TableCell className="font-medium">{h.competencia}</TableCell>
                       <TableCell className="text-sand-500">{h.servico ?? "—"}</TableCell>
                       <TableCell>{formatCurrency(h.valor)}</TableCell>
-                      <TableCell>{formatDate(h.vencimento)}</TableCell>
-                      <TableCell>{h.pagamento ? formatDate(h.pagamento) : "—"}</TableCell>
+                      <TableCell>{h.vencimento ? formatDate(h.vencimento) : "—"}</TableCell>
+                      <TableCell>
+                        {h.pagamento ? (
+                          <div className="flex items-center gap-1.5">
+                            {formatDate(h.pagamento)}
+                            {h.atraso && (
+                              <span
+                                title="Pago com atraso (depois do vencimento)"
+                                className="rounded-full bg-status-danger-bg px-1.5 py-0.5 text-[10px] font-semibold uppercase text-status-danger"
+                              >
+                                Atraso
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
                       <TableCell><StatusBadge status={h.status} /></TableCell>
                       <TableCell>
                         {h.origem === "manual" ? (
@@ -524,6 +581,10 @@ export default function ClientProfilePage() {
                               <Trash2 className="size-3.5" />
                             </button>
                           </div>
+                        ) : h.origem === "boleto" ? (
+                          <Badge variant="outline" title="Vindo da emissão cadastrada em Boletos">Boleto</Badge>
+                        ) : h.origem === "parceiro" ? (
+                          <Badge variant="outline" title="Vindo do recebimento cadastrado em Parceiros">Parceiro</Badge>
                         ) : (
                           <Badge variant="outline" title="Vindo do recebimento cadastrado em Financeiro">Financeiro</Badge>
                         )}
