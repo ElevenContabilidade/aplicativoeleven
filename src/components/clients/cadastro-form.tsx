@@ -9,10 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import type { Client, DadosCadastrais } from "@/lib/types";
+import type { Client, DadosCadastrais, DepartamentoChave } from "@/lib/types";
 import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
 const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
+
+const SETORES: { value: DepartamentoChave; label: string }[] = [
+  { value: "fiscal", label: "Fiscal" },
+  { value: "contabil", label: "Contábil" },
+  { value: "pessoal", label: "Departamento Pessoal" },
+];
 
 export function CadastroForm({ client }: { client: Client }) {
   const updateClientDados = useAppStore((s) => s.updateClientDados);
@@ -24,6 +30,14 @@ export function CadastroForm({ client }: { client: Client }) {
 
   function set<K extends keyof DadosCadastrais>(key: K, value: DadosCadastrais[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  function toggleSetor(setor: DepartamentoChave) {
+    setForm((f) => {
+      const atual = f.setoresAtendidos ?? [];
+      const setoresAtendidos = atual.includes(setor) ? atual.filter((s) => s !== setor) : [...atual, setor];
+      return { ...f, setoresAtendidos };
+    });
   }
 
   async function buscarCnpj() {
@@ -171,6 +185,44 @@ export function CadastroForm({ client }: { client: Client }) {
           <Field label="Endereço" className="sm:col-span-2 lg:col-span-3">
             <Input value={form.endereco} onChange={(e) => set("endereco", e.target.value)} />
           </Field>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-sand-200 p-3 sm:col-span-2 lg:col-span-3">
+            <label className="flex items-center gap-2 text-xs font-medium text-sand-800">
+              <Checkbox
+                checked={form.clienteParceiro ?? false}
+                onCheckedChange={(v) => set("clienteParceiro", v === true)}
+              />
+              Cliente de parceiro (a Eleven presta só alguns setores)
+            </label>
+            {form.clienteParceiro && (
+              <div className="ml-6 flex flex-col gap-3">
+                <Field label="Nome do parceiro" className="max-w-sm">
+                  <Input
+                    value={form.nomeParceiro ?? ""}
+                    onChange={(e) => set("nomeParceiro", e.target.value)}
+                    placeholder="Ex: Contabilidade Fulano"
+                  />
+                </Field>
+                <div>
+                  <Label className="mb-1 block">Setores atendidos pela Eleven</Label>
+                  <div className="flex flex-wrap gap-4">
+                    {SETORES.map((s) => (
+                      <label key={s.value} className="flex items-center gap-2 text-xs text-sand-700">
+                        <Checkbox
+                          checked={(form.setoresAtendidos ?? []).includes(s.value)}
+                          onCheckedChange={() => toggleSetor(s.value)}
+                        />
+                        {s.label}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[11px] text-sand-400">
+                    Esse cliente só aparece nos checklists dos setores marcados aqui.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center gap-3 pt-2 sm:col-span-2 lg:col-span-3">
             <Button type="submit" size="sm">

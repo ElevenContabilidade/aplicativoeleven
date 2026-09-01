@@ -13,6 +13,7 @@ import {
   ROTINA_PESSOAL_ANUAL,
   possuiFuncionarios,
   rotinasPessoalMensalFor,
+  setorAtendidoPelaEleven,
   type ChecklistStatus,
   type Client,
 } from "@/lib/types";
@@ -60,7 +61,10 @@ export function PessoalChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
   const myClients = useMemo(
-    () => clients.filter((c) => c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding"),
+    () =>
+      clients.filter(
+        (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "pessoal")
+      ),
     [clients]
   );
 

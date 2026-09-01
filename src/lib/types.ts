@@ -175,6 +175,12 @@ export interface DadosCadastrais {
   /** Só faz sentido para regime MEI — libera as rotinas mensais fixas/variáveis
    * do Departamento Pessoal para quem tem folha de pagamento. */
   possuiFolhaMei?: boolean;
+  /** Marcado quando este cliente é de um parceiro (outro escritório) e a
+   * Eleven presta apenas alguns setores para ele — os demais checklists
+   * (Fiscal/Contábil/Departamento Pessoal) não listam esse cliente. */
+  clienteParceiro?: boolean;
+  nomeParceiro?: string;
+  setoresAtendidos?: DepartamentoChave[];
 }
 
 export interface OnboardingChecklistItem {
@@ -280,6 +286,14 @@ export interface TimelineEvent {
 }
 
 export type DepartamentoChave = "fiscal" | "contabil" | "pessoal";
+
+/** Um cliente normal é atendido por todos os setores. Cliente de parceiro só
+ * é atendido nos setores marcados em "setoresAtendidos" — os checklists dos
+ * demais setores nem listam esse cliente. */
+export function setorAtendidoPelaEleven(client: Pick<Client, "dados">, setor: DepartamentoChave): boolean {
+  if (!client.dados.clienteParceiro) return true;
+  return client.dados.setoresAtendidos?.includes(setor) ?? false;
+}
 
 export interface NotaDepartamento {
   nota: string;

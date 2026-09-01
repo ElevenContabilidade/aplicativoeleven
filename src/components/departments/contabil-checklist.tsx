@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -46,7 +46,10 @@ export function ContabilChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
   const myClients = useMemo(
-    () => clients.filter((c) => c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding"),
+    () =>
+      clients.filter(
+        (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "contabil")
+      ),
     [clients]
   );
 
