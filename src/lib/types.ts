@@ -563,6 +563,23 @@ export interface NotaFiscalMensal {
   removido?: boolean;
 }
 
+// ---------- Recebimentos de parceiros ----------
+
+export type StatusPagamentoParceiro = "Pago" | "Em aberto";
+
+/** Controle mensal do que os clientes de parceiro pagam via PIX — não entram
+ * em Boletos. Valor vem por padrão do cadastro financeiro do cliente
+ * (client.financeiro.valorMensal), mas pode ser ajustado por competência. */
+export interface RecebimentoParceiroMensal {
+  id: string;
+  clienteId: string;
+  competencia: string; // "YYYY-MM"
+  status: StatusPagamentoParceiro;
+  valor?: number;
+  dataPagamento?: string; // "YYYY-MM-DD"
+  removido?: boolean;
+}
+
 // ---------- Certificados digitais ----------
 
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;

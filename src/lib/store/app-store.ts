@@ -60,6 +60,7 @@ import type {
   StatusEnvioParcelamento,
   BoletoMensal,
   NotaFiscalMensal,
+  RecebimentoParceiroMensal,
 } from "@/lib/types";
 
 interface AppState {
@@ -83,6 +84,7 @@ interface AppState {
   enviosParcelamento: EnvioParcelamento[];
   boletosMensais: BoletoMensal[];
   notasFiscaisMensais: NotaFiscalMensal[];
+  recebimentosParceiro: RecebimentoParceiroMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -138,6 +140,11 @@ interface AppState {
     patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido" | "recebido" | "dataRecebimento" | "valorRecebido" | "banco">>
   ) => void;
   updateNotaFiscal: (clienteId: string, competencia: string, patch: Partial<Pick<NotaFiscalMensal, "status" | "valor" | "numeroNota" | "removido">>) => void;
+  updateRecebimentoParceiro: (
+    clienteId: string,
+    competencia: string,
+    patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido">>
+  ) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
@@ -191,6 +198,7 @@ const initial = {
   enviosParcelamento: ENVIOS_PARCELAMENTO,
   boletosMensais: [] as BoletoMensal[],
   notasFiscaisMensais: [] as NotaFiscalMensal[],
+  recebimentosParceiro: [] as RecebimentoParceiroMensal[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -277,6 +285,7 @@ export const useAppStore = create<AppState>()(
           licencas: s.licencas.filter((l) => l.clienteId !== clientId),
           indicacoes: s.indicacoes.filter((i) => i.clienteId !== clientId),
           boletosMensais: s.boletosMensais.filter((b) => b.clienteId !== clientId),
+          recebimentosParceiro: s.recebimentosParceiro.filter((r) => r.clienteId !== clientId),
           checklistContabil: s.checklistContabil.filter((e) => e.clienteId !== clientId),
           checklistFiscal: s.checklistFiscal.filter((e) => e.clienteId !== clientId),
           checklistPessoal: s.checklistPessoal.filter((e) => e.clienteId !== clientId),
@@ -452,6 +461,17 @@ export const useAppStore = create<AppState>()(
             notasFiscaisMensais: exists
               ? s.notasFiscaisMensais.map((n) => (n.id === id ? { ...n, ...patch } : n))
               : [...s.notasFiscaisMensais, { id, clienteId, competencia, status: "Não emitida", ...patch }],
+          };
+        }),
+
+      updateRecebimentoParceiro: (clienteId, competencia, patch) =>
+        set((s) => {
+          const id = `parc-${clienteId}-${competencia}`;
+          const exists = s.recebimentosParceiro.some((r) => r.id === id);
+          return {
+            recebimentosParceiro: exists
+              ? s.recebimentosParceiro.map((r) => (r.id === id ? { ...r, ...patch } : r))
+              : [...s.recebimentosParceiro, { id, clienteId, competencia, status: "Em aberto", ...patch }],
           };
         }),
 

@@ -85,7 +85,10 @@ export default function BoletosPage() {
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const clientesMensais = useMemo(() => clients.filter((c) => c.financeiro.valorMensal > 0), [clients]);
+  const clientesMensais = useMemo(
+    () => clients.filter((c) => c.financeiro.valorMensal > 0 && !c.dados.clienteParceiro),
+    [clients]
+  );
 
   function toggleSort(column: SortColumn) {
     setSort((s) => (s?.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));

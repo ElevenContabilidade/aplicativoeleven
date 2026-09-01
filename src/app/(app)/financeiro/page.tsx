@@ -54,10 +54,11 @@ export default function FinanceiroPage() {
   }, []);
 
   /** MRR = soma das assessorias mensais dos clientes que aparecem na aba
-   * Boletos (mesma regra de lá: valorMensal > 0) — um cliente cadastrado com
-   * assessoria mensal já entra automaticamente no MRR e em Boletos, mesmo
-   * antes de virar "Ativo". */
-  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0);
+   * Boletos (mesma regra de lá: valorMensal > 0, exceto clientes de
+   * parceiro — esses pagam via PIX e entram no Financeiro pela aba
+   * Parceiros) — um cliente cadastrado com assessoria mensal já entra
+   * automaticamente no MRR e em Boletos, mesmo antes de virar "Ativo". */
+  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0 && !c.dados.clienteParceiro);
   const mrr = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const ticketMedio = clientesAssessoriaMensal.length ? mrr / clientesAssessoriaMensal.length : 0;
 
