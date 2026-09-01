@@ -29,6 +29,9 @@ export interface TeamMember {
   departamentos: Departamento[];
   avatarColor: string;
   ativo: boolean;
+  /** Clientes que esse colaborador pode visualizar. Vazio/ausente = vê todos
+   * os clientes (padrão); preenchido = fica restrito só a esses. */
+  clientesVinculados?: string[];
 }
 
 // ---------- Comercial / CRM ----------

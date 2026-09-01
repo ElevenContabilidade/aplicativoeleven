@@ -106,6 +106,7 @@ interface AppState {
   deleteClient: (clientId: string) => void;
   updateClientStatus: (clientId: string, status: ClientStatus) => void;
   updateClientTags: (clientId: string, tags: string[]) => void;
+  updateTeamMemberClientes: (memberId: string, clientIds: string[]) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
@@ -295,6 +296,8 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) })),
       updateClientTags: (clientId, tags) =>
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
+      updateTeamMemberClientes: (memberId, clientIds) =>
+        set((s) => ({ team: s.team.map((m) => (m.id === memberId ? { ...m, clientesVinculados: clientIds } : m)) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

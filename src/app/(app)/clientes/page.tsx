@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/data/seed";
 import { CLIENT_STATUS, type Client, type ClientStatus } from "@/lib/types";
 import { formatCurrency, initials, cn } from "@/lib/utils";
@@ -54,7 +55,21 @@ function groupKey(client: Client, view: ViewMode): string {
 }
 
 export default function ClientesPage() {
-  const clients = useAppStore((s) => s.clients);
+  const allClients = useAppStore((s) => s.clients);
+  const team = useAppStore((s) => s.team);
+  const authKind = useAuthStore((s) => s.kind);
+  const authUserId = useAuthStore((s) => s.userId);
+
+  /** Um colaborador com "empresas vinculadas" cadastradas em Equipe só vê
+   * essas — sem nenhuma vinculada, vê a carteira toda normalmente. */
+  const clients = useMemo(() => {
+    if (authKind !== "equipe") return allClients;
+    const vinculados = team.find((m) => m.id === authUserId)?.clientesVinculados;
+    if (!vinculados || vinculados.length === 0) return allClients;
+    const allowed = new Set(vinculados);
+    return allClients.filter((c) => allowed.has(c.id));
+  }, [allClients, team, authKind, authUserId]);
+
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"Todos" | ClientStatus>("Todos");
   const [view, setView] = useState<ViewMode>("quadro");

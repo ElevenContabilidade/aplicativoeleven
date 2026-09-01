@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { EmpresasVinculadas } from "@/components/equipe/empresas-vinculadas";
 import { useAppStore } from "@/lib/store/app-store";
 import { initials } from "@/lib/utils";
 
@@ -126,6 +127,8 @@ export default function EquipePage() {
           </CardContent>
         </Card>
       </div>
+
+      {selected && <EmpresasVinculadas key={selected.id} memberId={selected.id} />}
     </div>
   );
 }

@@ -63,7 +63,8 @@ export default function ClientProfilePage() {
   const deleteClient = useAppStore((s) => s.deleteClient);
   const updateClientStatus = useAppStore((s) => s.updateClientStatus);
   const updateClientTags = useAppStore((s) => s.updateClientTags);
-  const { userId } = useAuthStore();
+  const { userId, kind } = useAuthStore();
+  const team = useAppStore((s) => s.team);
   const [noteText, setNoteText] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
@@ -123,6 +124,15 @@ export default function ClientProfilePage() {
     return (
       <div className="py-20 text-center text-sand-400">
         Cliente não encontrado. <Link href="/clientes" className="text-wine-700 hover:underline">Voltar</Link>
+      </div>
+    );
+  }
+
+  const vinculados = kind === "equipe" ? team.find((m) => m.id === userId)?.clientesVinculados : undefined;
+  if (vinculados && vinculados.length > 0 && !vinculados.includes(client.id)) {
+    return (
+      <div className="py-20 text-center text-sand-400">
+        Você não tem acesso a este cliente. <Link href="/clientes" className="text-wine-700 hover:underline">Voltar</Link>
       </div>
     );
   }
