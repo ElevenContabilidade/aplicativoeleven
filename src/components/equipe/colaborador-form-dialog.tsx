@@ -215,6 +215,10 @@ export function ColaboradorFormDialog({
           </div>
           <div>
             <Label className="mb-1.5 block">Departamentos</Label>
+            <p className="mb-1.5 text-[11px] text-sand-500">
+              Só pra referência interna (aparece no perfil do colaborador). Não controla o que ele consegue acessar —
+              isso é feito na tabela de Permissões, na tela de Equipe.
+            </p>
             <div className="flex flex-wrap gap-3">
               {DEPARTAMENTOS.map((d) => (
                 <label key={d} className="flex items-center gap-2 text-xs text-sand-700">
