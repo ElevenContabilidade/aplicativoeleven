@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
+import { permissoesIniciaisBloqueadas } from "@/lib/permissoes";
 import type { TeamMember, PerfilEquipe, Departamento } from "@/lib/types";
 
 const PERFIS: PerfilEquipe[] = [
@@ -32,6 +33,7 @@ export function ColaboradorFormDialog({
   const team = useAppStore((s) => s.team);
   const addTeamMember = useAppStore((s) => s.addTeamMember);
   const updateTeamMember = useAppStore((s) => s.updateTeamMember);
+  const updatePermissoes = useAppStore((s) => s.updatePermissoes);
 
   const [nome, setNome] = useState(colaborador?.nome ?? "");
   const [email, setEmail] = useState(colaborador?.email ?? "");
@@ -99,14 +101,18 @@ export function ColaboradorFormDialog({
       onOpenChange(false);
     } else {
       const senha = gerarSenhaTemporaria();
+      const novoId = `u-${Date.now()}`;
       addTeamMember({
-        id: `u-${Date.now()}`,
+        id: novoId,
         ...patch,
         avatarColor: AVATAR_COLORS[team.length % AVATAR_COLORS.length],
         ativo: true,
         senhaDefinida: false,
         senhaTemporaria: senha,
       });
+      // Colaborador novo nasce sem acesso a nenhum módulo — quem cadastra
+      // marca explicitamente o que ele pode ver em Equipe > Permissões.
+      updatePermissoes(permissoesIniciaisBloqueadas(novoId));
       setConvite({ email: patch.email, senha });
       void enviarConvitePorEmail(patch.nome, patch.email, senha);
     }

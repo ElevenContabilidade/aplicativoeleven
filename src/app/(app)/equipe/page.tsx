@@ -14,15 +14,9 @@ import { EmpresasVinculadas } from "@/components/equipe/empresas-vinculadas";
 import { ColaboradorFormDialog } from "@/components/equipe/colaborador-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
-import { temPermissao } from "@/lib/permissoes";
+import { temPermissao, MODULOS_OPERACAO, MODULOS_GESTAO, ACOES } from "@/lib/permissoes";
 import type { TeamMember } from "@/lib/types";
 import { initials } from "@/lib/utils";
-
-const MODULOS_OPERACAO = [
-  "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Fiscal", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
-];
-const MODULOS_GESTAO = ["Financeiro", "Boletos", "NFSe", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
-const ACOES = ["Visualizar", "Criar", "Editar", "Excluir", "Exportar"];
 
 export default function EquipePage() {
   const team = useAppStore((s) => s.team);
@@ -194,6 +188,11 @@ export default function EquipePage() {
           <CardContent className="pt-4">
             {selected && (
               <>
+                {[...MODULOS_OPERACAO, ...MODULOS_GESTAO].every((mod) => !temPermissao(perms, selected.id, mod, "Visualizar")) && (
+                  <p className="mb-3 rounded-lg border border-status-warning/40 bg-status-warning-bg px-3 py-2 text-xs text-status-warning">
+                    {selected.nome} ainda não tem acesso a nenhum módulo. Marque abaixo o que ele(a) pode ver.
+                  </p>
+                )}
                 <div className="mb-4 flex flex-wrap items-center gap-3">
                   <div className="min-w-0">
                     <p className="text-xs text-sand-500">{selected.email}</p>
