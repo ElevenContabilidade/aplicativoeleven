@@ -42,6 +42,7 @@ export function ColaboradorFormDialog({
   const [copiado, setCopiado] = useState(false);
   const [envioStatus, setEnvioStatus] = useState<"enviando" | "enviado" | "nao_configurado" | "erro" | null>(null);
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
+  const [emailErro, setEmailErro] = useState<string | null>(null);
 
   function toggleDepartamento(d: Departamento) {
     setDepartamentos((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
@@ -53,6 +54,7 @@ export function ColaboradorFormDialog({
       setCopiado(false);
       setEnvioStatus(null);
       setErroDetalhe(null);
+      setEmailErro(null);
     }
     onOpenChange(v);
   }
@@ -78,6 +80,13 @@ export function ColaboradorFormDialog({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim() || !email.trim()) return;
+    const emailNormalizado = email.trim().toLowerCase();
+    const duplicado = team.some((m) => m.email.toLowerCase() === emailNormalizado && m.id !== colaborador?.id);
+    if (duplicado) {
+      setEmailErro("Já existe um colaborador cadastrado com esse e-mail.");
+      return;
+    }
+    setEmailErro(null);
     const patch = {
       nome: nome.trim(),
       email: email.trim(),
@@ -180,7 +189,14 @@ export function ColaboradorFormDialog({
             </div>
             <div>
               <Label className="mb-1 block">E-mail *</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@eleven.com.br" required />
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setEmailErro(null); }}
+                placeholder="nome@eleven.com.br"
+                required
+              />
+              {emailErro && <p className="mt-1 text-[11px] text-status-danger">{emailErro}</p>}
             </div>
             <div>
               <Label className="mb-1 block">Celular</Label>

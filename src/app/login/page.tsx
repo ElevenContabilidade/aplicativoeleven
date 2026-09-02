@@ -34,10 +34,13 @@ export default function LoginPage() {
     setError("");
     if (tab === "equipe") {
       const trimmedEmail = email.trim();
-      const member = team.find((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
+      const candidatos = team.filter((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
       // Colaboradores cadastrados via convite (senhaDefinida true/false) têm
       // senha real pra checar; contas antigas de demonstração (sem convite)
-      // continuam entrando só com o e-mail, sem quebrar quem já usa o app.
+      // continuam entrando só com o e-mail. Se houver mais de um cadastro
+      // com o mesmo e-mail (duplicado), prioriza o que bate a senha.
+      const member =
+        candidatos.find((m) => m.senhaDefinida === undefined || m.senhaTemporaria === password) ?? candidatos[0];
       if (!member || (member.senhaDefinida !== undefined && member.senhaTemporaria !== password)) {
         setError("E-mail ou senha inválidos.");
         return;
