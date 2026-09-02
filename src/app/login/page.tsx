@@ -8,19 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { TEAM, CLIENTS } from "@/lib/data/seed";
+import { useAppStore } from "@/lib/store/app-store";
 
 type Tab = "equipe" | "cliente";
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const team = useAppStore((s) => s.team);
+  const clients = useAppStore((s) => s.clients);
+  const updateTeamMember = useAppStore((s) => s.updateTeamMember);
   const [tab, setTab] = useState<Tab>("equipe");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [teamMemberId, setTeamMemberId] = useState(TEAM[0].id);
-  const [clientId, setClientId] = useState(CLIENTS[0].id);
+  const [clientId, setClientId] = useState(clients[0]?.id ?? "");
   const [error, setError] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
@@ -31,7 +33,19 @@ export default function LoginPage() {
     }
     setError("");
     if (tab === "equipe") {
-      login("equipe", email, teamMemberId);
+      const trimmedEmail = email.trim();
+      const member = team.find((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
+      // Colaboradores cadastrados via convite (senhaDefinida true/false) têm
+      // senha real pra checar; contas antigas de demonstração (sem convite)
+      // continuam entrando só com o e-mail, sem quebrar quem já usa o app.
+      if (!member || (member.senhaDefinida !== undefined && member.senhaTemporaria !== password)) {
+        setError("E-mail ou senha inválidos.");
+        return;
+      }
+      if (member.senhaDefinida === false) {
+        updateTeamMember(member.id, { senhaDefinida: true });
+      }
+      login("equipe", trimmedEmail, member.id);
       router.push("/dashboard");
     } else {
       login("cliente", email, clientId);
@@ -130,39 +144,26 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="entity">{tab === "equipe" ? "Entrar como (demo)" : "Empresa (demo)"}</Label>
-              <div className="relative">
-                <Building2 className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-                {tab === "equipe" ? (
-                  <select
-                    id="entity"
-                    value={teamMemberId}
-                    onChange={(e) => setTeamMemberId(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-sand-300 bg-white pl-9 pr-3 text-sm text-sand-900 outline-none focus:border-wine-500 focus:ring-2 focus:ring-wine-100"
-                  >
-                    {TEAM.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.nome} — {m.perfil}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
+            {tab === "cliente" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="entity">Empresa (demo)</Label>
+                <div className="relative">
+                  <Building2 className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
                   <select
                     id="entity"
                     value={clientId}
                     onChange={(e) => setClientId(e.target.value)}
                     className="h-9 w-full rounded-lg border border-sand-300 bg-white pl-9 pr-3 text-sm text-sand-900 outline-none focus:border-wine-500 focus:ring-2 focus:ring-wine-100"
                   >
-                    {CLIENTS.map((c) => (
+                    {clients.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.dados.nomeFantasia ?? c.dados.razaoSocial}
                       </option>
                     ))}
                   </select>
-                )}
+                </div>
               </div>
-            </div>
+            )}
 
             {error && <p className="text-xs font-medium text-status-danger">{error}</p>}
 

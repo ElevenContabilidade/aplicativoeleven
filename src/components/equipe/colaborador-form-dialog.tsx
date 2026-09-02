@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
 import type { TeamMember, PerfilEquipe, Departamento } from "@/lib/types";
 
 const PERFIS: PerfilEquipe[] = [
@@ -18,13 +19,6 @@ const DEPARTAMENTOS: Departamento[] = [
   "Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento",
 ];
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
-
-function gerarSenhaTemporaria() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let out = "";
-  for (let i = 0; i < 10; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
 
 export function ColaboradorFormDialog({
   open,

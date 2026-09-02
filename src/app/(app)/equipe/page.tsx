@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Mail, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Mail, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { EmpresasVinculadas } from "@/components/equipe/empresas-vinculadas";
 import { ColaboradorFormDialog } from "@/components/equipe/colaborador-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
+import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
 import type { TeamMember } from "@/lib/types";
 import { initials } from "@/lib/utils";
 
@@ -29,19 +30,37 @@ export default function EquipePage() {
   const [perms, setPerms] = useState<Record<string, boolean>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
-  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<Record<string, "enviando" | "enviado" | "copiado">>({});
 
   const selected = team.find((m) => m.id === selectedId);
 
-  async function copiarConvitePendente(m: TeamMember) {
-    const texto = `Acesso Eleven Hub\nE-mail: ${m.email}\nSenha temporária: ${m.senhaTemporaria ?? ""}`;
+  async function reenviarConvite(m: TeamMember) {
+    setResendStatus((s) => ({ ...s, [m.id]: "enviando" }));
+    const novaSenha = gerarSenhaTemporaria();
+    updateTeamMember(m.id, { senhaTemporaria: novaSenha });
+    let enviado = false;
     try {
-      await navigator.clipboard.writeText(texto);
-      setCopiedInviteId(m.id);
-      setTimeout(() => setCopiedInviteId((cur) => (cur === m.id ? null : cur)), 2000);
+      const res = await fetch("/api/colaboradores/convite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: m.nome, email: m.email, senha: novaSenha }),
+      });
+      const data = await res.json();
+      enviado = !!data.sent;
     } catch {
-      // clipboard indisponível — sem feedback visual nesse caso
+      enviado = false;
     }
+    if (enviado) {
+      setResendStatus((s) => ({ ...s, [m.id]: "enviado" }));
+    } else {
+      try {
+        await navigator.clipboard.writeText(`Acesso Eleven Hub\nE-mail: ${m.email}\nSenha temporária: ${novaSenha}`);
+      } catch {
+        // clipboard indisponível
+      }
+      setResendStatus((s) => ({ ...s, [m.id]: "copiado" }));
+    }
+    setTimeout(() => setResendStatus((s) => { const rest = { ...s }; delete rest[m.id]; return rest; }), 2500);
   }
 
   function defaultPerm(key: string, p: Record<string, boolean>) {
@@ -121,11 +140,24 @@ export default function EquipePage() {
                 {m.senhaDefinida === false && (
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); copiarConvitePendente(m); }}
-                    title="Copiar credenciais do convite"
-                    className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-sand-100 hover:text-sand-700"
+                    onClick={(e) => { e.stopPropagation(); reenviarConvite(m); }}
+                    disabled={resendStatus[m.id] === "enviando"}
+                    title={
+                      resendStatus[m.id] === "enviado"
+                        ? "E-mail reenviado!"
+                        : resendStatus[m.id] === "copiado"
+                          ? "Envio automático indisponível — credenciais copiadas"
+                          : "Reenviar e-mail de convite"
+                    }
+                    className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-sand-100 hover:text-sand-700 disabled:opacity-60"
                   >
-                    {copiedInviteId === m.id ? <Check className="size-3.5" /> : <Mail className="size-3.5" />}
+                    {resendStatus[m.id] === "enviando" ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : resendStatus[m.id] === "enviado" || resendStatus[m.id] === "copiado" ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Mail className="size-3.5" />
+                    )}
                   </button>
                 )}
                 <button
