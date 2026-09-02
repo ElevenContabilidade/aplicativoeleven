@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { TEAM, CLIENTS } from "@/lib/data/seed";
 import type { Departamento, Task, TaskPrioridade } from "@/lib/types";
 
 const DEPARTAMENTOS: Departamento[] = ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"];
@@ -17,19 +16,21 @@ const PRIORIDADES: TaskPrioridade[] = ["Baixa", "Normal", "Alta", "Urgente"];
 
 export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addTask = useAppStore((s) => s.addTask);
+  const team = useAppStore((s) => s.team);
+  const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [clienteId, setClienteId] = useState<string>("none");
   const [departamento, setDepartamento] = useState<Departamento>("Fiscal");
-  const [responsavelId, setResponsavelId] = useState(userId ?? TEAM[0].id);
+  const [responsavelId, setResponsavelId] = useState(userId ?? team[0]?.id ?? "");
   const [prioridade, setPrioridade] = useState<TaskPrioridade>("Normal");
   const [prazo, setPrazo] = useState(new Date().toISOString().slice(0, 10));
 
   function reset() {
     setTitulo(""); setDescricao(""); setClienteId("none"); setDepartamento("Fiscal");
-    setResponsavelId(userId ?? TEAM[0].id); setPrioridade("Normal"); setPrazo(new Date().toISOString().slice(0, 10));
+    setResponsavelId(userId ?? team[0]?.id ?? ""); setPrioridade("Normal"); setPrazo(new Date().toISOString().slice(0, 10));
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -75,7 +76,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Nenhum (interno)</SelectItem>
-                  {CLIENTS.map((c) => (
+                  {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
                   ))}
                 </SelectContent>
@@ -97,7 +98,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               <Select value={responsavelId} onValueChange={setResponsavelId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TEAM.map((m) => (
+                  {team.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
                   ))}
                 </SelectContent>

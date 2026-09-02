@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EleveMark } from "@/components/brand/logo";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamMember } from "@/lib/data/seed";
+import { teamMember } from "@/lib/team-lookup";
 import { initials } from "@/lib/utils";
 
 export default function ConfiguracoesPage() {

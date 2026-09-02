@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { DocumentUploadDialog, DOCUMENT_CATEGORIAS } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { formatDate, cn } from "@/lib/utils";
 
 type SortColumn = "nome" | "cliente" | "categoria" | "data" | "responsavel" | "tamanho";

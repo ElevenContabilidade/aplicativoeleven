@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function ClientPortalPage() {

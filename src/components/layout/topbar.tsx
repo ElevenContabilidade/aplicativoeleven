@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamMember } from "@/lib/data/seed";
+import { teamMember } from "@/lib/team-lookup";
 import { initials } from "@/lib/utils";
 
 export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {

@@ -24,7 +24,7 @@ import type {
 const AVATAR_COLORS = ["#5C1420", "#8A2F3E", "#B4791F", "#3E6B8A", "#2E7D53", "#711F2C"];
 
 export const TEAM: TeamMember[] = [
-  { id: "u1", nome: "Kauane Gomes", email: "kauane@eleven.com.br", perfil: "Administrador", departamentos: ["Comercial", "Relacionamento", "Financeiro"], avatarColor: AVATAR_COLORS[0], ativo: true },
+  { id: "u1", nome: "Kauane Gomes", email: "kauanegomescontadora@gmail.com", perfil: "Administrador", departamentos: ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"], avatarColor: AVATAR_COLORS[0], ativo: true },
   { id: "u2", nome: "Isabel Ramos (Bel)", email: "bel@eleven.com.br", perfil: "Gestor", departamentos: ["Fiscal", "Contábil"], avatarColor: AVATAR_COLORS[1], ativo: true },
   { id: "u3", nome: "Rafael Souza", email: "rafael@eleven.com.br", perfil: "Comercial", departamentos: ["Comercial"], avatarColor: AVATAR_COLORS[2], ativo: true },
   { id: "u4", nome: "Marina Duarte", email: "marina@eleven.com.br", perfil: "Fiscal", departamentos: ["Fiscal"], avatarColor: AVATAR_COLORS[3], ativo: true },

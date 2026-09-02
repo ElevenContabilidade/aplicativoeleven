@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import type { TimelineEvent } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 

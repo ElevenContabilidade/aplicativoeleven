@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { LeadDetailDialog } from "@/components/crm/lead-detail-dialog";
 import { LeadFormDialog } from "@/components/crm/lead-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { LEAD_STAGES, type Lead } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 

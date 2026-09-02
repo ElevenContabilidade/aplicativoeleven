@@ -107,7 +107,11 @@ interface AppState {
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
   checklistMei: ChecklistEntry[];
+  /** Matriz de permissões por colaborador, chave `${memberId}-${modulo}-${acao}`
+   * (mesmo formato usado na tela de Equipe). Ausência de chave = liberado. */
+  permissoes: Record<string, boolean>;
 
+  updatePermissoes: (patch: Record<string, boolean>) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -226,6 +230,7 @@ const initial = {
   checklistFiscal: [],
   checklistPessoal: [],
   checklistMei: [],
+  permissoes: {},
 };
 
 export const useAppStore = create<AppState>()(
@@ -348,6 +353,7 @@ export const useAppStore = create<AppState>()(
           ),
         })),
       deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
+      updatePermissoes: (patch) => set((s) => ({ permissoes: { ...s.permissoes, ...patch } })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
@@ -797,6 +803,20 @@ export const useAppStore = create<AppState>()(
             ...((state.enviosParcelamento as EnvioParcelamento[]) ?? []),
             ...legacyEnvios.filter((e) => !existingEnvioIds.has(e.id)),
           ];
+        }
+        // A conta "u1" (Kauane Gomes) é a sócia/chefe e deve enxergar todos os
+        // setores — corrige o e-mail de demonstração pro e-mail real dela em
+        // qualquer navegador que já tinha o cadastro antigo persistido.
+        if (state?.team) {
+          state.team = state.team.map((m) =>
+            m.id === "u1" && m.email === "kauane@eleven.com.br"
+              ? {
+                  ...m,
+                  email: "kauanegomescontadora@gmail.com",
+                  departamentos: ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"],
+                }
+              : m
+          );
         }
         return state;
       },

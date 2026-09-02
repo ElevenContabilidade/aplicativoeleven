@@ -14,20 +14,24 @@ import { EmpresasVinculadas } from "@/components/equipe/empresas-vinculadas";
 import { ColaboradorFormDialog } from "@/components/equipe/colaborador-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
+import { temPermissao } from "@/lib/permissoes";
 import type { TeamMember } from "@/lib/types";
 import { initials } from "@/lib/utils";
 
-const MODULOS_OPERACAO = ["Comercial", "Clientes", "Tarefas", "Obrigações", "Fiscal", "Contábil", "Financeiro", "Documentos"];
-const MODULOS_GESTAO = ["Boletos", "NFSe", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
+const MODULOS_OPERACAO = [
+  "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Fiscal", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
+];
+const MODULOS_GESTAO = ["Financeiro", "Boletos", "NFSe", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
 const ACOES = ["Visualizar", "Criar", "Editar", "Excluir", "Exportar"];
 
 export default function EquipePage() {
   const team = useAppStore((s) => s.team);
   const deleteTeamMember = useAppStore((s) => s.deleteTeamMember);
   const updateTeamMember = useAppStore((s) => s.updateTeamMember);
+  const perms = useAppStore((s) => s.permissoes);
+  const updatePermissoes = useAppStore((s) => s.updatePermissoes);
   const [selectedId, setSelectedId] = useState(team[0]?.id);
   const [activeMap, setActiveMap] = useState<Record<string, boolean>>(Object.fromEntries(team.map((m) => [m.id, m.ativo])));
-  const [perms, setPerms] = useState<Record<string, boolean>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [resendStatus, setResendStatus] = useState<Record<string, "enviando" | "enviado" | "copiado">>({});
@@ -64,23 +68,20 @@ export default function EquipePage() {
   }
 
   function defaultPerm(key: string, p: Record<string, boolean>) {
-    if (key in p) return p[key];
-    return true;
+    return key in p ? p[key] : true;
   }
   // Desmarcar "Visualizar" de um módulo desmarca automaticamente as demais
   // ações desse módulo (não faz sentido criar/editar/excluir/exportar algo
   // que o usuário não pode nem visualizar).
   function togglePerm(memberId: string, mod: string, acao: string) {
     const key = `${memberId}-${mod}-${acao}`;
-    setPerms((p) => {
-      const next = { ...p, [key]: !defaultPerm(key, p) };
-      if (acao === "Visualizar" && !next[key]) {
-        for (const outra of ACOES) {
-          if (outra !== "Visualizar") next[`${memberId}-${mod}-${outra}`] = false;
-        }
+    const next: Record<string, boolean> = { [key]: !temPermissao(perms, memberId, mod, acao) };
+    if (acao === "Visualizar" && !next[key]) {
+      for (const outra of ACOES) {
+        if (outra !== "Visualizar") next[`${memberId}-${mod}-${outra}`] = false;
       }
-      return next;
-    });
+    }
+    updatePermissoes(next);
   }
 
   function openNovo() {

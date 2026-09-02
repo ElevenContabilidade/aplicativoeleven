@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { formatDate } from "@/lib/utils";
 
 export default function OnboardingPage() {

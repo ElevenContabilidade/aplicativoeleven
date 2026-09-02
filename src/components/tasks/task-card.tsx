@@ -3,7 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Repeat, Calendar } from "lucide-react";
 import type { Task } from "@/lib/types";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { useAppStore } from "@/lib/store/app-store";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn, formatDate } from "@/lib/utils";

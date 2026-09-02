@@ -15,7 +15,7 @@ import { ProcessoFormDialog } from "@/components/societario/processo-form-dialog
 import { ProcessoDetailDialog } from "@/components/societario/processo-detail-dialog";
 import { AberturaMatrix } from "@/components/societario/abertura-matrix";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import type { ProcessoSocietario } from "@/lib/types";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";

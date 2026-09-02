@@ -27,7 +27,7 @@ import { DocumentUploadDialog } from "@/components/documents/document-upload-dia
 import { DocumentActions } from "@/components/documents/document-actions";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro } from "@/lib/types";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";

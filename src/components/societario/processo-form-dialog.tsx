@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { CLIENTS } from "@/lib/data/seed";
 import {
   ETAPAS_ABERTURA_EMPRESA,
   ONBOARDING_TEMPLATE,
@@ -30,7 +29,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   const today = new Date().toISOString().slice(0, 10);
 
   const [clienteMode, setClienteMode] = useState<"existente" | "novo">("existente");
-  const [clienteId, setClienteId] = useState(clients[0]?.id ?? CLIENTS[0].id);
+  const [clienteId, setClienteId] = useState(clients[0]?.id ?? "");
   const [novoClienteNome, setNovoClienteNome] = useState("");
   const [tipoServico, setTipoServico] = useState(TIPOS_SERVICO[0]);
   const [valor, setValor] = useState("");

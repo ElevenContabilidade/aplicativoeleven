@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
-import { TEAM, teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
@@ -30,13 +30,14 @@ function isDone(status: ChecklistStatus) {
 
 export function ProcessoDetailDialog({ processo, onClose }: { processo: ProcessoSocietario | null; onClose: () => void }) {
   const clients = useAppStore((s) => s.clients);
+  const team = useAppStore((s) => s.team);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const addEtapaProcesso = useAppStore((s) => s.addEtapaProcesso);
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
   const deleteEtapaProcesso = useAppStore((s) => s.deleteEtapaProcesso);
 
   const [descricao, setDescricao] = useState("");
-  const [responsavelId, setResponsavelId] = useState(TEAM[0].id);
+  const [responsavelId, setResponsavelId] = useState(team[0]?.id ?? "");
   const [inicio, setInicio] = useState(new Date().toISOString().slice(0, 10));
   const [prazo, setPrazo] = useState(new Date().toISOString().slice(0, 10));
 
@@ -84,7 +85,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
             <Select value={processo.responsavelId} onValueChange={(v) => updateProcessoSocietario(processo.id, { responsavelId: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {TEAM.map((m) => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
+                {team.map((m) => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
@@ -161,7 +162,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               <Select value={responsavelId} onValueChange={setResponsavelId}>
                 <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {TEAM.map((m) => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
+                  {team.map((m) => (<SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

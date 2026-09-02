@@ -32,7 +32,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamMember, teamName } from "@/lib/data/seed";
+import { teamMember, teamName } from "@/lib/team-lookup";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 const PERIODS = ["Hoje", "Semana", "Mês", "Trimestre", "Ano", "Personalizado"] as const;

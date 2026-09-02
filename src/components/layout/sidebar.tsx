@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { NAV_ITEMS } from "./nav-config";
 import { EleveLogo, EleveMark } from "@/components/brand/logo";
+import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
+import { moduloDaRota, temPermissao } from "@/lib/permissoes";
 import { cn } from "@/lib/utils";
 
 const SECTION_LABEL: Record<string, string> = {
@@ -21,7 +24,14 @@ export function SidebarNav({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
+  const permissoes = useAppStore((s) => s.permissoes);
+  const userId = useAuthStore((s) => s.userId);
   const sections = ["principal", "operacao", "gestao"] as const;
+
+  function podeVer(href: string) {
+    const modulo = moduloDaRota(href);
+    return !modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar");
+  }
 
   return (
     <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-1 scrollbar-thin">
@@ -33,7 +43,7 @@ export function SidebarNav({
             </p>
           )}
           <ul className="space-y-0.5">
-            {NAV_ITEMS.filter((i) => i.section === section).map((item) => {
+            {NAV_ITEMS.filter((i) => i.section === section && podeVer(i.href)).map((item) => {
               const active = pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               return (

@@ -7,7 +7,7 @@ import { LeadCard } from "./lead-card";
 import { LeadDetailDialog } from "./lead-detail-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { formatCurrency } from "@/lib/utils";
 
 function Column({ stage, leads, onOpen }: { stage: LeadStage; leads: Lead[]; onOpen: (l: Lead) => void }) {

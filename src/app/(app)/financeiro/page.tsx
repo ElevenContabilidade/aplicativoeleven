@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";

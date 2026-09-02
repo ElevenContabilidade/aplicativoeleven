@@ -10,7 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { TEAM } from "@/lib/data/seed";
 import type { Lead, LeadOrigem, ServicoInteresse } from "@/lib/types";
 
 const SERVICOS: ServicoInteresse[] = [
@@ -30,6 +29,7 @@ const ORIGENS: LeadOrigem[] = ["Instagram", "Google", "Site", "WhatsApp", "Indic
 export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addLead = useAppStore((s) => s.addLead);
   const leads = useAppStore((s) => s.leads);
+  const team = useAppStore((s) => s.team);
   const { userId } = useAuthStore();
 
   const [nome, setNome] = useState("");
@@ -83,7 +83,7 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       servicosInteresse: servicos,
       origem,
       stage: "Lead recebido",
-      responsavelId: userId ?? TEAM[0].id,
+      responsavelId: userId ?? team[0]?.id ?? "",
       valorEstimado: Number(valorEstimado) || 0,
       dataUltimoContato: today,
       dataEntrada: today,

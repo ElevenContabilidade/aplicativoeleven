@@ -15,7 +15,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { CLIENT_STATUS, type Client, type ClientStatus } from "@/lib/types";
 import { formatCurrency, initials, cn } from "@/lib/utils";
 

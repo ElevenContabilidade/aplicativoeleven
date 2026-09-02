@@ -3,7 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Building2, MapPin, Phone, User, Tag, Calendar } from "lucide-react";
 import type { Lead } from "@/lib/types";
-import { teamName } from "@/lib/data/seed";
+import { teamName } from "@/lib/team-lookup";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
