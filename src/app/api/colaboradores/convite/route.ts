@@ -24,7 +24,11 @@ export async function POST(request: Request) {
   }
 
   const from = process.env.RESEND_FROM_EMAIL || "Eleven Hub <onboarding@resend.dev>";
-  const loginUrl = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/login` : "/login";
+  // Um e-mail não tem "página atual" pra resolver caminhos relativos — o
+  // link precisa ser sempre absoluto, senão alguns clientes (Gmail
+  // incluso) tentam "consertar" e geram uma URL quebrada tipo http:///login.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://aplicativoeleven.vercel.app").replace(/\/$/, "");
+  const loginUrl = `${appUrl}/login`;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -38,12 +42,24 @@ export async function POST(request: Request) {
       <p><a href="${loginUrl}" style="background:#5C1420; color:#fff; padding: 10px 18px; border-radius: 8px; text-decoration:none; display:inline-block;">Acessar o Eleven Hub</a></p>
     </div>
   `;
+  const text = [
+    `Bem-vindo(a) ao Eleven Hub, ${nome}!`,
+    "",
+    "Sua conta de acesso foi criada. Use as credenciais abaixo para entrar pela primeira vez:",
+    "",
+    `E-mail: ${email}`,
+    `Senha temporária: ${senha}`,
+    "",
+    "Por segurança, altere essa senha assim que acessar.",
+    "",
+    `Acessar o Eleven Hub: ${loginUrl}`,
+  ].join("\n");
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: email, subject: "Seu acesso ao Eleven Hub", html }),
+      body: JSON.stringify({ from, to: email, subject: "Seu acesso ao Eleven Hub", html, text }),
     });
     if (!res.ok) {
       const texto = await res.text();
