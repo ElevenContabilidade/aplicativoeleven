@@ -46,6 +46,7 @@ export function ColaboradorFormDialog({
   const [departamentos, setDepartamentos] = useState<Departamento[]>(colaborador?.departamentos ?? []);
   const [convite, setConvite] = useState<{ email: string; senha: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [envioStatus, setEnvioStatus] = useState<"enviando" | "enviado" | "nao_configurado" | "erro" | null>(null);
 
   function toggleDepartamento(d: Departamento) {
     setDepartamentos((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
@@ -55,8 +56,24 @@ export function ColaboradorFormDialog({
     if (!v) {
       setConvite(null);
       setCopiado(false);
+      setEnvioStatus(null);
     }
     onOpenChange(v);
+  }
+
+  async function enviarConvitePorEmail(nome: string, email: string, senha: string) {
+    setEnvioStatus("enviando");
+    try {
+      const res = await fetch("/api/colaboradores/convite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, email, senha }),
+      });
+      const data = await res.json();
+      setEnvioStatus(data.sent ? "enviado" : data.configured === false ? "nao_configurado" : "erro");
+    } catch {
+      setEnvioStatus("erro");
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -82,9 +99,8 @@ export function ColaboradorFormDialog({
         senhaDefinida: false,
         senhaTemporaria: senha,
       });
-      // Ainda não temos envio de e-mail configurado — exibe o convite na
-      // tela pra quem cadastrou repassar manualmente pro colaborador.
       setConvite({ email: patch.email, senha });
+      void enviarConvitePorEmail(patch.nome, patch.email, senha);
     }
   }
 
@@ -108,10 +124,27 @@ export function ColaboradorFormDialog({
             <DialogTitle>Convite gerado</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-xs">
-            <p className="text-sand-600">
-              O envio automático de e-mail ainda não está configurado. Copie as credenciais abaixo e repasse
-              manualmente para o colaborador — no primeiro acesso ele deve trocar essa senha temporária.
-            </p>
+            {envioStatus === "enviando" && (
+              <p className="text-sand-600">Enviando e-mail de convite para {convite.email}…</p>
+            )}
+            {envioStatus === "enviado" && (
+              <p className="text-status-success">
+                E-mail enviado para {convite.email} com as instruções de acesso. Ele já pode entrar com essa senha
+                temporária e trocá-la depois.
+              </p>
+            )}
+            {envioStatus === "nao_configurado" && (
+              <p className="text-sand-600">
+                O envio automático de e-mail ainda não está configurado (falta a chave RESEND_API_KEY no ambiente).
+                Copie as credenciais abaixo e repasse manualmente para o colaborador.
+              </p>
+            )}
+            {envioStatus === "erro" && (
+              <p className="text-status-danger">
+                Não foi possível enviar o e-mail agora. Copie as credenciais abaixo e repasse manualmente para o
+                colaborador.
+              </p>
+            )}
             <div className="space-y-1.5 rounded-lg border border-sand-200 bg-sand-50 p-3">
               <p><span className="text-sand-500">E-mail:</span> <span className="font-medium text-sand-900">{convite.email}</span></p>
               <p><span className="text-sand-500">Senha temporária:</span> <span className="font-mono font-medium text-sand-900">{convite.senha}</span></p>
