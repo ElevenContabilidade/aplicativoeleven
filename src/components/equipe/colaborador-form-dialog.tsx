@@ -47,6 +47,7 @@ export function ColaboradorFormDialog({
   const [convite, setConvite] = useState<{ email: string; senha: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [envioStatus, setEnvioStatus] = useState<"enviando" | "enviado" | "nao_configurado" | "erro" | null>(null);
+  const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
 
   function toggleDepartamento(d: Departamento) {
     setDepartamentos((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
@@ -57,12 +58,14 @@ export function ColaboradorFormDialog({
       setConvite(null);
       setCopiado(false);
       setEnvioStatus(null);
+      setErroDetalhe(null);
     }
     onOpenChange(v);
   }
 
   async function enviarConvitePorEmail(nome: string, email: string, senha: string) {
     setEnvioStatus("enviando");
+    setErroDetalhe(null);
     try {
       const res = await fetch("/api/colaboradores/convite", {
         method: "POST",
@@ -71,8 +74,10 @@ export function ColaboradorFormDialog({
       });
       const data = await res.json();
       setEnvioStatus(data.sent ? "enviado" : data.configured === false ? "nao_configurado" : "erro");
-    } catch {
+      if (!data.sent && data.error) setErroDetalhe(String(data.error));
+    } catch (err) {
       setEnvioStatus("erro");
+      setErroDetalhe(err instanceof Error ? err.message : null);
     }
   }
 
@@ -140,10 +145,15 @@ export function ColaboradorFormDialog({
               </p>
             )}
             {envioStatus === "erro" && (
-              <p className="text-status-danger">
-                Não foi possível enviar o e-mail agora. Copie as credenciais abaixo e repasse manualmente para o
-                colaborador.
-              </p>
+              <div className="space-y-1">
+                <p className="text-status-danger">
+                  Não foi possível enviar o e-mail agora. Copie as credenciais abaixo e repasse manualmente para o
+                  colaborador.
+                </p>
+                {erroDetalhe && (
+                  <p className="rounded-md bg-status-danger-bg px-2 py-1 font-mono text-[10px] text-status-danger">{erroDetalhe}</p>
+                )}
+              </div>
             )}
             <div className="space-y-1.5 rounded-lg border border-sand-200 bg-sand-50 p-3">
               <p><span className="text-sand-500">E-mail:</span> <span className="font-medium text-sand-900">{convite.email}</span></p>

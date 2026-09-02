@@ -46,8 +46,15 @@ export async function POST(request: Request) {
       body: JSON.stringify({ from, to: email, subject: "Seu acesso ao Eleven Hub", html }),
     });
     if (!res.ok) {
-      const detalhe = await res.text();
-      return NextResponse.json({ sent: false, configured: true, error: detalhe }, { status: 502 });
+      const texto = await res.text();
+      let detalhe = texto;
+      try {
+        const json = JSON.parse(texto);
+        detalhe = json.message || texto;
+      } catch {
+        // resposta não era JSON — usa o texto cru mesmo
+      }
+      return NextResponse.json({ sent: false, configured: true, error: `${res.status}: ${detalhe}` }, { status: 502 });
     }
     return NextResponse.json({ sent: true, configured: true });
   } catch (err) {
