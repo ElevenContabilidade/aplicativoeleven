@@ -676,7 +676,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 13,
+      version: 14,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -805,18 +805,28 @@ export const useAppStore = create<AppState>()(
           ];
         }
         // A conta "u1" (Kauane Gomes) é a sócia/chefe e deve enxergar todos os
-        // setores — corrige o e-mail de demonstração pro e-mail real dela em
-        // qualquer navegador que já tinha o cadastro antigo persistido.
+        // setores, com o e-mail real dela — não o de demonstração do seed.
+        // Idempotente e auto-corretivo: roda em todo carregamento e também
+        // tira esse e-mail de qualquer outro cadastro (ex: colaboradores de
+        // teste criados sem querer com o mesmo e-mail), porque só pode
+        // pertencer a uma pessoa e o login usa o e-mail pra identificar quem
+        // é quem.
         if (state?.team) {
-          state.team = state.team.map((m) =>
-            m.id === "u1" && m.email === "kauane@eleven.com.br"
-              ? {
-                  ...m,
-                  email: "kauanegomescontadora@gmail.com",
-                  departamentos: ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"],
-                }
-              : m
-          );
+          const EMAIL_KAUANE = "kauanegomescontadora@gmail.com";
+          state.team = state.team.map((m) => {
+            if (m.id === "u1") {
+              return {
+                ...m,
+                nome: "Kauane Gomes",
+                email: EMAIL_KAUANE,
+                departamentos: ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"],
+              };
+            }
+            if (m.email.toLowerCase() === EMAIL_KAUANE.toLowerCase()) {
+              return { ...m, email: `${m.id}@teste.eleven.com.br` };
+            }
+            return m;
+          });
         }
         return state;
       },
