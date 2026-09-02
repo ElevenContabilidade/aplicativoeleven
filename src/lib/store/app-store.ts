@@ -26,7 +26,6 @@ import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
 import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { permissoesIniciaisBloqueadas } from "@/lib/permissoes";
 
 /** Nome de quem está logado no momento, para registrar no histórico de
  * ações do colaborador (quem criou/editou o quê). */
@@ -677,7 +676,7 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "eleven-hub-store",
-      version: 15,
+      version: 16,
       // blob: object URLs only live for this browser session — never persist them.
       partialize: (state) => ({
         ...state,
@@ -829,26 +828,15 @@ export const useAppStore = create<AppState>()(
             return m;
           });
         }
-        // Colaboradores cadastrados antes da matriz de permissões passar a
-        // valer de verdade nasceram com tudo liberado por padrão (sem
-        // nenhuma entrada em `permissoes`). Pra quem já foi convidado via
-        // e-mail (fluxo novo) e ainda não tem nenhuma permissão marcada,
-        // aplica o mesmo bloqueio inicial que colaboradores novos já
-        // recebem — evita que alguém cadastrado e "esquecido" sem
-        // permissões continue vendo tudo. Os 9 colaboradores originais do
-        // seed ficam de fora: continuam com acesso liberado, como sempre.
-        if (state?.team) {
-          const IDS_SEED_ORIGINAL = new Set(["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8", "u9"]);
-          const permissoesAtuais = (state.permissoes as Record<string, boolean> | undefined) ?? {};
-          const temAlgumaPermissao = (id: string) => Object.keys(permissoesAtuais).some((k) => k.startsWith(`${id}-`));
-          const patch: Record<string, boolean> = {};
-          for (const m of state.team) {
-            if (!IDS_SEED_ORIGINAL.has(m.id) && !temAlgumaPermissao(m.id)) {
-              Object.assign(patch, permissoesIniciaisBloqueadas(m.id));
-            }
-          }
-          state.permissoes = { ...permissoesAtuais, ...patch };
-        }
+        // Uma versão anterior bloqueava automaticamente TODOS os módulos de
+        // qualquer colaborador sem nenhuma permissão configurada — passou
+        // da conta: quem cadastra um colaborador espera que ele comece com
+        // acesso normal e só restrinja pontualmente o que não deve ver (ex:
+        // Financeiro), não que perca acesso a tudo. Desfaz esse bloqueio em
+        // massa (nenhuma permissão explícita ainda tinha sido configurada
+        // de propósito por ninguém, então é seguro voltar pro padrão
+        // "liberado" limpando tudo).
+        if (state) state.permissoes = {};
         return state;
       },
       // Recompute "licença vencendo" alerts on every load so the day countdown

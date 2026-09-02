@@ -42,11 +42,9 @@ export function permissaoKey(memberId: string, modulo: string, acao: string) {
   return `${memberId}-${modulo}-${acao}`;
 }
 
-/** Sem entrada explícita na matriz = liberado — vale pros colaboradores que
- * já existiam antes desse controle (não vamos tirar acesso de ninguém sem
- * avisar). Colaboradores CADASTRADOS DAQUI PRA FRENTE já nascem com um
- * bloqueio explícito em todo módulo (ver `permissoesIniciaisBloqueadas`),
- * então pra eles a matriz é opt-in: só enxergam o que for marcado. */
+/** Sem entrada explícita na matriz = liberado. Todo colaborador (novo ou
+ * antigo) começa com acesso normal a tudo; quem administra restringe
+ * pontualmente o que aquele colaborador não deve acessar (ex: Financeiro). */
 export function temPermissao(
   permissoes: Record<string, boolean>,
   memberId: string,
@@ -55,17 +53,4 @@ export function temPermissao(
 ): boolean {
   const key = permissaoKey(memberId, modulo, acao);
   return key in permissoes ? permissoes[key] : true;
-}
-
-/** Gera o patch que bloqueia todo módulo/ação pra um colaborador recém
- * criado — chamar ao cadastrar, assim quem cria decide explicitamente o
- * que aquele colaborador pode acessar, em vez de nascer com tudo liberado. */
-export function permissoesIniciaisBloqueadas(memberId: string): Record<string, boolean> {
-  const patch: Record<string, boolean> = {};
-  for (const modulo of [...MODULOS_OPERACAO, ...MODULOS_GESTAO]) {
-    for (const acao of ACOES) {
-      patch[permissaoKey(memberId, modulo, acao)] = false;
-    }
-  }
-  return patch;
 }
