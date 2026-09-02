@@ -30,8 +30,11 @@ export async function POST(request: Request) {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://aplicativoeleven.vercel.app").replace(/\/$/, "");
   const loginUrl = `${appUrl}/login`;
 
+  const logoUrl = `${appUrl}/brand/eleven-logo-email.png`;
+
   const html = `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+      <img src="${logoUrl}" alt="Eleven Contabilidade & Consultoria" width="180" style="display:block; margin: 0 auto 24px; height:auto;" />
       <h2 style="color:#5C1420;">Bem-vindo(a) ao Eleven Hub, ${nome}!</h2>
       <p>Sua conta de acesso foi criada. Use as credenciais abaixo para entrar pela primeira vez:</p>
       <table style="margin: 16px 0; font-size: 14px;">
