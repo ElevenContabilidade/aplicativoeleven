@@ -54,17 +54,21 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function CrmAnalytics() {
+export function CrmAnalytics({
+  years,
+  year,
+  mes,
+  onYearChange,
+  onMesChange,
+}: {
+  years: string[];
+  year: string;
+  mes: string;
+  onYearChange: (year: string) => void;
+  onMesChange: (mes: string) => void;
+}) {
   const leads = useAppStore((s) => s.leads);
   const [tab, setTab] = useState<AnalyticsTab>("pipeline");
-
-  const years = useMemo(() => {
-    const set = new Set(leads.map((l) => l.dataEntrada.slice(0, 4)));
-    set.add(new Date().getFullYear().toString());
-    return [...set].sort().reverse();
-  }, [leads]);
-  const [year, setYear] = useState(years[0]);
-  const [mes, setMes] = useState("anual");
 
   const leadsDoAno = useMemo(() => leads.filter((l) => l.dataEntrada.startsWith(year)), [leads, year]);
 
@@ -120,7 +124,7 @@ export function CrmAnalytics() {
     <Card className="mb-6">
       <CardHeader>
         <CardTitle>CRM · Lead → Cliente</CardTitle>
-        <Select value={year} onValueChange={setYear}>
+        <Select value={year} onValueChange={onYearChange}>
           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
             {years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
@@ -129,9 +133,9 @@ export function CrmAnalytics() {
       </CardHeader>
       <CardContent className="pt-4">
         <div className="mb-4 flex flex-wrap gap-1.5">
-          <PeriodChip label="Ano inteiro" active={mes === "anual"} onClick={() => setMes("anual")} />
+          <PeriodChip label="Ano inteiro" active={mes === "anual"} onClick={() => onMesChange("anual")} />
           {MESES.map((label, i) => (
-            <PeriodChip key={label} label={label} active={mes === MESES_VALUE[i]} onClick={() => setMes(MESES_VALUE[i])} />
+            <PeriodChip key={label} label={label} active={mes === MESES_VALUE[i]} onClick={() => onMesChange(MESES_VALUE[i])} />
           ))}
         </div>
 

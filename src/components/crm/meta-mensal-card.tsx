@@ -13,7 +13,7 @@ const MESES = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
-export function MetaMensalCard() {
+export function MetaMensalCard({ year, mes }: { year: string; mes: string }) {
   const clients = useAppStore((s) => s.clients);
   const metaMensalClientes = useAppStore((s) => s.metaMensalClientes);
   const updateMetaMensalClientes = useAppStore((s) => s.updateMetaMensalClientes);
@@ -21,7 +21,8 @@ export function MetaMensalCard() {
   const [valorEdicao, setValorEdicao] = useState(String(metaMensalClientes));
 
   const hoje = new Date();
-  const competencia = hoje.toISOString().slice(0, 7);
+  const mesIndex = mes === "anual" ? hoje.getMonth() : Number(mes) - 1;
+  const competencia = mes === "anual" ? hoje.toISOString().slice(0, 7) : `${year}-${mes}`;
   const clientesNoMes = clients.filter((c) => c.criadoEm.startsWith(competencia)).length;
   const meta = Math.max(metaMensalClientes, 1);
   const percentual = Math.round((clientesNoMes / meta) * 100);
@@ -39,7 +40,7 @@ export function MetaMensalCard() {
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-sand-500">
-              Meta de novos clientes — {MESES[hoje.getMonth()]}
+              Meta de novos clientes — {MESES[mesIndex]}{mes !== "anual" && `/${year}`}
             </p>
             {atingiu && (
               <span className="flex items-center gap-1 rounded-full bg-status-success-bg px-2 py-0.5 text-[10px] font-semibold text-status-success">

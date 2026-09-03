@@ -14,6 +14,7 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isAuthenticated, kind, userId, hasHydrated } = useAuthStore();
   const permissoes = useAppStore((s) => s.permissoes);
+  const team = useAppStore((s) => s.team);
 
   useEffect(() => {
     if (hasHydrated && (!isAuthenticated || kind !== "equipe")) router.replace("/login");
@@ -28,7 +29,12 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
   }
 
   const modulo = moduloDaRota(pathname);
-  const podeVisualizar = !modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar");
+  const colaborador = team.find((m) => m.id === userId);
+  // A tela de Equipe controla as permissões de todo mundo — só Administrador
+  // acessa, e essa regra é fixa (não passa pela matriz de permissões
+  // granular), senão alguém poderia se auto-liberar acesso por lá.
+  const somenteAdmin = modulo === "Equipe" && colaborador?.perfil !== "Administrador";
+  const podeVisualizar = !somenteAdmin && (!modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar"));
 
   return (
     <AppShell>
@@ -39,7 +45,9 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
           <ShieldAlert className="size-10 text-sand-300" />
           <p className="text-lg font-semibold text-sand-800">Acesso restrito</p>
           <p className="max-w-sm text-sm text-sand-500">
-            Você não tem permissão para visualizar o módulo {modulo}. Fale com um administrador se precisar de acesso.
+            {somenteAdmin
+              ? "Só administradores podem acessar a Equipe e gerenciar permissões."
+              : `Você não tem permissão para visualizar o módulo ${modulo}. Fale com um administrador se precisar de acesso.`}
           </p>
         </div>
       )}

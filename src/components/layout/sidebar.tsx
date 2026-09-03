@@ -26,12 +26,17 @@ export function SidebarNav({
 }) {
   const pathname = usePathname();
   const permissoes = useAppStore((s) => s.permissoes);
+  const team = useAppStore((s) => s.team);
   const userId = useAuthStore((s) => s.userId);
   const sections = ["principal", "operacao", "gestao"] as const;
   const [gruposFechados, setGruposFechados] = useState<Record<string, boolean>>({});
+  const colaborador = team.find((m) => m.id === userId);
 
   function podeVer(href: string) {
     const modulo = moduloDaRota(href);
+    // Equipe gerencia as permissões de todo mundo — fica visível só pra
+    // Administrador, independente da matriz de permissões granular.
+    if (modulo === "Equipe") return colaborador?.perfil === "Administrador";
     return !modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar");
   }
 
