@@ -35,6 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamMember, teamName } from "@/lib/team-lookup";
+import { temPermissao } from "@/lib/permissoes";
 import { recebidoDoPeriodo } from "@/lib/financeiro-recebido";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -73,6 +74,13 @@ export default function DashboardPage() {
   const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
   const { userId } = useAuthStore();
   const me = teamMember(userId ?? "");
+  const permissoes = useAppStore((s) => s.permissoes);
+  // O Início não é um módulo gerenciável na matriz de permissões (fica
+  // sempre acessível), mas os cards de Financeiro que aparecem aqui
+  // mostram dado sensível de verdade — então checam a permissão do
+  // módulo Financeiro mesmo assim, senão alguém sem acesso à página
+  // Financeiro via a mesma informação aqui.
+  const podeVerFinanceiro = !userId || temPermissao(permissoes, userId, "Financeiro", "Visualizar");
 
   const windowDays = PERIOD_DAYS[period];
 
@@ -150,6 +158,7 @@ export default function DashboardPage() {
         }
       />
 
+      {podeVerFinanceiro && (
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -167,6 +176,7 @@ export default function DashboardPage() {
           />
         </CardContent>
       </Card>
+      )}
 
       {(isComercial || isOperacional) && (
         <div className="mb-6 grid gap-4 lg:grid-cols-2">
@@ -235,6 +245,7 @@ export default function DashboardPage() {
           <MetricCard label="Pendências críticas" value={metrics.pendenciasCriticas} icon={AlertOctagon} tone="danger" />
         </SectionCard>
 
+        {podeVerFinanceiro && (
         <SectionCard title="Financeiro">
           <MetricCard label="Honorários previstos" value={formatCurrency(metrics.honorariosPrevistos)} icon={Wallet} />
           <MetricCard label="Recebido" value={formatCurrency(metrics.recebidos)} icon={CircleDollarSign} tone="success" />
@@ -242,6 +253,7 @@ export default function DashboardPage() {
           <MetricCard label="Inadimplência" value={formatCurrency(metrics.inadimplencia)} icon={CircleAlert} tone="danger" />
           <MetricCard label="MRR" value={formatCurrency(metrics.honorariosPrevistos)} icon={Repeat} tone="wine" />
         </SectionCard>
+        )}
 
         <SectionCard title="Certificados">
           <MetricCard label="Vencendo (30d)" value={metrics.certVencendo} icon={ShieldAlert} tone="warning" />
