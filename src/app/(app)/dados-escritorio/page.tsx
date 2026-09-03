@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Eye, EyeOff, Copy, Pencil, Trash2, Plus, ExternalLink } from "lucide-react";
+import { Check, Eye, EyeOff, Copy, Pencil, Trash2, Plus, ExternalLink, Search, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DadosEscritorio, SistemaEscritorio } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
+import { lookupCnpj, maskCnpj } from "@/lib/cnpj";
 
 export default function DadosEscritorioPage() {
   const dadosEscritorio = useAppStore((s) => s.dadosEscritorio);
@@ -20,6 +21,8 @@ export default function DadosEscritorioPage() {
   const deleteSistemaEscritorio = useAppStore((s) => s.deleteSistemaEscritorio);
   const [form, setForm] = useState<DadosEscritorio>(dadosEscritorio);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [buscando, setBuscando] = useState(false);
+  const [buscaErro, setBuscaErro] = useState<string | null>(null);
   const [revealedSenhas, setRevealedSenhas] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sistemaFormOpen, setSistemaFormOpen] = useState(false);
@@ -34,6 +37,26 @@ export default function DadosEscritorioPage() {
     updateDadosEscritorio(form);
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
+  }
+
+  async function buscarCnpj() {
+    setBuscando(true);
+    setBuscaErro(null);
+    try {
+      const dados = await lookupCnpj(form.cnpj);
+      setForm((f) => ({
+        ...f,
+        razaoSocial: dados.razaoSocial || f.razaoSocial,
+        nomeFantasia: dados.nomeFantasia || f.nomeFantasia,
+        endereco: dados.endereco || f.endereco,
+        cidade: dados.municipio || f.cidade,
+        estado: dados.estado || f.estado,
+      }));
+    } catch (err) {
+      setBuscaErro(err instanceof Error ? err.message : "Não foi possível consultar o CNPJ.");
+    } finally {
+      setBuscando(false);
+    }
   }
 
   function toggleSenha(id: string) {
@@ -85,7 +108,14 @@ export default function DadosEscritorioPage() {
               <Input value={form.nomeFantasia} onChange={(e) => set("nomeFantasia", e.target.value)} />
             </Field>
             <Field label="CNPJ">
-              <Input value={form.cnpj} onChange={(e) => set("cnpj", e.target.value)} placeholder="00.000.000/0000-00" />
+              <div className="flex gap-2">
+                <Input value={form.cnpj} onChange={(e) => set("cnpj", maskCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
+                <Button type="button" size="sm" variant="outline" onClick={buscarCnpj} disabled={buscando} className="shrink-0">
+                  {buscando ? <Loader2 className="size-3.5 animate-spin" /> : <Search className="size-3.5" />}
+                  Buscar
+                </Button>
+              </div>
+              {buscaErro && <p className="mt-1 text-[11px] text-status-danger">{buscaErro}</p>}
             </Field>
             <Field label="Inscrição municipal">
               <Input value={form.inscricaoMunicipal ?? ""} onChange={(e) => set("inscricaoMunicipal", e.target.value)} />
