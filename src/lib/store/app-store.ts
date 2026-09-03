@@ -80,11 +80,13 @@ import type {
   NotaFiscalMensal,
   RecebimentoParceiroMensal,
   DadosEscritorio,
+  SistemaEscritorio,
 } from "@/lib/types";
 
 interface AppState {
   team: TeamMember[];
   dadosEscritorio: DadosEscritorio;
+  sistemasEscritorio: SistemaEscritorio[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -115,6 +117,9 @@ interface AppState {
 
   updatePermissoes: (patch: Record<string, boolean>) => void;
   updateDadosEscritorio: (patch: Partial<DadosEscritorio>) => void;
+  addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
+  updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
+  deleteSistemaEscritorio: (id: string) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -249,6 +254,7 @@ const initial = {
     cep: "",
     horarioAtendimento: "Segunda a sexta, 9h às 18h",
   },
+  sistemasEscritorio: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -373,6 +379,10 @@ export const useAppStore = create<AppState>()(
       deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
       updatePermissoes: (patch) => set((s) => ({ permissoes: { ...s.permissoes, ...patch } })),
       updateDadosEscritorio: (patch) => set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } })),
+      addSistemaEscritorio: (sistema) => set((s) => ({ sistemasEscritorio: [...s.sistemasEscritorio, sistema] })),
+      updateSistemaEscritorio: (id, patch) =>
+        set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.map((sis) => (sis.id === id ? { ...sis, ...patch } : sis)) })),
+      deleteSistemaEscritorio: (id) => set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

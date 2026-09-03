@@ -60,6 +60,20 @@ export interface DadosEscritorio {
   horarioAtendimento?: string;
 }
 
+/** Sistema/ferramenta pago pelo escritório (ex: Domínio Sistemas, Nibo,
+ * Certificado A1, portal de algum órgão) — acessos, senha e cobrança
+ * mensal, geridos na tela "Dados do escritório". */
+export interface SistemaEscritorio {
+  id: string;
+  nome: string;
+  login?: string;
+  senha?: string;
+  link?: string;
+  valorMensal?: number;
+  diaVencimento?: number;
+  observacoes?: string;
+}
+
 export interface HistoricoAcaoUsuario {
   id: string;
   acao: string;
