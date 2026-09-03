@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -192,7 +193,14 @@ export default function FinanceiroPage() {
       <PageHeader
         title="Financeiro"
         description="Honorários, recebimentos, inadimplência e serviços extras da carteira."
-        actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo recebimento</Button>}
+        actions={
+          <>
+            <Link href="/financeiro/conciliacao">
+              <Button variant="outline"><Landmark className="size-3.5" /> Conciliação bancária</Button>
+            </Link>
+            <Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo recebimento</Button>
+          </>
+        }
       />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
