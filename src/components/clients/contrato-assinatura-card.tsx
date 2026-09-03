@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import type { Client, ContratoAssinatura, StatusAssinatura } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 
@@ -30,15 +31,28 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
   const updateContratoAssinatura = useAppStore((s) => s.updateContratoAssinatura);
   const deleteContratoAssinatura = useAppStore((s) => s.deleteContratoAssinatura);
 
+  const team = useAppStore((s) => s.team);
+  const dadosEscritorio = useAppStore((s) => s.dadosEscritorio);
+  const { userId } = useAuthStore();
+
   const contratos = useMemo(
     () => contratosAssinatura.filter((c) => c.clienteId === client.id).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)),
     [contratosAssinatura, client.id]
   );
 
   const linhasIniciais = useMemo(() => {
-    const doSocios = client.socios.map((s) => ({ id: s.id, nome: s.nome, email: s.email ?? "", incluir: true }));
-    return doSocios.length > 0 ? doSocios : [{ id: "manual-1", nome: "", email: "", incluir: true }];
-  }, [client.socios]);
+    const doSocios = client.socios.map((s) => ({ id: s.id, nome: s.nome, email: s.email ?? "", incluir: true, tag: "" }));
+
+    const colaboradorLogado = team.find((m) => m.id === userId);
+    const representanteEscritorio = colaboradorLogado
+      ? { id: `escritorio-${colaboradorLogado.id}`, nome: colaboradorLogado.nome, email: colaboradorLogado.email, incluir: true, tag: "Eleven Contabilidade" }
+      : dadosEscritorio.email
+        ? { id: "escritorio-generico", nome: dadosEscritorio.razaoSocial || dadosEscritorio.nomeFantasia, email: dadosEscritorio.email, incluir: true, tag: "Eleven Contabilidade" }
+        : null;
+
+    const linhas = doSocios.length > 0 ? doSocios : [{ id: "manual-1", nome: "", email: "", incluir: true, tag: "" }];
+    return representanteEscritorio ? [...linhas, representanteEscritorio] : linhas;
+  }, [client.socios, team, userId, dadosEscritorio]);
 
   const [file, setFile] = useState<File | null>(null);
   const [linhasSignatarios, setLinhasSignatarios] = useState(linhasIniciais);
@@ -54,7 +68,7 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
     setLinhasSignatarios((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   }
   function adicionarLinha() {
-    setLinhasSignatarios((prev) => [...prev, { id: `manual-${Date.now()}`, nome: "", email: "", incluir: true }]);
+    setLinhasSignatarios((prev) => [...prev, { id: `manual-${Date.now()}`, nome: "", email: "", incluir: true, tag: "" }]);
   }
   function removerLinha(id: string) {
     setLinhasSignatarios((prev) => prev.filter((l) => l.id !== id));
@@ -195,6 +209,11 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
                     placeholder="email@cliente.com"
                     className="flex-1"
                   />
+                  {linha.tag && (
+                    <span className="hidden shrink-0 whitespace-nowrap rounded-full bg-wine-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-wine-600 sm:inline">
+                      {linha.tag}
+                    </span>
+                  )}
                   <button
                     type="button"
                     title="Remover"
