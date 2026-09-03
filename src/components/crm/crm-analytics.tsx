@@ -7,12 +7,28 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { LEAD_STAGES } from "@/lib/types";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const WINE = "#5C1420";
 const GOLD = "#E6C378";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MESES_VALUE = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+
+function PeriodChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+        active ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
 
 type AnalyticsTab = "pipeline" | "fechados" | "aquisicao" | "geral";
 
@@ -48,43 +64,54 @@ export function CrmAnalytics() {
     return [...set].sort().reverse();
   }, [leads]);
   const [year, setYear] = useState(years[0]);
+  const [mes, setMes] = useState("anual");
 
   const leadsDoAno = useMemo(() => leads.filter((l) => l.dataEntrada.startsWith(year)), [leads, year]);
 
-  const porEtapa = useMemo(
-    () => LEAD_STAGES.map((stage) => ({ stage, total: leadsDoAno.filter((l) => l.stage === stage).length })),
-    [leadsDoAno]
+  const leadsFiltrados = useMemo(
+    () => (mes === "anual" ? leadsDoAno : leadsDoAno.filter((l) => l.dataEntrada.slice(5, 7) === mes)),
+    [leadsDoAno, mes]
   );
 
-  const fechados = leadsDoAno.filter((l) => l.stage === "Fechado");
-  const perdidos = leadsDoAno.filter((l) => l.stage === "Perdido");
-  const taxaConversao = leadsDoAno.length > 0 ? Math.round((fechados.length / leadsDoAno.length) * 100) : 0;
+  const periodoLabel = mes === "anual" ? year : `${MESES[MESES_VALUE.indexOf(mes)]}/${year}`;
+
+  const porEtapa = useMemo(
+    () => LEAD_STAGES.map((stage) => ({ stage, total: leadsFiltrados.filter((l) => l.stage === stage).length })),
+    [leadsFiltrados]
+  );
+
+  const fechados = leadsFiltrados.filter((l) => l.stage === "Fechado");
+  const perdidos = leadsFiltrados.filter((l) => l.stage === "Perdido");
+  const taxaConversao = leadsFiltrados.length > 0 ? Math.round((fechados.length / leadsFiltrados.length) * 100) : 0;
   const valorFechado = fechados.reduce((sum, l) => sum + l.valorEstimado, 0);
 
   const porOrigem = useMemo(() => {
     const map = new Map<string, number>();
-    leadsDoAno.forEach((l) => map.set(l.origem, (map.get(l.origem) ?? 0) + 1));
+    leadsFiltrados.forEach((l) => map.set(l.origem, (map.get(l.origem) ?? 0) + 1));
     return [...map.entries()].map(([origem, total]) => ({ origem, total })).sort((a, b) => b.total - a.total);
-  }, [leadsDoAno]);
+  }, [leadsFiltrados]);
 
   const servicosMaisProcurados = useMemo(() => {
     const map = new Map<string, number>();
-    leadsDoAno.forEach((l) => l.servicosInteresse.forEach((s) => map.set(s, (map.get(s) ?? 0) + 1)));
+    leadsFiltrados.forEach((l) => l.servicosInteresse.forEach((s) => map.set(s, (map.get(s) ?? 0) + 1)));
     return [...map.entries()].map(([servico, total]) => ({ servico, total })).sort((a, b) => b.total - a.total);
-  }, [leadsDoAno]);
+  }, [leadsFiltrados]);
 
+  // Sempre quebrado pelos 12 meses do ano selecionado, independente do chip
+  // de mês ativo — filtrar esse gráfico por mês não faria sentido (mostraria
+  // só uma barra).
   const porMes = useMemo(() => {
     const counts = Array(12).fill(0);
     leadsDoAno.forEach((l) => {
       const m = Number(l.dataEntrada.slice(5, 7)) - 1;
       if (m >= 0 && m < 12) counts[m]++;
     });
-    return MESES.map((mes, i) => ({ mes, total: counts[i] }));
+    return MESES.map((mesLabel, i) => ({ mes: mesLabel, total: counts[i] }));
   }, [leadsDoAno]);
 
   const melhorMes = porMes.reduce((best, m) => (m.total > best.total ? m : best), porMes[0]);
 
-  const valorPipeline = leadsDoAno
+  const valorPipeline = leadsFiltrados
     .filter((l) => l.stage !== "Fechado" && l.stage !== "Perdido")
     .reduce((sum, l) => sum + l.valorEstimado, 0);
   const ticketMedio = fechados.length > 0 ? valorFechado / fechados.length : 0;
@@ -101,6 +128,13 @@ export function CrmAnalytics() {
         </Select>
       </CardHeader>
       <CardContent className="pt-4">
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          <PeriodChip label="Ano inteiro" active={mes === "anual"} onClick={() => setMes("anual")} />
+          {MESES.map((label, i) => (
+            <PeriodChip key={label} label={label} active={mes === MESES_VALUE[i]} onClick={() => setMes(MESES_VALUE[i])} />
+          ))}
+        </div>
+
         <Tabs value={tab} onValueChange={(v) => setTab(v as AnalyticsTab)} className="mb-4">
           <TabsList>
             <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
@@ -111,7 +145,7 @@ export function CrmAnalytics() {
         </Tabs>
 
         {tab === "pipeline" && (
-          <ChartCard title="Leads por etapa do funil">
+          <ChartCard title={`Leads por etapa do funil — ${periodoLabel}`}>
             <ResponsiveContainer>
               <BarChart data={porEtapa}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
@@ -126,8 +160,8 @@ export function CrmAnalytics() {
 
         {tab === "fechados" && (
           <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label="Fechados no ano" value={String(fechados.length)} />
-            <StatTile label="Perdidos no ano" value={String(perdidos.length)} />
+            <StatTile label={`Fechados — ${periodoLabel}`} value={String(fechados.length)} />
+            <StatTile label={`Perdidos — ${periodoLabel}`} value={String(perdidos.length)} />
             <StatTile label="Taxa de conversão" value={`${taxaConversao}%`} />
             <StatTile label="Valor fechado" value={formatCurrency(valorFechado)} />
           </div>
@@ -186,7 +220,7 @@ export function CrmAnalytics() {
 
         {tab === "geral" && (
           <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label="Leads no ano" value={String(leadsDoAno.length)} />
+            <StatTile label={`Leads — ${periodoLabel}`} value={String(leadsFiltrados.length)} />
             <StatTile label="Valor em pipeline" value={formatCurrency(valorPipeline)} />
             <StatTile label="Taxa de conversão" value={`${taxaConversao}%`} />
             <StatTile label="Ticket médio (fechados)" value={formatCurrency(ticketMedio)} />
