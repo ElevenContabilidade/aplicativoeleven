@@ -7,8 +7,8 @@ import { NextResponse } from "next/server";
 const AUTENTIQUE_ENDPOINT = "https://api.autentique.com.br/v2/graphql";
 
 const CREATE_DOCUMENT_MUTATION = `
-  mutation CreateDocumentMutation($document: DocumentInput!, $signers: [SignerInput!]!, $file: Upload!) {
-    createDocument(document: $document, signers: $signers, file: $file) {
+  mutation CreateDocumentMutation($sandbox: Boolean, $document: DocumentInput!, $signers: [SignerInput!]!, $file: Upload!) {
+    createDocument(sandbox: $sandbox, document: $document, signers: $signers, file: $file) {
       id
       name
       created_at
@@ -67,7 +67,8 @@ export async function POST(request: Request) {
   const operations = {
     query: CREATE_DOCUMENT_MUTATION,
     variables: {
-      document: { name: nomeDocumento, sandbox },
+      sandbox,
+      document: { name: nomeDocumento },
       signers: signatarios.map((s) => ({ email: s.email, action: "SIGN" })),
       file: null,
     },
