@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { KanbanBoard } from "@/components/crm/kanban-board";
 import { LeadFormDialog } from "@/components/crm/lead-form-dialog";
 import { CrmAnalytics } from "@/components/crm/crm-analytics";
+import { MetaMensalCard } from "@/components/crm/meta-mensal-card";
 import { Button } from "@/components/ui/button";
 
 export default function ComercialPage() {
@@ -30,6 +31,7 @@ export default function ComercialPage() {
           </Button>
         }
       />
+      <MetaMensalCard />
       <CrmAnalytics />
       <KanbanBoard />
       <LeadFormDialog open={formOpen} onOpenChange={setFormOpen} />

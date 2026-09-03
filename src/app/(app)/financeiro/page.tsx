@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
+import { DespesaFormDialog } from "@/components/financial/despesa-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
+import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const TODOS = "todos";
@@ -36,11 +38,18 @@ export default function FinanceiroPage() {
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
+  const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
+  const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
+  const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
+  const updatePagamentoSistema = useAppStore((s) => s.updatePagamentoSistema);
+  const updateDespesaAvulsa = useAppStore((s) => s.updateDespesaAvulsa);
+  const deleteDespesaAvulsa = useAppStore((s) => s.deleteDespesaAvulsa);
   const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
 
   const searchParams = useSearchParams();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+  const [despesaFormOpen, setDespesaFormOpen] = useState(false);
   const [filtroBanco, setFiltroBanco] = useState(TODOS);
   const [filtroTipo, setFiltroTipo] = useState(TODOS);
   const [year, setYear] = useState(() => {
@@ -142,12 +151,40 @@ export default function FinanceiroPage() {
   const emAberto = ledgerFiltrado.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
   const inadimplencia = ledgerFiltrado.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
 
+  const contasAPagar = useMemo(
+    () => contasAPagarDoPeriodo(sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciasPeriodo),
+    [sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciasPeriodo]
+  );
+  const totalPago = contasAPagar.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0);
+  const totalAPagarEmAberto = contasAPagar.filter((c) => c.status === "Em aberto").reduce((a, c) => a + c.valor, 0);
+
   function handleDeleteRecebimento(id: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
   }
 
   function marcarComoRecebido(id: string) {
     updateRecebimento(id, { status: "Pago", pagamento: new Date().toISOString().slice(0, 10) });
+  }
+
+  function marcarContaPaga(linha: ReturnType<typeof contasAPagarDoPeriodo>[number]) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (linha.origem === "sistema") {
+      updatePagamentoSistema(linha.refId, linha.competencia, { status: "Pago", dataPagamento: hoje });
+    } else {
+      updateDespesaAvulsa(linha.refId, { status: "Pago", dataPagamento: hoje });
+    }
+  }
+
+  function marcarContaEmAberto(linha: ReturnType<typeof contasAPagarDoPeriodo>[number]) {
+    if (linha.origem === "sistema") {
+      updatePagamentoSistema(linha.refId, linha.competencia, { status: "Em aberto", dataPagamento: undefined });
+    } else {
+      updateDespesaAvulsa(linha.refId, { status: "Em aberto", dataPagamento: undefined });
+    }
+  }
+
+  function handleDeleteDespesa(id: string, descricao: string) {
+    if (confirm(`Excluir a despesa "${descricao}"?`)) deleteDespesaAvulsa(id);
   }
 
   return (
@@ -284,6 +321,81 @@ export default function FinanceiroPage() {
       </div>
 
       <Card className="mt-4">
+        <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2"><TrendingDown className="size-4 text-status-danger" /> Contas a pagar — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
+          <Button size="sm" variant="outline" onClick={() => setDespesaFormOpen(true)}>
+            <Plus className="size-3.5" /> Nova despesa
+          </Button>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <MetricCard label="Pago" value={formatCurrency(totalPago)} icon={CircleDollarSign} tone="success" />
+            <MetricCard label="Em aberto" value={formatCurrency(totalAPagarEmAberto)} icon={Wallet} tone="warning" />
+            <MetricCard label="Total no período" value={formatCurrency(totalPago + totalAPagarEmAberto)} icon={TrendingDown} tone="danger" />
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Competência</TableHead>
+                <TableHead>Vencimento</TableHead>
+                <TableHead>Valor</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-20" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contasAPagar.map((linha) => (
+                <TableRow key={linha.key}>
+                  <TableCell className="font-medium text-sand-800">{linha.descricao}</TableCell>
+                  <TableCell className="text-sand-500">{linha.competencia}</TableCell>
+                  <TableCell className="text-sand-500">{formatDate(linha.vencimento)}</TableCell>
+                  <TableCell>{formatCurrency(linha.valor)}</TableCell>
+                  <TableCell><StatusBadge status={linha.status} /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      {linha.status === "Pago" ? (
+                        <button
+                          type="button"
+                          onClick={() => marcarContaEmAberto(linha)}
+                          title="Reabrir (marcar como em aberto)"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-warning-bg hover:text-status-warning"
+                        >
+                          <RotateCcw className="size-4" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => marcarContaPaga(linha)}
+                          title="Marcar como pago"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-success-bg hover:text-status-success"
+                        >
+                          <Check className="size-4" />
+                        </button>
+                      )}
+                      {linha.origem === "avulsa" && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDespesa(linha.refId, linha.descricao)}
+                          title="Excluir despesa"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {contasAPagar.length === 0 && (
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-sand-400">Nenhuma conta a pagar no período.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Scale className="size-4 text-wine-600" /> Societário — quanto ganho por serviço</CardTitle>
         </CardHeader>
@@ -322,6 +434,7 @@ export default function FinanceiroPage() {
       </Card>
 
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <DespesaFormDialog open={despesaFormOpen} onOpenChange={setDespesaFormOpen} />
     </div>
   );
 }

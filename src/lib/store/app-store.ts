@@ -81,12 +81,17 @@ import type {
   RecebimentoParceiroMensal,
   DadosEscritorio,
   SistemaEscritorio,
+  DespesaAvulsa,
+  PagamentoSistemaMensal,
 } from "@/lib/types";
 
 interface AppState {
   team: TeamMember[];
   dadosEscritorio: DadosEscritorio;
   sistemasEscritorio: SistemaEscritorio[];
+  metaMensalClientes: number;
+  despesasAvulsas: DespesaAvulsa[];
+  pagamentosSistemas: PagamentoSistemaMensal[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -120,6 +125,11 @@ interface AppState {
   addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
   updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
   deleteSistemaEscritorio: (id: string) => void;
+  updateMetaMensalClientes: (valor: number) => void;
+  addDespesaAvulsa: (despesa: DespesaAvulsa) => void;
+  updateDespesaAvulsa: (id: string, patch: Partial<DespesaAvulsa>) => void;
+  deleteDespesaAvulsa: (id: string) => void;
+  updatePagamentoSistema: (sistemaId: string, competencia: string, patch: Partial<PagamentoSistemaMensal>) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -255,6 +265,9 @@ const initial = {
     horarioAtendimento: "Segunda a sexta, 9h às 18h",
   },
   sistemasEscritorio: [],
+  metaMensalClientes: 5,
+  despesasAvulsas: [],
+  pagamentosSistemas: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -383,6 +396,22 @@ export const useAppStore = create<AppState>()(
       updateSistemaEscritorio: (id, patch) =>
         set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.map((sis) => (sis.id === id ? { ...sis, ...patch } : sis)) })),
       deleteSistemaEscritorio: (id) => set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) })),
+      updateMetaMensalClientes: (valor) => set({ metaMensalClientes: valor }),
+      addDespesaAvulsa: (despesa) => set((s) => ({ despesasAvulsas: [...s.despesasAvulsas, despesa] })),
+      updateDespesaAvulsa: (id, patch) =>
+        set((s) => ({ despesasAvulsas: s.despesasAvulsas.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+      deleteDespesaAvulsa: (id) => set((s) => ({ despesasAvulsas: s.despesasAvulsas.filter((d) => d.id !== id) })),
+      updatePagamentoSistema: (sistemaId, competencia, patch) =>
+        set((s) => {
+          const id = `pagsis-${sistemaId}-${competencia}`;
+          const existente = s.pagamentosSistemas.find((p) => p.id === id);
+          if (existente) {
+            return { pagamentosSistemas: s.pagamentosSistemas.map((p) => (p.id === id ? { ...p, ...patch } : p)) };
+          }
+          return {
+            pagamentosSistemas: [...s.pagamentosSistemas, { id, sistemaId, competencia, status: "Em aberto", ...patch }],
+          };
+        }),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

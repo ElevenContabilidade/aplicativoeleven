@@ -74,6 +74,32 @@ export interface SistemaEscritorio {
   observacoes?: string;
 }
 
+// ---------- Contas a pagar ----------
+
+export type StatusContaPagar = "Pago" | "Em aberto";
+
+/** Despesa avulsa lançada direto em Contas a pagar (aluguel, salário,
+ * qualquer gasto que não seja um dos sistemas cadastrados). */
+export interface DespesaAvulsa {
+  id: string;
+  descricao: string;
+  categoria?: string;
+  valor: number;
+  vencimento: string;
+  status: StatusContaPagar;
+  dataPagamento?: string;
+}
+
+/** Status de pagamento mensal de um sistema/ferramenta (SistemaEscritorio)
+ * em Contas a pagar — um registro por sistema+competência. */
+export interface PagamentoSistemaMensal {
+  id: string;
+  sistemaId: string;
+  competencia: string;
+  status: StatusContaPagar;
+  dataPagamento?: string;
+}
+
 export interface HistoricoAcaoUsuario {
   id: string;
   acao: string;

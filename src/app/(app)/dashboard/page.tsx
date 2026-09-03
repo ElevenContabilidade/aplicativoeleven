@@ -23,6 +23,8 @@ import {
   Repeat,
   ShieldAlert,
   ShieldPlus,
+  TrendingDown,
+  PiggyBank,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard, SectionCard } from "@/components/dashboard/metric-card";
@@ -33,7 +35,11 @@ import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamMember, teamName } from "@/lib/team-lookup";
+import { recebidoDoPeriodo } from "@/lib/financeiro-recebido";
+import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { formatCurrency, formatDate } from "@/lib/utils";
+
+const MESES_NOME = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
 const PERIODS = ["Hoje", "Semana", "Mês", "Trimestre", "Ano", "Personalizado"] as const;
 const PERIOD_DAYS: Record<(typeof PERIODS)[number], number> = {
@@ -59,6 +65,12 @@ export default function DashboardPage() {
   const tasks = useAppStore((s) => s.tasks);
   const obligations = useAppStore((s) => s.obligations);
   const certificados = useAppStore((s) => s.certificados);
+  const recebimentos = useAppStore((s) => s.recebimentos);
+  const boletosMensais = useAppStore((s) => s.boletosMensais);
+  const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
+  const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
+  const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
   const { userId } = useAuthStore();
   const me = teamMember(userId ?? "");
 
@@ -104,6 +116,14 @@ export default function DashboardPage() {
     };
   }, [clients, leads, tasks, obligations, certificados, windowDays]);
 
+  const competenciaAtual = new Date().toISOString().slice(0, 7);
+  const relatorioMensal = useMemo(() => {
+    const recebidoMes = recebidoDoPeriodo(clients, recebimentos, boletosMensais, recebimentosParceiro, [competenciaAtual]);
+    const contas = contasAPagarDoPeriodo(sistemasEscritorio, pagamentosSistemas, despesasAvulsas, [competenciaAtual]);
+    const pagoMes = contas.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0);
+    return { recebidoMes, pagoMes, lucroMes: recebidoMes - pagoMes };
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciaAtual]);
+
   const myTasks = tasks.filter((t) => t.responsavelId === userId && !["Concluída", "Cancelada"].includes(t.status)).slice(0, 6);
   const myLeads = leads.filter((l) => l.responsavelId === userId && !["Fechado", "Perdido"].includes(l.stage)).slice(0, 6);
   const isComercial = me?.perfil === "Comercial";
@@ -129,6 +149,24 @@ export default function DashboardPage() {
           </Select>
         }
       />
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PiggyBank className="size-4 text-wine-600" /> Relatório financeiro — {MESES_NOME[new Date().getMonth()]}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-3">
+          <MetricCard label="Recebido" value={formatCurrency(relatorioMensal.recebidoMes)} icon={CircleDollarSign} tone="success" />
+          <MetricCard label="Pago" value={formatCurrency(relatorioMensal.pagoMes)} icon={TrendingDown} tone="danger" />
+          <MetricCard
+            label="Lucro"
+            value={formatCurrency(relatorioMensal.lucroMes)}
+            icon={PiggyBank}
+            tone={relatorioMensal.lucroMes >= 0 ? "success" : "danger"}
+          />
+        </CardContent>
+      </Card>
 
       {(isComercial || isOperacional) && (
         <div className="mb-6 grid gap-4 lg:grid-cols-2">
