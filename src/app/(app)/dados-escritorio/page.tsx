@@ -169,6 +169,7 @@ export default function DadosEscritorioPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Sistema</TableHead>
+                <TableHead>Site</TableHead>
                 <TableHead>Login</TableHead>
                 <TableHead>Senha</TableHead>
                 <TableHead>Valor mensal</TableHead>
@@ -181,10 +182,20 @@ export default function DadosEscritorioPage() {
                 <TableRow key={sis.id}>
                   <TableCell>
                     <span className="font-medium text-sand-900">{sis.nome}</span>
-                    {sis.link && (
-                      <a href={sis.link} target="_blank" rel="noopener noreferrer" className="ml-1.5 inline-flex align-middle text-sand-400 hover:text-wine-600">
+                  </TableCell>
+                  <TableCell>
+                    {sis.link ? (
+                      <a
+                        href={sis.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-wine-700 hover:underline"
+                      >
+                        {sis.link.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                         <ExternalLink className="size-3" />
                       </a>
+                    ) : (
+                      "—"
                     )}
                   </TableCell>
                   <TableCell className="text-sand-600">{sis.login || "—"}</TableCell>
@@ -219,7 +230,7 @@ export default function DadosEscritorioPage() {
               ))}
               {sistemas.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center text-sand-400">
+                  <TableCell colSpan={7} className="py-8 text-center text-sand-400">
                     Nenhum sistema cadastrado ainda.
                   </TableCell>
                 </TableRow>

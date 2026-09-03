@@ -93,7 +93,7 @@ export function SistemaFormDialog({
               </div>
             </div>
             <div className="col-span-2">
-              <Label className="mb-1 block">Link de acesso</Label>
+              <Label className="mb-1 block">Site</Label>
               <Input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" />
             </div>
             <div>
