@@ -26,6 +26,8 @@ import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
 import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { createClient } from "@/lib/supabase/client";
+import { parsePermissaoKey } from "@/lib/permissoes";
 
 /** Nome de quem está logado no momento, para registrar no histórico de
  * ações do colaborador (quem criou/editou o quê). */
@@ -129,6 +131,11 @@ interface AppState {
   permissoes: Record<string, boolean>;
 
   updatePermissoes: (patch: Record<string, boolean>) => void;
+  /** team/permissoes agora vêm do Supabase (Etapa 1 da migração) — essas
+   * duas actions são usadas só pra aplicar o que chegou de lá na store
+   * local, nunca chamadas direto pela UI. */
+  setTeamFromSupabase: (team: TeamMember[]) => void;
+  setPermissoesFromSupabase: (permissoes: Record<string, boolean>) => void;
   updateDadosEscritorio: (patch: Partial<DadosEscritorio>) => void;
   addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
   updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
@@ -380,37 +387,82 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) })),
       updateClientTags: (clientId, tags) =>
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
-      updateTeamMemberClientes: (memberId, clientIds) =>
+      updateTeamMemberClientes: (memberId, clientIds) => {
         set((s) => ({
           team: s.team.map((m) =>
             m.id === memberId
               ? { ...m, clientesVinculados: clientIds, historico: [...(m.historico ?? []), novaHistoricoEntry(s.team, "Empresas vinculadas atualizadas")] }
               : m
           ),
-        })),
+        }));
+        void createClient()
+          .from("profiles")
+          .update({ clientes_vinculados: clientIds })
+          .eq("id", memberId)
+          .then(({ error }) => error && console.error("Erro ao salvar empresas vinculadas:", error.message));
+      },
+      // Só otimista — a criação de verdade (usuário de login + linha em
+      // profiles) acontece via /api/colaboradores/criar (precisa da secret
+      // key, roda no servidor). Essa action só reflete na tela na hora,
+      // enquanto o Realtime não confirma o insert vindo do banco.
       addTeamMember: (member) =>
         set((s) => ({
-          team: [
-            ...s.team,
-            {
-              ...member,
-              historico: [
-                novaHistoricoEntry(s.team, "Cadastro criado"),
-                ...(member.senhaDefinida === false ? [novaHistoricoEntry(s.team, "Convite de acesso gerado (senha temporária)")] : []),
-              ],
-            },
-          ],
+          team: [...s.team, { ...member, historico: [novaHistoricoEntry(s.team, "Cadastro criado")] }],
         })),
-      updateTeamMember: (memberId, patch) =>
+      updateTeamMember: (memberId, patch) => {
         set((s) => ({
           team: s.team.map((m) =>
             m.id === memberId
               ? { ...m, ...patch, historico: [...(m.historico ?? []), novaHistoricoEntry(s.team, "Dados atualizados")] }
               : m
           ),
-        })),
-      deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
-      updatePermissoes: (patch) => set((s) => ({ permissoes: { ...s.permissoes, ...patch } })),
+        }));
+        const dbPatch: Record<string, unknown> = {};
+        if (patch.nome !== undefined) dbPatch.nome = patch.nome;
+        if (patch.email !== undefined) dbPatch.email = patch.email;
+        if (patch.celular !== undefined) dbPatch.celular = patch.celular;
+        if (patch.perfil !== undefined) dbPatch.perfil = patch.perfil;
+        if (patch.departamentos !== undefined) dbPatch.departamentos = patch.departamentos;
+        if (patch.avatarColor !== undefined) dbPatch.avatar_color = patch.avatarColor;
+        if (patch.ativo !== undefined) dbPatch.ativo = patch.ativo;
+        if (patch.clientesVinculados !== undefined) dbPatch.clientes_vinculados = patch.clientesVinculados;
+        if (Object.keys(dbPatch).length > 0) {
+          void createClient()
+            .from("profiles")
+            .update(dbPatch)
+            .eq("id", memberId)
+            .then(({ error }) => error && console.error("Erro ao salvar colaborador:", error.message));
+        }
+      },
+      // Exclui o usuário de login de verdade — precisa da secret key, então
+      // só o backend consegue (rota /api/colaboradores/excluir). Aqui só
+      // tira da tela na hora; a rota já cuida de apagar em profiles também
+      // (cascade), e o Realtime confirma.
+      deleteTeamMember: (memberId) => {
+        set((s) => ({ team: s.team.filter((m) => m.id !== memberId) }));
+        void fetch("/api/colaboradores/excluir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: memberId }),
+        }).catch((err) => console.error("Erro ao excluir colaborador:", err));
+      },
+      updatePermissoes: (patch) => {
+        set((s) => ({ permissoes: { ...s.permissoes, ...patch } }));
+        const rows = Object.entries(patch)
+          .map(([key, allowed]) => {
+            const parsed = parsePermissaoKey(key);
+            return parsed ? { member_id: parsed.memberId, modulo: parsed.modulo, acao: parsed.acao, allowed } : null;
+          })
+          .filter((r): r is { member_id: string; modulo: string; acao: string; allowed: boolean } => r !== null);
+        if (rows.length > 0) {
+          void createClient()
+            .from("permissions")
+            .upsert(rows, { onConflict: "member_id,modulo,acao" })
+            .then(({ error }) => error && console.error("Erro ao salvar permissões:", error.message));
+        }
+      },
+      setTeamFromSupabase: (team) => set({ team }),
+      setPermissoesFromSupabase: (permissoes) => set({ permissoes }),
       updateDadosEscritorio: (patch) => set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } })),
       addSistemaEscritorio: (sistema) => set((s) => ({ sistemasEscritorio: [...s.sistemasEscritorio, sistema] })),
       updateSistemaEscritorio: (id, patch) =>
@@ -824,13 +876,22 @@ export const useAppStore = create<AppState>()(
       name: "eleven-hub-store",
       version: 16,
       // blob: object URLs only live for this browser session — never persist them.
-      partialize: (state) => ({
-        ...state,
-        documentos: state.documentos.map((d) => {
-          const { url, ...rest } = d;
-          return url ? rest : d;
-        }),
-      }),
+      // team e permissoes não são mais persistidos aqui — vêm do Supabase
+      // (Etapa 1 da migração) e são recarregados a cada sessão + mantidos
+      // em sincronia por Realtime, então guardá-los no localStorage só
+      // arriscaria mostrar dado desatualizado antes da store terminar de
+      // buscar do banco.
+      partialize: (state) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { team, permissoes, ...rest } = state;
+        return {
+          ...rest,
+          documentos: rest.documentos.map((d) => {
+            const { url, ...docRest } = d;
+            return url ? docRest : d;
+          }),
+        };
+      },
       // Fill in fields added to existing records after they were first persisted,
       // so browsers with older cached state don't crash on undefined arrays.
       migrate: (persistedState: unknown) => {

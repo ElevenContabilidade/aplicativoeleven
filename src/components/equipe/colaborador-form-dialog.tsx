@@ -43,6 +43,8 @@ export function ColaboradorFormDialog({
   const [envioStatus, setEnvioStatus] = useState<"enviando" | "enviado" | "nao_configurado" | "erro" | null>(null);
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
   const [emailErro, setEmailErro] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
+  const [erroCriacao, setErroCriacao] = useState<string | null>(null);
 
   function toggleDepartamento(d: Departamento) {
     setDepartamentos((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
@@ -55,6 +57,7 @@ export function ColaboradorFormDialog({
       setEnvioStatus(null);
       setErroDetalhe(null);
       setEmailErro(null);
+      setErroCriacao(null);
     }
     onOpenChange(v);
   }
@@ -77,7 +80,7 @@ export function ColaboradorFormDialog({
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim() || !email.trim()) return;
     const emailNormalizado = email.trim().toLowerCase();
@@ -97,19 +100,32 @@ export function ColaboradorFormDialog({
     if (colaborador) {
       updateTeamMember(colaborador.id, patch);
       onOpenChange(false);
-    } else {
-      const senha = gerarSenhaTemporaria();
-      const novoId = `u-${Date.now()}`;
-      addTeamMember({
-        id: novoId,
-        ...patch,
-        avatarColor: AVATAR_COLORS[team.length % AVATAR_COLORS.length],
-        ativo: true,
-        senhaDefinida: false,
-        senhaTemporaria: senha,
+      return;
+    }
+
+    setCriando(true);
+    setErroCriacao(null);
+    const senha = gerarSenhaTemporaria();
+    const avatarColor = AVATAR_COLORS[team.length % AVATAR_COLORS.length];
+    try {
+      const res = await fetch("/api/colaboradores/criar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...patch, senha, avatarColor }),
       });
+      const data = await res.json();
+      if (!data.ok) {
+        setErroCriacao(data.error ?? "Não foi possível criar o colaborador.");
+        setCriando(false);
+        return;
+      }
+      addTeamMember({ id: data.id, ...patch, avatarColor, ativo: true });
       setConvite({ email: patch.email, senha });
       void enviarConvitePorEmail(patch.nome, patch.email, senha);
+    } catch (err) {
+      setErroCriacao(err instanceof Error ? err.message : "Não foi possível criar o colaborador.");
+    } finally {
+      setCriando(false);
     }
   }
 
@@ -228,9 +244,12 @@ export function ColaboradorFormDialog({
               ))}
             </div>
           </div>
+          {erroCriacao && <p className="text-xs text-status-danger">{erroCriacao}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
-            <Button type="submit">{colaborador ? "Salvar alterações" : "Cadastrar colaborador"}</Button>
+            <Button type="submit" disabled={criando}>
+              {criando ? "Criando..." : colaborador ? "Salvar alterações" : "Cadastrar colaborador"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

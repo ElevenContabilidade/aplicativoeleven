@@ -39,8 +39,19 @@ export const MODULOS_OPERACAO = [
 export const MODULOS_GESTAO = ["Financeiro", "Boletos", "NFSe", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
 export const ACOES = ["Visualizar", "Criar", "Editar", "Excluir", "Exportar"];
 
+// "|" e não "-" porque memberId agora é um UUID do Supabase (tem hífen
+// dentro), então um separador "-" ficaria ambíguo pra desmontar a chave de
+// volta em memberId/modulo/acao (feito em app-store.ts ao sincronizar com
+// a tabela `permissions`).
 export function permissaoKey(memberId: string, modulo: string, acao: string) {
-  return `${memberId}-${modulo}-${acao}`;
+  return `${memberId}|${modulo}|${acao}`;
+}
+
+export function parsePermissaoKey(key: string): { memberId: string; modulo: string; acao: string } | null {
+  const partes = key.split("|");
+  if (partes.length !== 3) return null;
+  const [memberId, modulo, acao] = partes;
+  return { memberId, modulo, acao };
 }
 
 /** Sem entrada explícita na matriz = liberado. Todo colaborador (novo ou

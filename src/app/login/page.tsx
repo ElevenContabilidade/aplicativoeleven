@@ -9,23 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
+import { createClient } from "@/lib/supabase/client";
 
 type Tab = "equipe" | "cliente";
 
 export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
-  const team = useAppStore((s) => s.team);
   const clients = useAppStore((s) => s.clients);
-  const updateTeamMember = useAppStore((s) => s.updateTeamMember);
   const [tab, setTab] = useState<Tab>("equipe");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) {
       setError("Preencha e-mail e senha para continuar.");
@@ -33,22 +33,18 @@ export default function LoginPage() {
     }
     setError("");
     if (tab === "equipe") {
-      const trimmedEmail = email.trim();
-      const candidatos = team.filter((m) => m.email.toLowerCase() === trimmedEmail.toLowerCase());
-      // Colaboradores cadastrados via convite (senhaDefinida true/false) têm
-      // senha real pra checar; contas antigas de demonstração (sem convite)
-      // continuam entrando só com o e-mail. Se houver mais de um cadastro
-      // com o mesmo e-mail (duplicado), prioriza o que bate a senha.
-      const member =
-        candidatos.find((m) => m.senhaDefinida === undefined || m.senhaTemporaria === password) ?? candidatos[0];
-      if (!member || (member.senhaDefinida !== undefined && member.senhaTemporaria !== password)) {
+      setLoading(true);
+      const supabase = createClient();
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      setLoading(false);
+      if (authError || !data.user) {
         setError("E-mail ou senha inválidos.");
         return;
       }
-      if (member.senhaDefinida === false) {
-        updateTeamMember(member.id, { senhaDefinida: true });
-      }
-      login("equipe", trimmedEmail, member.id);
+      login("equipe", data.user.email ?? email.trim(), data.user.id);
       router.push("/dashboard");
     } else {
       login("cliente", email, clientId);
@@ -170,8 +166,8 @@ export default function LoginPage() {
 
             {error && <p className="text-xs font-medium text-status-danger">{error}</p>}
 
-            <Button type="submit" className="w-full" size="lg">
-              Entrar
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
         </div>

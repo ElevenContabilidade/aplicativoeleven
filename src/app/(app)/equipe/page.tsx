@@ -14,7 +14,7 @@ import { EmpresasVinculadas } from "@/components/equipe/empresas-vinculadas";
 import { ColaboradorFormDialog } from "@/components/equipe/colaborador-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { gerarSenhaTemporaria } from "@/lib/senha-temporaria";
-import { temPermissao, MODULOS_OPERACAO, MODULOS_GESTAO, ACOES } from "@/lib/permissoes";
+import { temPermissao, permissaoKey, MODULOS_OPERACAO, MODULOS_GESTAO, ACOES } from "@/lib/permissoes";
 import type { TeamMember } from "@/lib/types";
 import { initials } from "@/lib/utils";
 
@@ -28,14 +28,30 @@ export default function EquipePage() {
   const [activeMap, setActiveMap] = useState<Record<string, boolean>>(Object.fromEntries(team.map((m) => [m.id, m.ativo])));
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
-  const [resendStatus, setResendStatus] = useState<Record<string, "enviando" | "enviado" | "copiado">>({});
+  const [resendStatus, setResendStatus] = useState<Record<string, "enviando" | "enviado" | "copiado" | "erro">>({});
 
   const selected = team.find((m) => m.id === selectedId);
 
   async function reenviarConvite(m: TeamMember) {
     setResendStatus((s) => ({ ...s, [m.id]: "enviando" }));
     const novaSenha = gerarSenhaTemporaria();
-    updateTeamMember(m.id, { senhaTemporaria: novaSenha });
+    try {
+      const res = await fetch("/api/colaboradores/redefinir-senha", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: m.id, senha: novaSenha }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setResendStatus((s) => ({ ...s, [m.id]: "erro" }));
+        setTimeout(() => setResendStatus((s) => { const rest = { ...s }; delete rest[m.id]; return rest; }), 2500);
+        return;
+      }
+    } catch {
+      setResendStatus((s) => ({ ...s, [m.id]: "erro" }));
+      setTimeout(() => setResendStatus((s) => { const rest = { ...s }; delete rest[m.id]; return rest; }), 2500);
+      return;
+    }
     let enviado = false;
     try {
       const res = await fetch("/api/colaboradores/convite", {
@@ -68,11 +84,11 @@ export default function EquipePage() {
   // ações desse módulo (não faz sentido criar/editar/excluir/exportar algo
   // que o usuário não pode nem visualizar).
   function togglePerm(memberId: string, mod: string, acao: string) {
-    const key = `${memberId}-${mod}-${acao}`;
+    const key = permissaoKey(memberId, mod, acao);
     const next: Record<string, boolean> = { [key]: !temPermissao(perms, memberId, mod, acao) };
     if (acao === "Visualizar" && !next[key]) {
       for (const outra of ACOES) {
-        if (outra !== "Visualizar") next[`${memberId}-${mod}-${outra}`] = false;
+        if (outra !== "Visualizar") next[permissaoKey(memberId, mod, outra)] = false;
       }
     }
     updatePermissoes(next);
@@ -142,7 +158,9 @@ export default function EquipePage() {
                         ? "E-mail reenviado!"
                         : resendStatus[m.id] === "copiado"
                           ? "Envio automático indisponível — credenciais copiadas"
-                          : "Reenviar e-mail de convite"
+                          : resendStatus[m.id] === "erro"
+                            ? "Não foi possível redefinir a senha agora"
+                            : "Reenviar e-mail de convite"
                     }
                     className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-sand-100 hover:text-sand-700 disabled:opacity-60"
                   >
@@ -229,7 +247,7 @@ export default function EquipePage() {
                         <tr key={mod} className="border-t border-sand-100">
                           <td className="py-2 pr-2 font-medium text-sand-800">{mod}</td>
                           {ACOES.map((a) => {
-                            const key = `${selected.id}-${mod}-${a}`;
+                            const key = permissaoKey(selected.id, mod, a);
                             return (
                               <td key={a} className="px-2 py-2 text-center">
                                 <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(selected.id, mod, a)} />
@@ -247,7 +265,7 @@ export default function EquipePage() {
                         <tr key={mod} className="border-t border-sand-100">
                           <td className="py-2 pr-2 font-medium text-sand-800">{mod}</td>
                           {ACOES.map((a) => {
-                            const key = `${selected.id}-${mod}-${a}`;
+                            const key = permissaoKey(selected.id, mod, a);
                             return (
                               <td key={a} className="px-2 py-2 text-center">
                                 <Checkbox checked={defaultPerm(key, perms)} onCheckedChange={() => togglePerm(selected.id, mod, a)} />

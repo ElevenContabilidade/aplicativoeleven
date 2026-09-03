@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamMember } from "@/lib/team-lookup";
 import { initials } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
   const router = useRouter();
@@ -60,6 +61,7 @@ export function Topbar({ onOpenMobileNav }: { onOpenMobileNav: () => void }) {
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => {
+              void createClient().auth.signOut();
               logout();
               router.push("/login");
             }}

@@ -8,17 +8,37 @@ import { EleveMark } from "@/components/brand/logo";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
 import { moduloDaRota, temPermissao } from "@/lib/permissoes";
+import { useSupabaseTeamSync } from "@/lib/supabase/use-team-sync";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AppGroupLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, kind, userId, hasHydrated } = useAuthStore();
+  const { isAuthenticated, kind, userId, hasHydrated, logout } = useAuthStore();
   const permissoes = useAppStore((s) => s.permissoes);
   const team = useAppStore((s) => s.team);
+
+  useSupabaseTeamSync(hasHydrated && isAuthenticated && kind === "equipe");
 
   useEffect(() => {
     if (hasHydrated && (!isAuthenticated || kind !== "equipe")) router.replace("/login");
   }, [isAuthenticated, kind, hasHydrated, router]);
+
+  // A sessão "lembrada" localmente pode não valer mais (expirou, foi
+  // encerrada em outro lugar) — confirma com o Supabase que ainda é
+  // válida, senão desloga de verdade em vez de deixar a tela presa
+  // achando que está autenticado.
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated || kind !== "equipe") return;
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        logout();
+        router.replace("/login");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasHydrated, isAuthenticated, kind]);
 
   if (!hasHydrated || !isAuthenticated || kind !== "equipe") {
     return (
