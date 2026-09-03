@@ -83,6 +83,7 @@ import type {
   SistemaEscritorio,
   DespesaAvulsa,
   PagamentoSistemaMensal,
+  ContratoAssinatura,
 } from "@/lib/types";
 
 interface AppState {
@@ -92,6 +93,7 @@ interface AppState {
   metaMensalClientes: number;
   despesasAvulsas: DespesaAvulsa[];
   pagamentosSistemas: PagamentoSistemaMensal[];
+  contratosAssinatura: ContratoAssinatura[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -130,6 +132,9 @@ interface AppState {
   updateDespesaAvulsa: (id: string, patch: Partial<DespesaAvulsa>) => void;
   deleteDespesaAvulsa: (id: string) => void;
   updatePagamentoSistema: (sistemaId: string, competencia: string, patch: Partial<PagamentoSistemaMensal>) => void;
+  addContratoAssinatura: (contrato: ContratoAssinatura) => void;
+  updateContratoAssinatura: (id: string, patch: Partial<ContratoAssinatura>) => void;
+  deleteContratoAssinatura: (id: string) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -268,6 +273,7 @@ const initial = {
   metaMensalClientes: 5,
   despesasAvulsas: [],
   pagamentosSistemas: [],
+  contratosAssinatura: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -412,6 +418,13 @@ export const useAppStore = create<AppState>()(
             pagamentosSistemas: [...s.pagamentosSistemas, { id, sistemaId, competencia, status: "Em aberto", ...patch }],
           };
         }),
+      addContratoAssinatura: (contrato) => set((s) => ({ contratosAssinatura: [...s.contratosAssinatura, contrato] })),
+      updateContratoAssinatura: (id, patch) =>
+        set((s) => ({
+          contratosAssinatura: s.contratosAssinatura.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        })),
+      deleteContratoAssinatura: (id) =>
+        set((s) => ({ contratosAssinatura: s.contratosAssinatura.filter((c) => c.id !== id) })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

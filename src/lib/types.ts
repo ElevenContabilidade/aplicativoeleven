@@ -714,6 +714,37 @@ export interface Documento {
   url?: string;
 }
 
+// ---------- Assinatura eletrônica (Autentique) ----------
+
+export type StatusAssinatura = "Enviado" | "Assinado" | "Recusado" | "Erro";
+
+export interface SignatarioContrato {
+  publicId?: string;
+  nome: string;
+  email: string;
+  assinado: boolean;
+  recusado: boolean;
+  dataAssinatura?: string;
+  linkAssinatura?: string;
+}
+
+/** Envio de um contrato pra assinatura eletrônica via Autentique. O PDF em si
+ * fica guardado só do lado da Autentique (não duplicamos no localStorage) —
+ * aqui a gente rastreia só o id do documento lá e o status de cada
+ * signatário, atualizado sob demanda pela rota de status. */
+export interface ContratoAssinatura {
+  id: string;
+  clienteId: string;
+  nomeArquivo: string;
+  documentId: string;
+  status: StatusAssinatura;
+  signatarios: SignatarioContrato[];
+  sandbox: boolean;
+  erro?: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
 // ---------- Notificações ----------
 
 export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca" | "fiscal";

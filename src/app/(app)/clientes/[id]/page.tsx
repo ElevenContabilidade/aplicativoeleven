@@ -22,6 +22,7 @@ import { IndicacaoFormDialog } from "@/components/clients/indicacao-form-dialog"
 import { SocioFormDialog } from "@/components/clients/socio-form-dialog";
 import { ContatoFormDialog } from "@/components/clients/contato-form-dialog";
 import { FinanceiroClienteForm } from "@/components/clients/financeiro-cliente-form";
+import { ContratoAssinaturaCard } from "@/components/clients/contrato-assinatura-card";
 import { HistoricoFinanceiroFormDialog } from "@/components/clients/historico-financeiro-form-dialog";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
@@ -302,6 +303,7 @@ export default function ClientProfilePage() {
           <TabsTrigger value="cadastrais">Dados cadastrais</TabsTrigger>
           <TabsTrigger value="socios">Sócios &amp; contatos</TabsTrigger>
           <TabsTrigger value="onboarding">Onboarding</TabsTrigger>
+          <TabsTrigger value="contrato">Contrato</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           <TabsTrigger value="licencas">Licenças</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -541,6 +543,10 @@ export default function ClientProfilePage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="contrato">
+          <ContratoAssinaturaCard client={client} />
         </TabsContent>
 
         <TabsContent value="financeiro" className="space-y-4">
