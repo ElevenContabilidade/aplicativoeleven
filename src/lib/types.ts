@@ -261,6 +261,9 @@ export interface DadosCadastrais {
    * Societário (só nome, sem os demais dados) — fica de fora da tela de
    * Clientes até alguém completar o cadastro de verdade lá. */
   criadoViaSocietario?: boolean;
+  /** Libera o cliente nos controles de Férias, 13º salário e Rescisão do
+   * Departamento Pessoal — sem isso marcado, o cliente não aparece lá. */
+  possuiFuncionarios?: boolean;
 }
 
 export interface OnboardingChecklistItem {
@@ -887,14 +890,6 @@ export const ROTINAS_PESSOAL_FIXAS = [
 ] as const;
 
 export const ROTINAS_PESSOAL_VARIAVEIS = [
-  "Processar admissões",
-  "Processar rescisões",
-  "Processar férias",
-  "Processar benefícios",
-  "Processar afastamentos",
-  "Emissão e Envio de Quadro de Horários",
-  "Emissão e Envio de Folhas de Ponto",
-  "Emissão e Envio de escala de revezamento",
   "Classificar",
   "Lançar no sistema",
   "Conciliar Banco",
@@ -918,3 +913,68 @@ export const ROTINAS_MEI = [
   "Preencher a Planilha",
   "Gerar o relatório",
 ] as const;
+
+// ---------- Funcionários (Férias, 13º e Rescisão) ----------
+
+export type TipoFuncionario = "CLT" | "MEI" | "Doméstico";
+
+/** Um período aquisitivo de férias já concluído (férias programadas e
+ * confirmadas) — histórico usado pra saber em que período aquisitivo o
+ * funcionário está agora (índice = historicoFerias.length). */
+export interface FeriasRegistro {
+  indice: number;
+  periodoInicio: string;
+  periodoFim: string;
+  feriasInicio: string;
+  feriasFim: string;
+}
+
+export interface Decimo13Registro {
+  ano: string;
+  primeiraParcelaPaga: boolean;
+  segundaParcelaPaga: boolean;
+}
+
+export const RESCISAO_CHECKLIST = [
+  "03 vias Rescisão Contratual (2 do funcionário, 1 da empresa)",
+  "02 vias Aviso (1 do funcionário, 1 da empresa)",
+  "01 via Ficha do Funcionário (empresa)",
+  "02 vias Cálculo de médias (1 do funcionário, 1 da empresa)",
+  "01 via Ocorrências (funcionário)",
+  "02 vias Carta de recomendação (funcionário)",
+  "03 vias PPP (2 do funcionário, 1 da empresa — Técnico de segurança do trabalho)",
+  "Extrato do FGTS atualizado (funcionário e empresa)",
+  "02 vias ASO Demissional (1 da empresa, 1 do funcionário — funcionário precisa fazer)",
+  "01 via Comprovante de rendimentos para IR (funcionário)",
+  "Seguro-desemprego (canhoto com a empresa, restante com o funcionário)",
+  "Multa FGTS",
+] as const;
+
+export interface RescisaoChecklistItem {
+  id: string;
+  label: string;
+  concluido: boolean;
+}
+
+export interface Rescisao {
+  dataDesligamento: string;
+  motivo?: string;
+  checklist: RescisaoChecklistItem[];
+}
+
+export interface Funcionario {
+  id: string;
+  clienteId: string;
+  nome: string;
+  dataAdmissao: string;
+  tipo: TipoFuncionario;
+  observacoes?: string;
+  ativo: boolean;
+  historicoFerias: FeriasRegistro[];
+  /** Datas programadas pro período aquisitivo em aberto (ainda não
+   * confirmadas em historicoFerias). */
+  feriasProgramadasInicio?: string;
+  feriasProgramadasFim?: string;
+  decimosTerceiros: Decimo13Registro[];
+  rescisao?: Rescisao;
+}

@@ -179,6 +179,15 @@ export function CadastroForm({ client }: { client: Client }) {
               </label>
             </div>
           )}
+          <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
+            <label className="flex items-center gap-2 text-xs text-sand-700">
+              <Checkbox
+                checked={form.possuiFuncionarios ?? false}
+                onCheckedChange={(v) => set("possuiFuncionarios", v === true)}
+              />
+              Possui funcionários (libera o cliente nos controles de Férias, 13º salário e Rescisão do Departamento Pessoal)
+            </label>
+          </div>
           <Field label="Município">
             <Input value={form.municipio} onChange={(e) => set("municipio", e.target.value)} />
           </Field>

@@ -84,7 +84,12 @@ import type {
   DespesaAvulsa,
   PagamentoSistemaMensal,
   ContratoAssinatura,
+  Funcionario,
+  FeriasRegistro,
+  RescisaoChecklistItem,
 } from "@/lib/types";
+import { RESCISAO_CHECKLIST } from "@/lib/types";
+import { periodoAtivo } from "@/lib/ferias";
 
 interface AppState {
   team: TeamMember[];
@@ -94,6 +99,7 @@ interface AppState {
   despesasAvulsas: DespesaAvulsa[];
   pagamentosSistemas: PagamentoSistemaMensal[];
   contratosAssinatura: ContratoAssinatura[];
+  funcionarios: Funcionario[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -135,6 +141,13 @@ interface AppState {
   addContratoAssinatura: (contrato: ContratoAssinatura) => void;
   updateContratoAssinatura: (id: string, patch: Partial<ContratoAssinatura>) => void;
   deleteContratoAssinatura: (id: string) => void;
+  addFuncionario: (funcionario: Funcionario) => void;
+  updateFuncionario: (id: string, patch: Partial<Funcionario>) => void;
+  deleteFuncionario: (id: string) => void;
+  confirmarPeriodoFerias: (funcionarioId: string) => void;
+  updateDecimo13: (funcionarioId: string, ano: string, patch: Partial<{ primeiraParcelaPaga: boolean; segundaParcelaPaga: boolean }>) => void;
+  iniciarRescisao: (funcionarioId: string, dataDesligamento: string, motivo?: string) => void;
+  toggleRescisaoItem: (funcionarioId: string, itemId: string) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -274,6 +287,7 @@ const initial = {
   despesasAvulsas: [],
   pagamentosSistemas: [],
   contratosAssinatura: [],
+  funcionarios: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -425,6 +439,67 @@ export const useAppStore = create<AppState>()(
         })),
       deleteContratoAssinatura: (id) =>
         set((s) => ({ contratosAssinatura: s.contratosAssinatura.filter((c) => c.id !== id) })),
+      addFuncionario: (funcionario) => set((s) => ({ funcionarios: [...s.funcionarios, funcionario] })),
+      updateFuncionario: (id, patch) =>
+        set((s) => ({ funcionarios: s.funcionarios.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
+      deleteFuncionario: (id) => set((s) => ({ funcionarios: s.funcionarios.filter((f) => f.id !== id) })),
+      confirmarPeriodoFerias: (funcionarioId) =>
+        set((s) => ({
+          funcionarios: s.funcionarios.map((f) => {
+            if (f.id !== funcionarioId || !f.feriasProgramadasInicio || !f.feriasProgramadasFim) return f;
+            const { indice, periodoInicio, periodoFim } = periodoAtivo(f);
+            const registro: FeriasRegistro = {
+              indice,
+              periodoInicio,
+              periodoFim,
+              feriasInicio: f.feriasProgramadasInicio,
+              feriasFim: f.feriasProgramadasFim,
+            };
+            return {
+              ...f,
+              historicoFerias: [...f.historicoFerias, registro],
+              feriasProgramadasInicio: undefined,
+              feriasProgramadasFim: undefined,
+            };
+          }),
+        })),
+      updateDecimo13: (funcionarioId, ano, patch) =>
+        set((s) => ({
+          funcionarios: s.funcionarios.map((f) => {
+            if (f.id !== funcionarioId) return f;
+            const existente = f.decimosTerceiros.find((d) => d.ano === ano);
+            const decimosTerceiros = existente
+              ? f.decimosTerceiros.map((d) => (d.ano === ano ? { ...d, ...patch } : d))
+              : [...f.decimosTerceiros, { ano, primeiraParcelaPaga: false, segundaParcelaPaga: false, ...patch }];
+            return { ...f, decimosTerceiros };
+          }),
+        })),
+      iniciarRescisao: (funcionarioId, dataDesligamento, motivo) =>
+        set((s) => ({
+          funcionarios: s.funcionarios.map((f) =>
+            f.id === funcionarioId
+              ? {
+                  ...f,
+                  ativo: false,
+                  rescisao: {
+                    dataDesligamento,
+                    motivo,
+                    checklist: RESCISAO_CHECKLIST.map((label, i) => ({ id: `resc-${funcionarioId}-${i}`, label, concluido: false })),
+                  },
+                }
+              : f
+          ),
+        })),
+      toggleRescisaoItem: (funcionarioId, itemId) =>
+        set((s) => ({
+          funcionarios: s.funcionarios.map((f) => {
+            if (f.id !== funcionarioId || !f.rescisao) return f;
+            const checklist = f.rescisao.checklist.map((item: RescisaoChecklistItem) =>
+              item.id === itemId ? { ...item, concluido: !item.concluido } : item
+            );
+            return { ...f, rescisao: { ...f.rescisao, checklist } };
+          }),
+        })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
