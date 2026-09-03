@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileSignature, Send, RefreshCw, ExternalLink, Trash2, CheckCircle2, XCircle, Clock3, FlaskConical } from "lucide-react";
+import { FileSignature, Send, RefreshCw, ExternalLink, Trash2, CheckCircle2, XCircle, Clock3, FlaskConical, Plus, X, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -35,29 +35,43 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
     [contratosAssinatura, client.id]
   );
 
-  const signatarioPadrao = useMemo(() => {
-    const rep = client.socios.find((s) => s.representanteLegal) ?? client.socios.find((s) => s.administrador) ?? client.socios[0];
-    return { nome: rep?.nome ?? "", email: rep?.email ?? "" };
+  const linhasIniciais = useMemo(() => {
+    const doSocios = client.socios.map((s) => ({ id: s.id, nome: s.nome, email: s.email ?? "", incluir: true }));
+    return doSocios.length > 0 ? doSocios : [{ id: "manual-1", nome: "", email: "", incluir: true }];
   }, [client.socios]);
 
   const [file, setFile] = useState<File | null>(null);
-  const [nomeSignatario, setNomeSignatario] = useState(signatarioPadrao.nome);
-  const [emailSignatario, setEmailSignatario] = useState(signatarioPadrao.email);
+  const [linhasSignatarios, setLinhasSignatarios] = useState(linhasIniciais);
   const [sandbox, setSandbox] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [atualizandoId, setAtualizandoId] = useState<string | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const [naoConfigurado, setNaoConfigurado] = useState(false);
 
+  const signatariosSelecionados = linhasSignatarios.filter((l) => l.incluir && l.nome.trim() && l.email.trim());
+
+  function atualizarLinha(id: string, patch: Partial<{ nome: string; email: string; incluir: boolean }>) {
+    setLinhasSignatarios((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+  }
+  function adicionarLinha() {
+    setLinhasSignatarios((prev) => [...prev, { id: `manual-${Date.now()}`, nome: "", email: "", incluir: true }]);
+  }
+  function removerLinha(id: string) {
+    setLinhasSignatarios((prev) => prev.filter((l) => l.id !== id));
+  }
+
   async function enviarContrato() {
-    if (!file || !nomeSignatario.trim() || !emailSignatario.trim()) return;
+    if (!file || signatariosSelecionados.length === 0) return;
     setEnviando(true);
     setErroEnvio(null);
     setNaoConfigurado(false);
     try {
       const form = new FormData();
       form.append("nomeDocumento", `Contrato de prestação de serviço — ${client.dados.razaoSocial || client.dados.nomeFantasia}`);
-      form.append("signatarios", JSON.stringify([{ nome: nomeSignatario.trim(), email: emailSignatario.trim() }]));
+      form.append(
+        "signatarios",
+        JSON.stringify(signatariosSelecionados.map((s) => ({ nome: s.nome.trim(), email: s.email.trim() })))
+      );
       form.append("sandbox", String(sandbox));
       form.append("arquivo", file, file.name);
 
@@ -81,10 +95,10 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
         documentId: json.documentId,
         status: "Enviado",
         sandbox,
-        signatarios: (json.signatures ?? []).map((sig: { publicId?: string; nome: string; email: string; link?: string }) => ({
+        signatarios: (json.signatures ?? []).map((sig: { publicId?: string; nome: string; email: string; link?: string }, i: number) => ({
           publicId: sig.publicId,
-          nome: sig.nome || nomeSignatario,
-          email: sig.email || emailSignatario,
+          nome: sig.nome || signatariosSelecionados[i]?.nome || "",
+          email: sig.email || signatariosSelecionados[i]?.email || "",
           assinado: false,
           recusado: false,
           linkAssinatura: sig.link,
@@ -114,19 +128,26 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
         updateContratoAssinatura(contrato.id, { erro: json.error ?? "Não configurado.", atualizadoEm: new Date().toISOString() });
         return;
       }
-      const signatarios = json.signatures.map((sig: { publicId?: string; nome: string; email: string; link?: string; assinado: boolean; dataAssinatura?: string; recusado: boolean }) => ({
-        publicId: sig.publicId,
-        nome: sig.nome,
-        email: sig.email,
-        assinado: sig.assinado,
-        dataAssinatura: sig.dataAssinatura,
-        recusado: sig.recusado,
-        linkAssinatura: sig.link,
-      }));
+      // A Autentique também retorna o criador do documento nessa lista (com ação
+      // "Criou o documento", não uma assinatura pendente de verdade) — filtra
+      // pra manter só quem a gente convidou pra assinar no envio original.
+      const emailsConvidados = new Set(contrato.signatarios.map((s) => s.email.toLowerCase()));
+      const signatarios = json.signatures
+        .filter((sig: { email: string }) => emailsConvidados.has(sig.email.toLowerCase()))
+        .map((sig: { publicId?: string; nome: string; email: string; link?: string; assinado: boolean; dataAssinatura?: string; recusado: boolean }) => ({
+          publicId: sig.publicId,
+          nome: sig.nome,
+          email: sig.email,
+          assinado: sig.assinado,
+          dataAssinatura: sig.dataAssinatura,
+          recusado: sig.recusado,
+          linkAssinatura: sig.link,
+        }));
       const atualizado: ContratoAssinatura = { ...contrato, signatarios };
       updateContratoAssinatura(contrato.id, {
         signatarios,
         status: derivaStatus(atualizado),
+        pdfAssinadoUrl: json.pdfAssinadoUrl,
         erro: undefined,
         atualizadoEm: new Date().toISOString(),
       });
@@ -150,20 +171,50 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
       <CardContent className="space-y-4 pt-4">
         <div className="rounded-lg border border-dashed border-sand-300 p-4">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-sand-500">Enviar novo contrato para assinatura</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label className="mb-1 block">Arquivo do contrato (PDF) *</Label>
-              <Input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            </div>
-            <div>
-              <Label className="mb-1 block">Nome do signatário *</Label>
-              <Input value={nomeSignatario} onChange={(e) => setNomeSignatario(e.target.value)} placeholder="Nome completo" />
-            </div>
-            <div>
-              <Label className="mb-1 block">E-mail do signatário *</Label>
-              <Input type="email" value={emailSignatario} onChange={(e) => setEmailSignatario(e.target.value)} placeholder="email@cliente.com" />
-            </div>
+          <div>
+            <Label className="mb-1 block">Arquivo do contrato (PDF) *</Label>
+            <Input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </div>
+
+          <div className="mt-3">
+            <Label className="mb-1.5 block">Signatários (marque quem precisa assinar) *</Label>
+            <div className="space-y-2">
+              {linhasSignatarios.map((linha) => (
+                <div key={linha.id} className="flex items-center gap-2">
+                  <Checkbox checked={linha.incluir} onCheckedChange={(v) => atualizarLinha(linha.id, { incluir: v === true })} />
+                  <Input
+                    value={linha.nome}
+                    onChange={(e) => atualizarLinha(linha.id, { nome: e.target.value })}
+                    placeholder="Nome completo"
+                    className="flex-1"
+                  />
+                  <Input
+                    type="email"
+                    value={linha.email}
+                    onChange={(e) => atualizarLinha(linha.id, { email: e.target.value })}
+                    placeholder="email@cliente.com"
+                    className="flex-1"
+                  />
+                  <button
+                    type="button"
+                    title="Remover"
+                    onClick={() => removerLinha(linha.id)}
+                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={adicionarLinha}
+              className="mt-2 flex items-center gap-1 text-xs font-medium text-wine-600 hover:underline"
+            >
+              <Plus className="size-3.5" /> Adicionar signatário
+            </button>
+          </div>
+
           <label className="mt-3 flex items-center gap-2 text-xs text-sand-500">
             <Checkbox checked={sandbox} onCheckedChange={(v) => setSandbox(v === true)} />
             <span className="flex items-center gap-1">
@@ -177,7 +228,7 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
           )}
           {erroEnvio && <p className="mt-3 rounded-md bg-status-danger-bg px-3 py-2 text-xs text-status-danger">{erroEnvio}</p>}
           <div className="mt-3 flex justify-end">
-            <Button size="sm" disabled={!file || !nomeSignatario.trim() || !emailSignatario.trim() || enviando} onClick={enviarContrato}>
+            <Button size="sm" disabled={!file || signatariosSelecionados.length === 0 || enviando} onClick={enviarContrato}>
               <Send className="size-3.5" /> {enviando ? "Enviando..." : "Enviar para assinatura"}
             </Button>
           </div>
@@ -221,6 +272,16 @@ export function ContratoAssinaturaCard({ client }: { client: Client }) {
                     </div>
                   </div>
                   {contrato.erro && <p className="mt-2 text-[11px] text-status-danger">{contrato.erro}</p>}
+                  {contrato.status === "Assinado" && contrato.pdfAssinadoUrl && (
+                    <a
+                      href={contrato.pdfAssinadoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 flex w-fit items-center gap-1.5 rounded-md bg-status-success-bg px-2 py-1 text-xs font-medium text-status-success hover:underline"
+                    >
+                      <Download className="size-3.5" /> Baixar PDF assinado
+                    </a>
+                  )}
                   <div className="mt-2 space-y-1.5">
                     {contrato.signatarios.map((sig, i) => (
                       <div key={sig.publicId ?? i} className="flex items-center justify-between gap-2 text-xs">

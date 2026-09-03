@@ -11,6 +11,9 @@ const DOCUMENT_STATUS_QUERY = `
     document(id: $id) {
       id
       name
+      files {
+        signed
+      }
       signatures {
         public_id
         name
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
     }
     const texto = await res.text();
     let json: {
-      data?: { document?: { id: string; signatures?: AutentiqueSignature[] } };
+      data?: { document?: { id: string; files?: { signed?: string | null }; signatures?: AutentiqueSignature[] } };
       errors?: { message: string }[];
     };
     try {
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
       recusado: !!sig.rejected,
     }));
 
-    return NextResponse.json({ ok: true, configured: true, signatures });
+    return NextResponse.json({ ok: true, configured: true, signatures, pdfAssinadoUrl: doc.files?.signed ?? undefined });
   } catch (err) {
     return NextResponse.json(
       { ok: false, configured: true, error: err instanceof Error ? err.message : "Erro desconhecido." },

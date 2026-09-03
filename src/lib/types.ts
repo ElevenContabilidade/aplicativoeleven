@@ -740,6 +740,8 @@ export interface ContratoAssinatura {
   status: StatusAssinatura;
   signatarios: SignatarioContrato[];
   sandbox: boolean;
+  /** Link do PDF assinado na Autentique, disponível assim que todo mundo assina. */
+  pdfAssinadoUrl?: string;
   erro?: string;
   criadoEm: string;
   atualizadoEm: string;
