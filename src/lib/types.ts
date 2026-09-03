@@ -41,6 +41,25 @@ export interface TeamMember {
   senhaTemporaria?: string;
 }
 
+/** Dados cadastrais e de contato da própria Eleven (o escritório), não de
+ * um cliente — exibidos/editados na tela "Dados do escritório". */
+export interface DadosEscritorio {
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  inscricaoMunicipal?: string;
+  telefone?: string;
+  whatsapp?: string;
+  email?: string;
+  site?: string;
+  instagram?: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  cep?: string;
+  horarioAtendimento?: string;
+}
+
 export interface HistoricoAcaoUsuario {
   id: string;
   acao: string;

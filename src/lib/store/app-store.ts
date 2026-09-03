@@ -79,10 +79,12 @@ import type {
   BoletoMensal,
   NotaFiscalMensal,
   RecebimentoParceiroMensal,
+  DadosEscritorio,
 } from "@/lib/types";
 
 interface AppState {
   team: TeamMember[];
+  dadosEscritorio: DadosEscritorio;
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -112,6 +114,7 @@ interface AppState {
   permissoes: Record<string, boolean>;
 
   updatePermissoes: (patch: Record<string, boolean>) => void;
+  updateDadosEscritorio: (patch: Partial<DadosEscritorio>) => void;
   moveLead: (leadId: string, stage: LeadStage, autor: string) => void;
   addLead: (lead: Lead) => void;
   updateLead: (leadId: string, patch: Partial<Lead>) => void;
@@ -231,6 +234,21 @@ const initial = {
   checklistPessoal: [],
   checklistMei: [],
   permissoes: {},
+  dadosEscritorio: {
+    razaoSocial: "Eleven Contabilidade & Consultoria",
+    nomeFantasia: "Eleven",
+    cnpj: "",
+    email: "contato@somoselevencontabilidade.com",
+    site: "",
+    telefone: "",
+    whatsapp: "",
+    instagram: "",
+    endereco: "",
+    cidade: "",
+    estado: "",
+    cep: "",
+    horarioAtendimento: "Segunda a sexta, 9h às 18h",
+  },
 };
 
 export const useAppStore = create<AppState>()(
@@ -354,6 +372,7 @@ export const useAppStore = create<AppState>()(
         })),
       deleteTeamMember: (memberId) => set((s) => ({ team: s.team.filter((m) => m.id !== memberId) })),
       updatePermissoes: (patch) => set((s) => ({ permissoes: { ...s.permissoes, ...patch } })),
+      updateDadosEscritorio: (patch) => set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } })),
       updateClientDados: (clientId, patch) =>
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),

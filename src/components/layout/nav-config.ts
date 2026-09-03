@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutGrid,
+  Building,
   Briefcase,
   UsersRound,
   Building2,
@@ -34,6 +35,7 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  { label: "Dados do escritório", href: "/dados-escritorio", icon: Building, section: "principal" },
   { label: "Início", href: "/dashboard", icon: LayoutGrid, section: "principal" },
   { label: "Comercial", href: "/comercial", icon: Briefcase, section: "principal" },
   { label: "Leads", href: "/leads", icon: UsersRound, section: "principal" },
