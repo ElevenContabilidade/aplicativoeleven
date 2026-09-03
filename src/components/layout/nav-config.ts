@@ -25,6 +25,7 @@ import {
   FileText,
   Percent,
   Handshake,
+  Boxes,
 } from "lucide-react";
 
 export interface NavItem {
@@ -32,7 +33,15 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   section: "principal" | "operacao" | "gestao";
+  /** Quando presente, o item aparece dentro de um submenu recolhível em vez
+   * de solto na seção — todos os itens com o mesmo `group` viram filhos de
+   * um item-pai com esse nome. */
+  group?: string;
 }
+
+export const NAV_GROUP_ICON: Record<string, LucideIcon> = {
+  Departamentos: Boxes,
+};
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dados do escritório", href: "/dados-escritorio", icon: Building, section: "principal" },
@@ -43,12 +52,12 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Onboarding", href: "/onboarding", icon: ClipboardCheck, section: "principal" },
 
   { label: "Tarefas", href: "/tarefas", icon: ListChecks, section: "operacao" },
-  { label: "Fiscal", href: "/fiscal", icon: Landmark, section: "operacao" },
   { label: "MEI", href: "/mei", icon: Percent, section: "operacao" },
   { label: "Parcelamentos", href: "/parcelamentos", icon: Receipt, section: "operacao" },
-  { label: "Contábil", href: "/contabil", icon: Calculator, section: "operacao" },
-  { label: "Departamento Pessoal", href: "/dp", icon: UserCog, section: "operacao" },
-  { label: "Societário", href: "/societario", icon: Scale, section: "operacao" },
+  { label: "Fiscal", href: "/fiscal", icon: Landmark, section: "operacao", group: "Departamentos" },
+  { label: "Contábil", href: "/contabil", icon: Calculator, section: "operacao", group: "Departamentos" },
+  { label: "Departamento Pessoal", href: "/dp", icon: UserCog, section: "operacao", group: "Departamentos" },
+  { label: "Societário", href: "/societario", icon: Scale, section: "operacao", group: "Departamentos" },
   { label: "Certificados", href: "/certificados", icon: ShieldCheck, section: "operacao" },
   { label: "Documentos", href: "/documentos", icon: FolderOpen, section: "operacao" },
 
