@@ -250,6 +250,13 @@ export async function listarArquivosClienteDrive(
     for (const file of arquivosDaPasta) arquivos.push({ file, categoria });
     resumoPastas.push({ nome: nomePasta, folderId, totalArquivos: arquivosDaPasta.length });
   }
+
+  // Também varre a raiz da pasta do cliente — se o arquivo foi jogado direto
+  // ali (fora de qualquer subpasta de setor), ainda assim precisa aparecer.
+  const arquivosNaRaiz = await listarArquivosNaPasta(clienteFolderId);
+  for (const file of arquivosNaRaiz) arquivos.push({ file, categoria: "Outros" });
+  resumoPastas.push({ nome: "(raiz da pasta do cliente)", folderId: clienteFolderId, totalArquivos: arquivosNaRaiz.length });
+
   return { clienteFolderId, arquivos, resumoPastas };
 }
 
