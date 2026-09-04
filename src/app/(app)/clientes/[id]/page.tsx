@@ -77,6 +77,9 @@ export default function ClientProfilePage() {
   const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
   const [sincronizarInfo, setSincronizarInfo] = useState<string | null>(null);
   const [sincronizarFolderId, setSincronizarFolderId] = useState<string | null>(null);
+  const [sincronizarResumoPastas, setSincronizarResumoPastas] = useState<
+    Array<{ nome: string; folderId: string; totalArquivos: number }> | null
+  >(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -165,6 +168,7 @@ export default function ClientProfilePage() {
     setSincronizarErro(null);
     setSincronizarInfo(null);
     setSincronizarFolderId(null);
+    setSincronizarResumoPastas(null);
     try {
       const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
       const res = await fetch("/api/documentos/sincronizar-drive", {
@@ -194,11 +198,11 @@ export default function ClientProfilePage() {
         }
         if (partes.length > 0) {
           setSincronizarInfo(`${partes.join(" • ")}.`);
-        } else if (Array.isArray(json.resumoPastas)) {
-          const resumo = json.resumoPastas.map((p: { nome: string; totalArquivos: number }) => `${p.nome}: ${p.totalArquivos}`).join(" • ");
-          setSincronizarInfo(`Nenhum documento novo. Arquivos encontrados por pasta — ${resumo}`);
-          if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
+        } else {
+          setSincronizarInfo("Nenhum documento novo. Confira pasta por pasta abaixo se é onde você esperava:");
         }
+        if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
+        if (Array.isArray(json.resumoPastas)) setSincronizarResumoPastas(json.resumoPastas);
       }
     } catch {
       setSincronizarErro("Não foi possível sincronizar com o Drive.");
@@ -780,6 +784,23 @@ export default function ClientProfilePage() {
                     </>
                   )}
                 </p>
+              )}
+              {sincronizarResumoPastas && sincronizarResumoPastas.length > 0 && (
+                <ul className="mt-2 space-y-0.5 text-[11px] text-sand-400">
+                  {sincronizarResumoPastas.map((p) => (
+                    <li key={p.folderId}>
+                      <a
+                        href={`https://drive.google.com/drive/folders/${p.folderId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-wine-700 hover:underline"
+                      >
+                        {p.nome}
+                      </a>{" "}
+                      — {p.totalArquivos} arquivo{p.totalArquivos === 1 ? "" : "s"} encontrado{p.totalArquivos === 1 ? "" : "s"}
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardContent>
           </Card>
