@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileUp, Loader2, Sparkles, Bot, Settings2 } from "lucide-react";
+import { FileUp, Loader2, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,25 +17,6 @@ import { extractDocumentDates } from "@/lib/document-date-extract";
 import { formatBytes } from "@/lib/utils";
 
 type ExtractState = "idle" | "extracting" | "found" | "not-found" | "unsupported" | "error";
-
-const IA_INSTRUCOES_KEY = "eleven-hub-licenca-ia-instrucoes";
-const IA_INSTRUCOES_PADRAO =
-  "Nome: o tipo do documento (ex.: Alvará de Funcionamento, Certidão Negativa de Débitos, Licença Sanitária) — geralmente no título, no topo da primeira página.\n" +
-  "Data de emissão: quando o documento foi expedido.\n" +
-  "Data de vencimento: até quando o documento é válido (procure por \"validade\", \"vencimento\", \"válido até\").\n" +
-  "Observações: número do processo/protocolo, órgão emissor, restrições ou condicionantes, se houver.";
-
-function fileParaBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 export function LicencaFormDialog({
   open,
@@ -61,55 +42,9 @@ export function LicencaFormDialog({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  const [iaConfigOpen, setIaConfigOpen] = useState(false);
-  const [iaInstrucoes, setIaInstrucoes] = useState(() => {
-    if (typeof window === "undefined") return IA_INSTRUCOES_PADRAO;
-    return localStorage.getItem(IA_INSTRUCOES_KEY) ?? IA_INSTRUCOES_PADRAO;
-  });
-  const [iaExtraindo, setIaExtraindo] = useState(false);
-  const [iaErro, setIaErro] = useState<string | null>(null);
-  const [iaMsg, setIaMsg] = useState<string | null>(null);
-
   function reset() {
     setNome(""); setStatus("Regular"); setDataEmissao(""); setDataVencimento(""); setObservacao("");
     setFile(null); setExtractState("idle"); setErro(null);
-    setIaErro(null); setIaMsg(null);
-  }
-
-  function salvarInstrucoesIa(texto: string) {
-    setIaInstrucoes(texto);
-    localStorage.setItem(IA_INSTRUCOES_KEY, texto);
-  }
-
-  async function preencherComIA() {
-    if (!file) return;
-    setIaExtraindo(true);
-    setIaErro(null);
-    setIaMsg(null);
-    try {
-      const pdfBase64 = await fileParaBase64(file);
-      const res = await fetch("/api/licencas/extrair-ia", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfBase64, instrucoes: iaInstrucoes }),
-      });
-      const json = await res.json();
-      if (!json.ok) {
-        setIaErro(json.error ?? "Não foi possível preencher com a IA.");
-        return;
-      }
-      const d = json.dados as { nome: string | null; dataEmissao: string | null; dataVencimento: string | null; status: LicencaStatus | null; observacoes: string | null };
-      if (d.nome) setNome(d.nome);
-      if (d.dataEmissao) setDataEmissao(d.dataEmissao);
-      if (d.dataVencimento) setDataVencimento(d.dataVencimento);
-      if (d.status) setStatus(d.status);
-      if (d.observacoes) setObservacao(d.observacoes);
-      setIaMsg("Campos preenchidos pela IA — confira antes de salvar.");
-    } catch {
-      setIaErro("Não foi possível preencher com a IA.");
-    } finally {
-      setIaExtraindo(false);
-    }
   }
 
   async function handleFile(selected: File | null) {
@@ -221,50 +156,6 @@ export function LicencaFormDialog({
               <p className="mt-1.5 text-[11px] text-status-danger">
                 Não foi possível ler este PDF. Preencha as datas manualmente.
               </p>
-            )}
-            {file && file.type === "application/pdf" && (
-              <div className="mt-2 rounded-lg border border-sand-200 bg-sand-50 p-2.5">
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={preencherComIA}
-                    disabled={iaExtraindo}
-                  >
-                    {iaExtraindo ? <Loader2 className="size-3.5 animate-spin" /> : <Bot className="size-3.5" />}
-                    {iaExtraindo ? "Lendo o documento..." : "Preencher com IA"}
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => setIaConfigOpen((v) => !v)}
-                    title="Configurar o que a IA identifica"
-                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700"
-                  >
-                    <Settings2 className="size-4" />
-                  </button>
-                </div>
-                {iaConfigOpen && (
-                  <div className="mt-2">
-                    <Label className="mb-1 block text-[11px] text-sand-500">
-                      O que a IA deve procurar em cada campo (fica salvo pras próximas vezes)
-                    </Label>
-                    <Textarea
-                      className="text-xs"
-                      rows={5}
-                      value={iaInstrucoes}
-                      onChange={(e) => salvarInstrucoesIa(e.target.value)}
-                    />
-                  </div>
-                )}
-                {iaErro && <p className="mt-1.5 text-[11px] text-status-danger">{iaErro}</p>}
-                {iaMsg && (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-status-success">
-                    <Sparkles className="size-3" /> {iaMsg}
-                  </p>
-                )}
-              </div>
             )}
           </div>
           <div>
