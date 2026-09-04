@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { uploadDocumento } from "@/lib/upload-documento";
 import { LICENCA_STATUS, type Licenca, type LicencaStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractDocumentDates } from "@/lib/document-date-extract";
@@ -26,6 +27,7 @@ export function LicencaFormDialog({
   onOpenChange: (v: boolean) => void;
   clienteId: string;
 }) {
+  const clients = useAppStore((s) => s.clients);
   const addLicenca = useAppStore((s) => s.addLicenca);
   const addDocumento = useAppStore((s) => s.addDocumento);
   const { userId } = useAuthStore();
@@ -37,10 +39,12 @@ export function LicencaFormDialog({
   const [observacao, setObservacao] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [extractState, setExtractState] = useState<ExtractState>("idle");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   function reset() {
     setNome(""); setStatus("Regular"); setDataEmissao(""); setDataVencimento(""); setObservacao("");
-    setFile(null); setExtractState("idle");
+    setFile(null); setExtractState("idle"); setErro(null);
   }
 
   async function handleFile(selected: File | null) {
@@ -65,38 +69,45 @@ export function LicencaFormDialog({
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome || !dataVencimento) return;
+    const cliente = clients.find((c) => c.id === clienteId);
 
-    let documentoId: string | undefined;
-    if (file) {
-      documentoId = `d-${Date.now()}`;
-      addDocumento({
-        id: documentoId,
+    setSalvando(true);
+    setErro(null);
+    try {
+      let documentoId: string | undefined;
+      if (file && cliente) {
+        const documento = await uploadDocumento({
+          file,
+          clienteId,
+          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          categoria: "Licenças",
+          responsavelId: userId ?? undefined,
+        });
+        documentoId = documento.id;
+        addDocumento(documento);
+      }
+
+      const licenca: Licenca = {
+        id: `lic-${Date.now()}`,
         clienteId,
-        nome: file.name,
-        categoria: "Licenças",
-        dataArquivo: new Date().toISOString().slice(0, 10),
-        responsavelId: userId ?? "u1",
-        tamanho: formatBytes(file.size),
-        url: URL.createObjectURL(file),
-      });
+        nome,
+        status,
+        dataEmissao: dataEmissao || undefined,
+        dataVencimento,
+        documentoId,
+        observacao: observacao || undefined,
+      };
+      addLicenca(licenca);
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o arquivo.");
+    } finally {
+      setSalvando(false);
     }
-
-    const licenca: Licenca = {
-      id: `lic-${Date.now()}`,
-      clienteId,
-      nome,
-      status,
-      dataEmissao: dataEmissao || undefined,
-      dataVencimento,
-      documentoId,
-      observacao: observacao || undefined,
-    };
-    addLicenca(licenca);
-    reset();
-    onOpenChange(false);
   }
 
   return (
@@ -177,9 +188,10 @@ export function LicencaFormDialog({
           <p className="text-[11px] text-sand-400">
             Você recebe um alerta na Central de Alertas quando faltar 1 mês para o vencimento.
           </p>
+          {erro && <p className="text-xs text-status-danger">{erro}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Adicionar licença</Button>
+            <Button type="submit" disabled={salvando}>{salvando ? "Salvando..." : "Adicionar licença"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

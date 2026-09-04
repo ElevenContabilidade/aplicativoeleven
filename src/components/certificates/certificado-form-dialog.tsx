@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { uploadDocumento } from "@/lib/upload-documento";
 import { CERTIFICADO_STATUS, type Certificado, type CertificadoStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractDocumentDates } from "@/lib/document-date-extract";
@@ -49,6 +50,8 @@ export function CertificadoFormDialog({
   const [showSenha, setShowSenha] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [extractState, setExtractState] = useState<ExtractState>("idle");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   function handleClienteChange(id: string) {
     setClienteId(id);
@@ -82,43 +85,50 @@ export function CertificadoFormDialog({
     }
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!clienteId || !documento || !dataVencimento) return;
+    const cliente = clients.find((c) => c.id === clienteId);
 
-    let documentoId: string | undefined = certificado?.documentoId;
-    if (file) {
-      documentoId = `d-${Date.now()}`;
-      addDocumento({
-        id: documentoId,
+    setSalvando(true);
+    setErro(null);
+    try {
+      let documentoId: string | undefined = certificado?.documentoId;
+      if (file && cliente) {
+        const doc = await uploadDocumento({
+          file,
+          clienteId,
+          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          categoria: "Certificados",
+          responsavelId: userId ?? undefined,
+        });
+        documentoId = doc.id;
+        addDocumento(doc);
+      }
+
+      const patch = {
         clienteId,
-        nome: file.name,
-        categoria: "Certificados",
-        dataArquivo: new Date().toISOString().slice(0, 10),
-        responsavelId: userId ?? "u7",
-        tamanho: formatBytes(file.size),
-        url: URL.createObjectURL(file),
-      });
-    }
+        documento,
+        tipo,
+        dataEmissao: dataEmissao || undefined,
+        dataVencimento,
+        status,
+        valor: Number(valor) || 0,
+        senha: senha || undefined,
+        documentoId,
+      };
 
-    const patch = {
-      clienteId,
-      documento,
-      tipo,
-      dataEmissao: dataEmissao || undefined,
-      dataVencimento,
-      status,
-      valor: Number(valor) || 0,
-      senha: senha || undefined,
-      documentoId,
-    };
-
-    if (certificado) {
-      updateCertificado(certificado.id, patch);
-    } else {
-      addCertificado({ id: `cert-${Date.now()}`, responsavelId: userId ?? "u7", ...patch });
+      if (certificado) {
+        updateCertificado(certificado.id, patch);
+      } else {
+        addCertificado({ id: `cert-${Date.now()}`, responsavelId: userId ?? "u7", ...patch });
+      }
+      onOpenChange(false);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o arquivo.");
+    } finally {
+      setSalvando(false);
     }
-    onOpenChange(false);
   }
 
   return (
@@ -239,9 +249,12 @@ export function CertificadoFormDialog({
           <p className="text-[11px] text-sand-400">
             Você recebe um alerta na Central de Alertas quando faltar 1 mês para o vencimento.
           </p>
+          {erro && <p className="text-xs text-status-danger">{erro}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">{certificado ? "Salvar alterações" : "Cadastrar certificado"}</Button>
+            <Button type="submit" disabled={salvando}>
+              {salvando ? "Salvando..." : certificado ? "Salvar alterações" : "Cadastrar certificado"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

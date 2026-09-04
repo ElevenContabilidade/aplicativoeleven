@@ -189,6 +189,8 @@ interface AppState {
   deleteHistoricoCliente: (clientId: string, entryId: string) => void;
   addDocumento: (doc: Documento) => void;
   deleteDocumento: (id: string) => void;
+  // Só pra aplicar localmente o que veio do Supabase — nunca chamada direto pela UI.
+  setDocumentosFromSupabase: (documentos: Documento[]) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
   deleteProcessoSocietario: (id: string) => void;
@@ -632,8 +634,21 @@ export const useAppStore = create<AppState>()(
           ),
         })),
 
+      // Otimista — o registro de verdade em `documents` já foi feito por
+      // /api/documentos/upload (que também cuida do envio pro Drive); aqui
+      // só reflete na tela na hora, enquanto o Realtime não confirma.
       addDocumento: (doc) => set((s) => ({ documentos: [doc, ...s.documentos] })),
-      deleteDocumento: (id) => set((s) => ({ documentos: s.documentos.filter((d) => d.id !== id) })),
+      // Some da tela na hora; a exclusão de verdade (linha em `documents` +
+      // arquivo no Drive) acontece em /api/documentos/excluir.
+      deleteDocumento: (id) => {
+        set((s) => ({ documentos: s.documentos.filter((d) => d.id !== id) }));
+        void fetch("/api/documentos/excluir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        }).catch((err) => console.error("Erro ao excluir documento:", err));
+      },
+      setDocumentosFromSupabase: (documentos) => set({ documentos }),
 
       addProcessoSocietario: (processo) =>
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
@@ -875,22 +890,15 @@ export const useAppStore = create<AppState>()(
     {
       name: "eleven-hub-store",
       version: 16,
-      // blob: object URLs only live for this browser session — never persist them.
-      // team e permissoes não são mais persistidos aqui — vêm do Supabase
-      // (Etapa 1 da migração) e são recarregados a cada sessão + mantidos
-      // em sincronia por Realtime, então guardá-los no localStorage só
-      // arriscaria mostrar dado desatualizado antes da store terminar de
+      // team, permissoes e documentos não são mais persistidos aqui — vêm do
+      // Supabase (Etapa 1 e 2 da migração) e são recarregados a cada sessão +
+      // mantidos em sincronia por Realtime, então guardá-los no localStorage
+      // só arriscaria mostrar dado desatualizado antes da store terminar de
       // buscar do banco.
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { team, permissoes, ...rest } = state;
-        return {
-          ...rest,
-          documentos: rest.documentos.map((d) => {
-            const { url, ...docRest } = d;
-            return url ? docRest : d;
-          }),
-        };
+        const { team, permissoes, documentos, ...rest } = state;
+        return rest;
       },
       // Fill in fields added to existing records after they were first persisted,
       // so browsers with older cached state don't crash on undefined arrays.

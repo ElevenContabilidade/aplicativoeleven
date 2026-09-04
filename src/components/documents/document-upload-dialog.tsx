@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
+import { uploadDocumento } from "@/lib/upload-documento";
 import type { DocumentoCategoria } from "@/lib/types";
 import { formatBytes } from "@/lib/utils";
 
@@ -43,29 +44,40 @@ export function DocumentUploadDialog({
   const [file, setFile] = useState<File | null>(null);
   const [clienteId, setClienteId] = useState(fixedClienteId ?? clients[0]?.id ?? "");
   const [categoria, setCategoria] = useState<DocumentoCategoria>("Outros");
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   function reset() {
     setFile(null);
     setCategoria("Outros");
+    setErro(null);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const targetCliente = fixedClienteId ?? clienteId;
     if (!file || !targetCliente) return;
+    const cliente = clients.find((c) => c.id === targetCliente);
+    if (!cliente) return;
 
-    addDocumento({
-      id: `d-${Date.now()}`,
-      clienteId: targetCliente,
-      nome: file.name,
-      categoria,
-      dataArquivo: new Date().toISOString().slice(0, 10),
-      responsavelId: userId ?? "u1",
-      tamanho: formatBytes(file.size),
-      url: URL.createObjectURL(file),
-    });
-    reset();
-    onOpenChange(false);
+    setEnviando(true);
+    setErro(null);
+    try {
+      const documento = await uploadDocumento({
+        file,
+        clienteId: targetCliente,
+        clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+        categoria,
+        responsavelId: userId ?? undefined,
+      });
+      addDocumento(documento);
+      reset();
+      onOpenChange(false);
+    } catch (err) {
+      setErro(err instanceof Error ? err.message : "Não foi possível enviar o arquivo.");
+    } finally {
+      setEnviando(false);
+    }
   }
 
   return (
@@ -122,11 +134,15 @@ export function DocumentUploadDialog({
             </Select>
           </div>
 
+          {erro && <p className="text-xs text-status-danger">{erro}</p>}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Anexar documento</Button>
+            <Button type="submit" disabled={enviando}>
+              {enviando ? "Enviando..." : "Anexar documento"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

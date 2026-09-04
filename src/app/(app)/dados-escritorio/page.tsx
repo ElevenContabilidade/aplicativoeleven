@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Check, Eye, EyeOff, Copy, Pencil, Trash2, Plus, ExternalLink, Search, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
+import { GoogleDriveCard } from "@/components/office/google-drive-card";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DadosEscritorio, SistemaEscritorio } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
@@ -174,6 +175,10 @@ export default function DadosEscritorioPage() {
           )}
         </div>
       </form>
+
+      <Suspense fallback={null}>
+        <GoogleDriveCard />
+      </Suspense>
 
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
