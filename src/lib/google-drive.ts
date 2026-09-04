@@ -108,8 +108,31 @@ async function getRootFolderId(): Promise<string> {
   return id;
 }
 
-/** Acha (ou cria) a pasta do cliente dentro da pasta raiz do escritório no Drive. */
-export async function ensureClienteFolder(clienteId: string, clienteNome: string): Promise<string> {
+function extrairFolderIdDoLink(link?: string | null): string | null {
+  if (!link) return null;
+  const match = link.match(/\/folders\/([a-zA-Z0-9_-]+)/) ?? link.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  return match?.[1] ?? null;
+}
+
+/** Busca o link de Drive que a Kauane cadastrou manualmente pra esse cliente
+ * (campo "Link do Drive" no cadastro) — quando existe, é a pasta real que
+ * ela já usa há anos, e é nela que devemos ler/escrever, não numa pasta
+ * nova criada pelo sistema. */
+export async function getClienteLinkDrive(clienteId: string): Promise<string | null> {
+  const admin = createAdminClient();
+  const { data } = await admin.from("dados_financeiros").select("data").eq("tipo", "clients").eq("id", clienteId).maybeSingle();
+  const linkDrive = (data?.data as { dados?: { linkDrive?: string } } | null)?.dados?.linkDrive;
+  return linkDrive ?? null;
+}
+
+/** Acha (ou cria) a pasta do cliente. Se a Kauane já linkou a pasta real dela
+ * no cadastro do cliente (campo "Link do Drive"), usa essa pasta direto;
+ * senão cai no comportamento antigo, criando dentro da pasta raiz do
+ * escritório no Drive. */
+export async function ensureClienteFolder(clienteId: string, clienteNome: string, linkDriveExistente?: string | null): Promise<string> {
+  const idDoLink = extrairFolderIdDoLink(linkDriveExistente);
+  if (idDoLink) return idDoLink;
+
   const rootId = await getRootFolderId();
   const nomePasta = `${clienteNome} (${clienteId})`;
   const existente = await encontrarPasta(nomePasta, rootId);
@@ -142,9 +165,10 @@ const PASTA_POR_CATEGORIA: Record<DocumentoCategoria, string> = {
 export async function ensureCategoriaFolder(
   clienteId: string,
   clienteNome: string,
-  categoria: DocumentoCategoria
+  categoria: DocumentoCategoria,
+  linkDriveExistente?: string | null
 ): Promise<string> {
-  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome);
+  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome, linkDriveExistente);
   const nomeSubpasta = PASTA_POR_CATEGORIA[categoria];
   const existente = await encontrarPasta(nomeSubpasta, clienteFolderId);
   return existente ?? criarPasta(nomeSubpasta, clienteFolderId);
@@ -168,8 +192,12 @@ const PASTAS_UNICAS = Array.from(new Set(Object.values(PASTA_POR_CATEGORIA)));
  * que a Kauane já usa manualmente) existam no Drive, mesmo sem nenhum
  * documento ter sido enviado ainda pelo sistema. Assim dá pra jogar um
  * arquivo direto lá que o sistema já sabe em qual pasta ele deveria estar. */
-export async function ensureAllCategoriaFolders(clienteId: string, clienteNome: string): Promise<Record<string, string>> {
-  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome);
+export async function ensureAllCategoriaFolders(
+  clienteId: string,
+  clienteNome: string,
+  linkDriveExistente?: string | null
+): Promise<Record<string, string>> {
+  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome, linkDriveExistente);
   const pastas: Record<string, string> = {};
   for (const nome of PASTAS_UNICAS) {
     const existente = await encontrarPasta(nome, clienteFolderId);
@@ -197,9 +225,10 @@ async function listarArquivosNaPasta(folderId: string): Promise<DriveFileInfo[]>
  * pra quem chamou decidir quais já existem no sistema e quais são novos. */
 export async function listarArquivosClienteDrive(
   clienteId: string,
-  clienteNome: string
+  clienteNome: string,
+  linkDriveExistente?: string | null
 ): Promise<Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }>> {
-  const pastas = await ensureAllCategoriaFolders(clienteId, clienteNome);
+  const pastas = await ensureAllCategoriaFolders(clienteId, clienteNome, linkDriveExistente);
   const resultado: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }> = [];
   for (const [nomePasta, folderId] of Object.entries(pastas)) {
     const arquivos = await listarArquivosNaPasta(folderId);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listarArquivosClienteDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
+import { listarArquivosClienteDrive, getClienteLinkDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
 import { formatBytes } from "@/lib/utils";
 
 export async function POST(request: Request) {
@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     const { data: existentes } = await admin.from("documents").select("drive_file_id").eq("cliente_id", body.clienteId);
     const conhecidos = new Set((existentes ?? []).map((d) => d.drive_file_id).filter(Boolean));
 
-    const arquivos = await listarArquivosClienteDrive(body.clienteId, body.clienteNome);
+    const linkDrive = await getClienteLinkDrive(body.clienteId);
+    const arquivos = await listarArquivosClienteDrive(body.clienteId, body.clienteNome, linkDrive);
     const novos = arquivos.filter(({ file }) => !conhecidos.has(file.id));
 
     if (novos.length === 0) {
