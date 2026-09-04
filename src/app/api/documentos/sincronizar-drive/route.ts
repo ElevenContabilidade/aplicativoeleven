@@ -24,7 +24,44 @@ export async function POST(request: Request) {
 
     const linkDrive = await getClienteLinkDrive(body.clienteId);
     const { clienteFolderId, arquivos, resumoPastas } = await listarArquivosClienteDrive(body.clienteId, body.clienteNome, linkDrive);
-    const novos = arquivos.filter(({ file }) => !porDriveId.has(file.id));
+
+    // Um mesmo arquivo do Drive pode já estar cadastrado em OUTRO cliente
+    // (ex: copiado/colado na pasta errada) — nesse caso não importa de
+    // novo aqui, só avisa em vez de duplicar o documento.
+    const idsEncontrados = arquivos.map(({ file }) => file.id);
+    const donoDeOutroCliente = new Map<string, string>();
+    if (idsEncontrados.length > 0) {
+      const { data: outrosClientes } = await admin
+        .from("documents")
+        .select("drive_file_id, cliente_id")
+        .in("drive_file_id", idsEncontrados)
+        .neq("cliente_id", body.clienteId);
+      for (const row of outrosClientes ?? []) {
+        if (row.drive_file_id) donoDeOutroCliente.set(row.drive_file_id, row.cliente_id);
+      }
+    }
+    let jaCadastradosEmOutroCliente: Array<{ arquivo: string; clienteId: string; clienteNome: string }> = [];
+    if (donoDeOutroCliente.size > 0) {
+      const outrosClienteIds = Array.from(new Set(donoDeOutroCliente.values()));
+      const { data: clientesRows } = await admin
+        .from("dados_financeiros")
+        .select("id, data")
+        .eq("tipo", "clients")
+        .in("id", outrosClienteIds);
+      const nomePorClienteId = new Map<string, string>();
+      for (const row of clientesRows ?? []) {
+        const cliente = row.data as { dados?: { nomeFantasia?: string; razaoSocial?: string } } | null;
+        nomePorClienteId.set(row.id, cliente?.dados?.nomeFantasia ?? cliente?.dados?.razaoSocial ?? row.id);
+      }
+      jaCadastradosEmOutroCliente = arquivos
+        .filter(({ file }) => donoDeOutroCliente.has(file.id))
+        .map(({ file }) => {
+          const outroClienteId = donoDeOutroCliente.get(file.id)!;
+          return { arquivo: file.name, clienteId: outroClienteId, clienteNome: nomePorClienteId.get(outroClienteId) ?? outroClienteId };
+        });
+    }
+
+    const novos = arquivos.filter(({ file }) => !porDriveId.has(file.id) && !donoDeOutroCliente.has(file.id));
 
     // Documentos já rastreados cujo arquivo sumiu do Drive (excluído de vez
     // ou movido pra lixeira) — some do Eleven Hub também.
@@ -53,6 +90,7 @@ export async function POST(request: Request) {
         importados: 0,
         removidos: idsParaRemover.length,
         reclassificados,
+        jaCadastradosEmOutroCliente,
         clienteFolderId,
         resumoPastas,
       });
@@ -78,6 +116,7 @@ export async function POST(request: Request) {
       importados: linhas.length,
       removidos: idsParaRemover.length,
       reclassificados,
+      jaCadastradosEmOutroCliente,
       clienteFolderId,
       resumoPastas,
     });

@@ -186,6 +186,12 @@ export default function ClientProfilePage() {
         if (json.reclassificados > 0) {
           partes.push(`${json.reclassificados} documento${json.reclassificados === 1 ? "" : "s"} mudou${json.reclassificados === 1 ? "" : "ram"} de pasta`);
         }
+        if (Array.isArray(json.jaCadastradosEmOutroCliente) && json.jaCadastradosEmOutroCliente.length > 0) {
+          const lista = json.jaCadastradosEmOutroCliente
+            .map((j: { arquivo: string; clienteNome: string }) => `"${j.arquivo}" já está no cliente ${j.clienteNome}`)
+            .join("; ");
+          partes.push(lista);
+        }
         if (partes.length > 0) {
           setSincronizarInfo(`${partes.join(" • ")}.`);
         } else if (Array.isArray(json.resumoPastas)) {
