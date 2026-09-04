@@ -720,6 +720,32 @@ export interface Documento {
   url?: string;
 }
 
+// ---------- Checklist mensal de documentos do cliente ----------
+// (o que o escritório espera receber todo mês, tipo por tipo, tipo o
+// checklist de rotinas fiscais só que do lado do Portal do Cliente)
+
+export type StatusEnvioMensal = "Pendente" | "Em andamento" | "Concluído" | "Nada a enviar";
+export const STATUS_ENVIO_MENSAL: StatusEnvioMensal[] = ["Pendente", "Em andamento", "Concluído", "Nada a enviar"];
+
+export interface TipoDocumentoRecorrente {
+  id: string;
+  clienteId: string;
+  nome: string;
+  ativo: boolean;
+  criadoEm: string;
+}
+
+export interface EnvioMensalDocumento {
+  /** `${tipoId}-${competencia}` */
+  id: string;
+  clienteId: string;
+  tipoId: string;
+  /** "YYYY-MM" */
+  competencia: string;
+  status: StatusEnvioMensal;
+  documentoId?: string;
+}
+
 // ---------- Painel de pendências (o que o escritório aguarda do cliente) ----------
 
 export type PendenciaTipo = "Documento" | "Assinatura" | "Informação" | "Outro";

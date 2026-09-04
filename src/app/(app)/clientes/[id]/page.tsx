@@ -27,6 +27,7 @@ import { HistoricoFinanceiroFormDialog } from "@/components/clients/historico-fi
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
 import { PendenciasTab } from "@/components/clients/pendencias-tab";
+import { TiposDocumentoRecorrenteCard } from "@/components/clients/tipos-documento-recorrente-card";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
@@ -686,7 +687,8 @@ export default function ClientProfilePage() {
           <LicencaFormDialog open={licencaOpen} onOpenChange={setLicencaOpen} clienteId={client.id} />
         </TabsContent>
 
-        <TabsContent value="documentos">
+        <TabsContent value="documentos" className="space-y-4">
+          <TiposDocumentoRecorrenteCard clienteId={client.id} />
           <Card>
             <CardContent className="p-5">
               <div className="mb-3 flex items-center justify-between gap-2">

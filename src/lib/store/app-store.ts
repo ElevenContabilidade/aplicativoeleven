@@ -63,6 +63,9 @@ import type {
   CertificadoStatus,
   Documento,
   Pendencia,
+  TipoDocumentoRecorrente,
+  EnvioMensalDocumento,
+  StatusEnvioMensal,
   Anotacao,
   TimelineEvent,
   AppNotification,
@@ -111,6 +114,8 @@ interface AppState {
   certificados: Certificado[];
   documentos: Documento[];
   pendencias: Pendencia[];
+  tiposDocumentoRecorrente: TipoDocumentoRecorrente[];
+  enviosMensaisDocumento: EnvioMensalDocumento[];
   anotacoes: Anotacao[];
   timeline: TimelineEvent[];
   notifications: AppNotification[];
@@ -197,6 +202,12 @@ interface AppState {
   updatePendencia: (id: string, patch: Partial<Pendencia>) => void;
   deletePendencia: (id: string) => void;
   setPendenciasFromSupabase: (pendencias: Pendencia[]) => void;
+  addTipoDocumentoRecorrente: (tipo: TipoDocumentoRecorrente) => void;
+  updateTipoDocumentoRecorrente: (id: string, patch: Partial<TipoDocumentoRecorrente>) => void;
+  deleteTipoDocumentoRecorrente: (id: string) => void;
+  setTiposDocumentoRecorrenteFromSupabase: (tipos: TipoDocumentoRecorrente[]) => void;
+  setEnvioMensal: (clienteId: string, tipoId: string, competencia: string, status: StatusEnvioMensal, documentoId?: string) => void;
+  setEnviosMensaisDocumentoFromSupabase: (envios: EnvioMensalDocumento[]) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
   deleteProcessoSocietario: (id: string) => void;
@@ -265,6 +276,8 @@ const initial = {
   certificados: CERTIFICADOS,
   documentos: DOCUMENTOS,
   pendencias: [] as Pendencia[],
+  tiposDocumentoRecorrente: [] as TipoDocumentoRecorrente[],
+  enviosMensaisDocumento: [] as EnvioMensalDocumento[],
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
   notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, []),
@@ -695,6 +708,58 @@ export const useAppStore = create<AppState>()(
           .then(({ error }) => error && console.error("Erro ao excluir pendência:", error.message));
       },
       setPendenciasFromSupabase: (pendencias) => set({ pendencias }),
+      addTipoDocumentoRecorrente: (tipo) => {
+        set((s) => ({ tiposDocumentoRecorrente: [...s.tiposDocumentoRecorrente, tipo] }));
+        void createClient()
+          .from("tipos_documento_recorrente")
+          .insert({ id: tipo.id, cliente_id: tipo.clienteId, nome: tipo.nome, ativo: tipo.ativo })
+          .then(({ error }) => error && console.error("Erro ao salvar tipo de documento recorrente:", error.message));
+      },
+      updateTipoDocumentoRecorrente: (id, patch) => {
+        set((s) => ({
+          tiposDocumentoRecorrente: s.tiposDocumentoRecorrente.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        }));
+        const dbPatch: Record<string, unknown> = {};
+        if (patch.nome !== undefined) dbPatch.nome = patch.nome;
+        if (patch.ativo !== undefined) dbPatch.ativo = patch.ativo;
+        if (Object.keys(dbPatch).length > 0) {
+          void createClient()
+            .from("tipos_documento_recorrente")
+            .update(dbPatch)
+            .eq("id", id)
+            .then(({ error }) => error && console.error("Erro ao atualizar tipo de documento recorrente:", error.message));
+        }
+      },
+      deleteTipoDocumentoRecorrente: (id) => {
+        set((s) => ({ tiposDocumentoRecorrente: s.tiposDocumentoRecorrente.filter((t) => t.id !== id) }));
+        void createClient()
+          .from("tipos_documento_recorrente")
+          .delete()
+          .eq("id", id)
+          .then(({ error }) => error && console.error("Erro ao excluir tipo de documento recorrente:", error.message));
+      },
+      setTiposDocumentoRecorrenteFromSupabase: (tiposDocumentoRecorrente) => set({ tiposDocumentoRecorrente }),
+      // Passa pelo backend (rota /api/documentos/envio-mensal) porque quem
+      // chama isso é, em regra, o Portal do Cliente — sem sessão Supabase
+      // Auth, então não passaria pela RLS de uma escrita direta daqui.
+      setEnvioMensal: (clienteId, tipoId, competencia, status, documentoId) => {
+        const id = `${tipoId}-${competencia}`;
+        set((s) => {
+          const existe = s.enviosMensaisDocumento.some((e) => e.id === id);
+          const envio: EnvioMensalDocumento = { id, clienteId, tipoId, competencia, status, documentoId };
+          return {
+            enviosMensaisDocumento: existe
+              ? s.enviosMensaisDocumento.map((e) => (e.id === id ? envio : e))
+              : [...s.enviosMensaisDocumento, envio],
+          };
+        });
+        void fetch("/api/documentos/envio-mensal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clienteId, tipoId, competencia, status, documentoId }),
+        }).catch((err) => console.error("Erro ao salvar envio mensal:", err));
+      },
+      setEnviosMensaisDocumentoFromSupabase: (enviosMensaisDocumento) => set({ enviosMensaisDocumento }),
 
       addProcessoSocietario: (processo) =>
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
@@ -936,14 +1001,14 @@ export const useAppStore = create<AppState>()(
     {
       name: "eleven-hub-store",
       version: 16,
-      // team, permissoes, documentos e pendencias não são mais persistidos
-      // aqui — vêm do Supabase e são recarregados a cada sessão + mantidos em
-      // sincronia por Realtime, então guardá-los no localStorage só
-      // arriscaria mostrar dado desatualizado antes da store terminar de
-      // buscar do banco.
+      // team, permissoes, documentos, pendencias, tiposDocumentoRecorrente e
+      // enviosMensaisDocumento não são mais persistidos aqui — vêm do
+      // Supabase e são recarregados a cada sessão + mantidos em sincronia
+      // por Realtime, então guardá-los no localStorage só arriscaria
+      // mostrar dado desatualizado antes da store terminar de buscar do banco.
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { team, permissoes, documentos, pendencias, ...rest } = state;
+        const { team, permissoes, documentos, pendencias, tiposDocumentoRecorrente, enviosMensaisDocumento, ...rest } = state;
         return rest;
       },
       // Fill in fields added to existing records after they were first persisted,
