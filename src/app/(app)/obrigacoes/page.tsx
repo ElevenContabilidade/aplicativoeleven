@@ -60,6 +60,7 @@ export default function ObrigacoesPage() {
   const [query, setQuery] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState<"Pendentes" | "Concluídas" | "Todas">("Pendentes");
+  const [ordenar, setOrdenar] = useState<"cliente" | "vencimento" | "setor" | "status">("cliente");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Obligation | null>(null);
 
@@ -134,9 +135,22 @@ export default function ObrigacoesPage() {
       .sort((a, b) => {
         const an = a.cliente?.dados.nomeFantasia ?? a.cliente?.dados.razaoSocial ?? "";
         const bn = b.cliente?.dados.nomeFantasia ?? b.cliente?.dados.razaoSocial ?? "";
-        return an.localeCompare(bn, "pt-BR") || a.linha.tipo.localeCompare(b.linha.tipo, "pt-BR");
+        const nomeCliente = () => an.localeCompare(bn, "pt-BR") || a.linha.tipo.localeCompare(b.linha.tipo, "pt-BR");
+        switch (ordenar) {
+          case "vencimento":
+            if (!a.linha.vencimento && !b.linha.vencimento) return nomeCliente();
+            if (!a.linha.vencimento) return 1;
+            if (!b.linha.vencimento) return -1;
+            return a.linha.vencimento.localeCompare(b.linha.vencimento) || nomeCliente();
+          case "setor":
+            return a.linha.setor.localeCompare(b.linha.setor, "pt-BR") || nomeCliente();
+          case "status":
+            return a.linha.status.localeCompare(b.linha.status, "pt-BR") || nomeCliente();
+          default:
+            return nomeCliente();
+        }
       });
-  }, [linhas, clients, query, clienteFiltro, statusFiltro]);
+  }, [linhas, clients, query, clienteFiltro, statusFiltro, ordenar]);
 
   const totalPendentes = linhas.filter((l) => l.pendente).length;
   const totalAtrasadas = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento && l.vencimento < hojeIso).length;
@@ -190,6 +204,15 @@ export default function ObrigacoesPage() {
             <SelectItem value="Pendentes">Pendentes</SelectItem>
             <SelectItem value="Concluídas">Concluídas</SelectItem>
             <SelectItem value="Todas">Todos os status</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={ordenar} onValueChange={(v) => setOrdenar(v as typeof ordenar)}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="cliente">Ordenar: Cliente (A-Z)</SelectItem>
+            <SelectItem value="vencimento">Ordenar: Vencimento</SelectItem>
+            <SelectItem value="setor">Ordenar: Setor</SelectItem>
+            <SelectItem value="status">Ordenar: Status</SelectItem>
           </SelectContent>
         </Select>
       </div>
