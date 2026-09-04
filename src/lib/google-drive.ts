@@ -70,6 +70,12 @@ async function driveFetch(path: string, init: RequestInit = {}) {
   return res.json();
 }
 
+/** Sempre inclui suporte a Drives Compartilhados — sem isso a API do Drive
+ * simplesmente não enxerga (nem lista, nem acha) nada que esteja dentro de
+ * um Drive Compartilhado, o que é comum em contas Google Workspace de
+ * empresa como a da Eleven. */
+const SUPPORT_SHARED_DRIVES = "supportsAllDrives=true&includeItemsFromAllDrives=true";
+
 async function encontrarPasta(nome: string, paiId?: string): Promise<string | null> {
   const q = [
     `name = '${nome.replace(/'/g, "\\'")}'`,
@@ -77,13 +83,13 @@ async function encontrarPasta(nome: string, paiId?: string): Promise<string | nu
     "trashed = false",
     paiId ? `'${paiId}' in parents` : "'root' in parents",
   ].join(" and ");
-  const json = await driveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name)`);
+  const json = await driveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name)&${SUPPORT_SHARED_DRIVES}`);
   return json.files?.[0]?.id ?? null;
 }
 
 async function criarPasta(nome: string, paiId?: string): Promise<string> {
   const token = await getAccessToken();
-  const res = await fetch(`${DRIVE_API}/files`, {
+  const res = await fetch(`${DRIVE_API}/files?supportsAllDrives=true`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -216,26 +222,34 @@ interface DriveFileInfo {
 
 async function listarArquivosNaPasta(folderId: string): Promise<DriveFileInfo[]> {
   const q = [`'${folderId}' in parents`, "trashed = false", "mimeType != 'application/vnd.google-apps.folder'"].join(" and ");
-  const json = await driveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime,webViewLink)&pageSize=200`);
+  const json = await driveFetch(
+    `/files?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime,webViewLink)&pageSize=200&${SUPPORT_SHARED_DRIVES}`
+  );
   return json.files ?? [];
 }
 
 /** Varre as subpastas do cliente no Drive (criando as que faltarem) e
- * devolve todo arquivo encontrado, junto da categoria que a pasta indica —
- * pra quem chamou decidir quais já existem no sistema e quais são novos. */
+ * devolve todo arquivo encontrado, junto da categoria que a pasta indica e
+ * um resumo por pasta (id + quantos arquivos achou) pra dar pra
+ * diagnosticar quando algo não aparece como esperado. */
 export async function listarArquivosClienteDrive(
   clienteId: string,
   clienteNome: string,
   linkDriveExistente?: string | null
-): Promise<Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }>> {
+): Promise<{
+  arquivos: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }>;
+  resumoPastas: Array<{ nome: string; folderId: string; totalArquivos: number }>;
+}> {
   const pastas = await ensureAllCategoriaFolders(clienteId, clienteNome, linkDriveExistente);
-  const resultado: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }> = [];
+  const arquivos: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }> = [];
+  const resumoPastas: Array<{ nome: string; folderId: string; totalArquivos: number }> = [];
   for (const [nomePasta, folderId] of Object.entries(pastas)) {
-    const arquivos = await listarArquivosNaPasta(folderId);
+    const arquivosDaPasta = await listarArquivosNaPasta(folderId);
     const categoria = CATEGORIA_POR_PASTA[nomePasta] ?? "Outros";
-    for (const file of arquivos) resultado.push({ file, categoria });
+    for (const file of arquivosDaPasta) arquivos.push({ file, categoria });
+    resumoPastas.push({ nome: nomePasta, folderId, totalArquivos: arquivosDaPasta.length });
   }
-  return resultado;
+  return { arquivos, resumoPastas };
 }
 
 /** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
@@ -259,7 +273,7 @@ export async function uploadFileToDrive(
   const closing = `\r\n--${boundary}--`;
   const payload = new Blob([body, bytes, closing]);
 
-  const res = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink`, {
+  const res = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
     body: payload,
@@ -267,7 +281,7 @@ export async function uploadFileToDrive(
   const json = await res.json();
   if (!res.ok) throw new Error(json.error?.message ?? "Não foi possível enviar o arquivo pro Drive.");
 
-  await fetch(`${DRIVE_API}/files/${json.id}/permissions`, {
+  await fetch(`${DRIVE_API}/files/${json.id}/permissions?supportsAllDrives=true`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ role: "reader", type: "anyone" }),
@@ -278,5 +292,5 @@ export async function uploadFileToDrive(
 
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  await fetch(`${DRIVE_API}/files/${fileId}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  await fetch(`${DRIVE_API}/files/${fileId}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
 }

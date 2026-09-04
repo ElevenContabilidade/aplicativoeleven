@@ -73,6 +73,7 @@ export default function ClientProfilePage() {
   const [docUploadOpen, setDocUploadOpen] = useState(false);
   const [sincronizandoDrive, setSincronizandoDrive] = useState(false);
   const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
+  const [sincronizarInfo, setSincronizarInfo] = useState<string | null>(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -159,6 +160,7 @@ export default function ClientProfilePage() {
   async function sincronizarDrive() {
     setSincronizandoDrive(true);
     setSincronizarErro(null);
+    setSincronizarInfo(null);
     try {
       const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
       const res = await fetch("/api/documentos/sincronizar-drive", {
@@ -167,7 +169,14 @@ export default function ClientProfilePage() {
         body: JSON.stringify({ clienteId: client!.id, clienteNome: nome }),
       });
       const json = await res.json();
-      if (!json.ok) setSincronizarErro(json.error ?? "Não foi possível sincronizar com o Drive.");
+      if (!json.ok) {
+        setSincronizarErro(json.error ?? "Não foi possível sincronizar com o Drive.");
+      } else if (json.importados === 0 && Array.isArray(json.resumoPastas)) {
+        const resumo = json.resumoPastas.map((p: { nome: string; totalArquivos: number }) => `${p.nome}: ${p.totalArquivos}`).join(" • ");
+        setSincronizarInfo(`Nenhum documento novo. Arquivos encontrados por pasta — ${resumo}`);
+      } else if (json.importados > 0) {
+        setSincronizarInfo(`${json.importados} documento${json.importados === 1 ? "" : "s"} importado${json.importados === 1 ? "" : "s"} do Drive.`);
+      }
     } catch {
       setSincronizarErro("Não foi possível sincronizar com o Drive.");
     } finally {
@@ -721,6 +730,7 @@ export default function ClientProfilePage() {
                 </div>
               </div>
               {sincronizarErro && <p className="mb-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
+              {sincronizarInfo && <p className="mb-3 text-[11px] text-sand-400">{sincronizarInfo}</p>}
               <div className="space-y-2">
                 {myDocs.map((d) => (
                   <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
