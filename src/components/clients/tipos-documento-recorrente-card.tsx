@@ -12,7 +12,8 @@ import { useAppStore } from "@/lib/store/app-store";
  * receber todo mês (ex: "Extrato Bancário OFX") — vira o checklist mensal
  * que o cliente vê no Portal, com grid ano x mês. */
 export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string }) {
-  const tipos = useAppStore((s) => s.tiposDocumentoRecorrente.filter((t) => t.clienteId === clienteId));
+  const todosTipos = useAppStore((s) => s.tiposDocumentoRecorrente);
+  const tipos = todosTipos.filter((t) => t.clienteId === clienteId);
   const addTipoDocumentoRecorrente = useAppStore((s) => s.addTipoDocumentoRecorrente);
   const updateTipoDocumentoRecorrente = useAppStore((s) => s.updateTipoDocumentoRecorrente);
   const deleteTipoDocumentoRecorrente = useAppStore((s) => s.deleteTipoDocumentoRecorrente);

@@ -23,8 +23,10 @@ const STATUS_STYLE: Record<StatusEnvioMensal, string> = {
 };
 
 export function ChecklistMensalCard({ clienteId, clienteNome }: { clienteId: string; clienteNome: string }) {
-  const tipos = useAppStore((s) => s.tiposDocumentoRecorrente.filter((t) => t.clienteId === clienteId && t.ativo));
-  const envios = useAppStore((s) => s.enviosMensaisDocumento.filter((e) => e.clienteId === clienteId));
+  const todosTipos = useAppStore((s) => s.tiposDocumentoRecorrente);
+  const todosEnvios = useAppStore((s) => s.enviosMensaisDocumento);
+  const tipos = todosTipos.filter((t) => t.clienteId === clienteId && t.ativo);
+  const envios = todosEnvios.filter((e) => e.clienteId === clienteId);
   const documentos = useAppStore((s) => s.documentos);
   const setEnvioMensal = useAppStore((s) => s.setEnvioMensal);
   const addDocumento = useAppStore((s) => s.addDocumento);

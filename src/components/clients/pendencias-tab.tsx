@@ -21,7 +21,8 @@ function estaAtrasada(p: Pendencia): boolean {
 }
 
 export function PendenciasTab({ clienteId }: { clienteId: string }) {
-  const pendencias = useAppStore((s) => s.pendencias.filter((p) => p.clienteId === clienteId));
+  const todasPendencias = useAppStore((s) => s.pendencias);
+  const pendencias = todasPendencias.filter((p) => p.clienteId === clienteId);
   const addPendencia = useAppStore((s) => s.addPendencia);
   const updatePendencia = useAppStore((s) => s.updatePendencia);
   const deletePendencia = useAppStore((s) => s.deletePendencia);
