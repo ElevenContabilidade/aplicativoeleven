@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureClienteFolder, uploadFileToDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
+import { ensureCategoriaFolder, uploadFileToDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
+import type { DocumentoCategoria } from "@/lib/types";
 import { formatBytes } from "@/lib/utils";
 
 export async function POST(request: Request) {
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const folderId = await ensureClienteFolder(clienteId, clienteNome);
+    const folderId = await ensureCategoriaFolder(clienteId, clienteNome, categoria as DocumentoCategoria);
     const bytes = await file.arrayBuffer();
     const drive = await uploadFileToDrive(folderId, file.name, file.type || "application/octet-stream", bytes);
 

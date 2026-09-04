@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { DocumentoCategoria } from "@/lib/types";
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
@@ -113,6 +114,40 @@ export async function ensureClienteFolder(clienteId: string, clienteNome: string
   const nomePasta = `${clienteNome} (${clienteId})`;
   const existente = await encontrarPasta(nomePasta, rootId);
   return existente ?? criarPasta(nomePasta, rootId);
+}
+
+/** Mesma organização de subpastas que a Kauane já usa manualmente dentro
+ * da pasta de cada cliente no Drive. */
+const PASTA_POR_CATEGORIA: Record<DocumentoCategoria, string> = {
+  Licenças: "LICENÇAS",
+  Contábil: "SETOR CONTÁBIL",
+  "Extratos bancários": "SETOR CONTÁBIL",
+  Fiscal: "SETOR FISCAL",
+  "Notas fiscais": "SETOR FISCAL",
+  Guias: "SETOR FISCAL",
+  Boletos: "SETOR FISCAL",
+  Folha: "SETOR PESSOAL",
+  Certificados: "DOCS SÓCIO",
+  Procurações: "DOCS SÓCIO",
+  Contratos: "DOCS EMPRESA",
+  "Documentos societários": "DOCS EMPRESA",
+  Relatórios: "DOCS EMPRESA",
+  Comprovantes: "DOCS EMPRESA",
+  Outros: "DOCS EMPRESA",
+};
+
+/** Acha (ou cria) a pasta do cliente e, dentro dela, a subpasta certa pra
+ * essa categoria de documento (Licenças, Setor Fiscal, Docs Sócio etc.) —
+ * a mesma organização que já era feita manualmente no Drive. */
+export async function ensureCategoriaFolder(
+  clienteId: string,
+  clienteNome: string,
+  categoria: DocumentoCategoria
+): Promise<string> {
+  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome);
+  const nomeSubpasta = PASTA_POR_CATEGORIA[categoria];
+  const existente = await encontrarPasta(nomeSubpasta, clienteFolderId);
+  return existente ?? criarPasta(nomeSubpasta, clienteFolderId);
 }
 
 /** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
