@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
 import { useSupabaseDocumentosSync } from "@/lib/supabase/use-documentos-sync";
+import { useSupabasePendenciasSync } from "@/lib/supabase/use-pendencias-sync";
+import { DocumentUploadCard } from "@/components/portal/document-upload-card";
+import { PendenciasCard } from "@/components/portal/pendencias-card";
 import { teamName } from "@/lib/team-lookup";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -21,12 +24,14 @@ export default function ClientPortalPage() {
   const obligations = useAppStore((s) => s.obligations);
   const documentos = useAppStore((s) => s.documentos);
   const certificados = useAppStore((s) => s.certificados);
+  const pendencias = useAppStore((s) => s.pendencias);
 
   useEffect(() => {
     if (hasHydrated && (!isAuthenticated || kind !== "cliente")) router.replace("/login");
   }, [isAuthenticated, kind, hasHydrated, router]);
 
   useSupabaseDocumentosSync(hasHydrated && isAuthenticated && kind === "cliente");
+  useSupabasePendenciasSync(hasHydrated && isAuthenticated && kind === "cliente");
 
   const client = useMemo(() => clients.find((c) => c.id === userId), [clients, userId]);
 
@@ -35,6 +40,8 @@ export default function ClientPortalPage() {
   const myObligations = obligations.filter((o) => o.clienteId === client.id);
   const myDocs = documentos.filter((d) => d.clienteId === client.id);
   const myCerts = certificados.filter((c) => c.clienteId === client.id);
+  const myPendencias = pendencias.filter((p) => p.clienteId === client.id);
+  const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
 
   return (
     <div className="min-h-screen bg-sand-50">
@@ -50,9 +57,7 @@ export default function ClientPortalPage() {
       <main className="mx-auto max-w-5xl space-y-6 px-5 py-8">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-wine-600">Portal do cliente</p>
-          <h1 className="font-display text-2xl font-semibold text-sand-900">
-            {client.dados.nomeFantasia ?? client.dados.razaoSocial}
-          </h1>
+          <h1 className="font-display text-2xl font-semibold text-sand-900">{clienteNome}</h1>
           <p className="text-xs text-sand-500">{client.dados.cnpj}</p>
         </div>
 
@@ -83,6 +88,8 @@ export default function ClientPortalPage() {
           </Card>
         </div>
 
+        <PendenciasCard pendencias={myPendencias} />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><ClipboardList className="size-4 text-wine-600" /> Obrigações</CardTitle>
@@ -108,6 +115,8 @@ export default function ClientPortalPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <DocumentUploadCard clienteId={client.id} clienteNome={clienteNome} />
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Card>

@@ -26,6 +26,7 @@ import { ContratoAssinaturaCard } from "@/components/clients/contrato-assinatura
 import { HistoricoFinanceiroFormDialog } from "@/components/clients/historico-financeiro-form-dialog";
 import { DocumentUploadDialog } from "@/components/documents/document-upload-dialog";
 import { DocumentActions } from "@/components/documents/document-actions";
+import { PendenciasTab } from "@/components/clients/pendencias-tab";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
@@ -307,6 +308,7 @@ export default function ClientProfilePage() {
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           <TabsTrigger value="licencas">Licenças</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="pendencias">Pendências</TabsTrigger>
           <TabsTrigger value="indicacoes">Indicações</TabsTrigger>
           <TabsTrigger value="atendimento">Atendimento</TabsTrigger>
           <TabsTrigger value="anotacoes">Anotações</TabsTrigger>
@@ -724,6 +726,10 @@ export default function ClientProfilePage() {
             </CardContent>
           </Card>
           <DocumentUploadDialog open={docUploadOpen} onOpenChange={setDocUploadOpen} fixedClienteId={client.id} />
+        </TabsContent>
+
+        <TabsContent value="pendencias">
+          <PendenciasTab clienteId={client.id} />
         </TabsContent>
 
         <TabsContent value="indicacoes">

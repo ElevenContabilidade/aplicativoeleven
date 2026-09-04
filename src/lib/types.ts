@@ -703,6 +703,9 @@ export type DocumentoCategoria =
   | "Relatórios"
   | "Comprovantes"
   | "Licenças"
+  | "Extratos bancários"
+  | "Notas fiscais"
+  | "Boletos"
   | "Outros";
 
 export interface Documento {
@@ -713,8 +716,24 @@ export interface Documento {
   dataArquivo: string;
   responsavelId: string;
   tamanho: string;
-  /** Object URL for files attached during this session (not persisted across reloads). */
+  /** Link do arquivo no Google Drive do escritório. */
   url?: string;
+}
+
+// ---------- Painel de pendências (o que o escritório aguarda do cliente) ----------
+
+export type PendenciaTipo = "Documento" | "Assinatura" | "Informação" | "Outro";
+export type PendenciaStatus = "Pendente" | "Concluída";
+
+export interface Pendencia {
+  id: string;
+  clienteId: string;
+  titulo: string;
+  tipo: PendenciaTipo;
+  prazo?: string;
+  status: PendenciaStatus;
+  responsavelId?: string;
+  criadoEm: string;
 }
 
 // ---------- Assinatura eletrônica (Autentique) ----------

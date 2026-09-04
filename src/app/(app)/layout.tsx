@@ -10,6 +10,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { moduloDaRota, temPermissao } from "@/lib/permissoes";
 import { useSupabaseTeamSync } from "@/lib/supabase/use-team-sync";
 import { useSupabaseDocumentosSync } from "@/lib/supabase/use-documentos-sync";
+import { useSupabasePendenciasSync } from "@/lib/supabase/use-pendencias-sync";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AppGroupLayout({ children }: { children: ReactNode }) {
@@ -21,6 +22,7 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
 
   useSupabaseTeamSync(hasHydrated && isAuthenticated && kind === "equipe");
   useSupabaseDocumentosSync(hasHydrated && isAuthenticated && kind === "equipe");
+  useSupabasePendenciasSync(hasHydrated && isAuthenticated && kind === "equipe");
 
   useEffect(() => {
     if (hasHydrated && (!isAuthenticated || kind !== "equipe")) router.replace("/login");

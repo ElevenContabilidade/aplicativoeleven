@@ -62,6 +62,7 @@ import type {
   Certificado,
   CertificadoStatus,
   Documento,
+  Pendencia,
   Anotacao,
   TimelineEvent,
   AppNotification,
@@ -109,6 +110,7 @@ interface AppState {
   processosSocietarios: ProcessoSocietario[];
   certificados: Certificado[];
   documentos: Documento[];
+  pendencias: Pendencia[];
   anotacoes: Anotacao[];
   timeline: TimelineEvent[];
   notifications: AppNotification[];
@@ -191,6 +193,10 @@ interface AppState {
   deleteDocumento: (id: string) => void;
   // Só pra aplicar localmente o que veio do Supabase — nunca chamada direto pela UI.
   setDocumentosFromSupabase: (documentos: Documento[]) => void;
+  addPendencia: (pendencia: Pendencia) => void;
+  updatePendencia: (id: string, patch: Partial<Pendencia>) => void;
+  deletePendencia: (id: string) => void;
+  setPendenciasFromSupabase: (pendencias: Pendencia[]) => void;
   addProcessoSocietario: (processo: ProcessoSocietario) => void;
   updateProcessoSocietario: (id: string, patch: Partial<ProcessoSocietario>) => void;
   deleteProcessoSocietario: (id: string) => void;
@@ -258,6 +264,7 @@ const initial = {
   processosSocietarios: PROCESSOS_SOCIETARIOS,
   certificados: CERTIFICADOS,
   documentos: DOCUMENTOS,
+  pendencias: [] as Pendencia[],
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
   notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, []),
@@ -649,6 +656,45 @@ export const useAppStore = create<AppState>()(
         }).catch((err) => console.error("Erro ao excluir documento:", err));
       },
       setDocumentosFromSupabase: (documentos) => set({ documentos }),
+      addPendencia: (pendencia) => {
+        set((s) => ({ pendencias: [pendencia, ...s.pendencias] }));
+        void createClient()
+          .from("pendencias")
+          .insert({
+            id: pendencia.id,
+            cliente_id: pendencia.clienteId,
+            titulo: pendencia.titulo,
+            tipo: pendencia.tipo,
+            prazo: pendencia.prazo || null,
+            status: pendencia.status,
+            responsavel_id: pendencia.responsavelId || null,
+          })
+          .then(({ error }) => error && console.error("Erro ao salvar pendência:", error.message));
+      },
+      updatePendencia: (id, patch) => {
+        set((s) => ({ pendencias: s.pendencias.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+        const dbPatch: Record<string, unknown> = {};
+        if (patch.titulo !== undefined) dbPatch.titulo = patch.titulo;
+        if (patch.tipo !== undefined) dbPatch.tipo = patch.tipo;
+        if (patch.prazo !== undefined) dbPatch.prazo = patch.prazo || null;
+        if (patch.status !== undefined) dbPatch.status = patch.status;
+        if (Object.keys(dbPatch).length > 0) {
+          void createClient()
+            .from("pendencias")
+            .update(dbPatch)
+            .eq("id", id)
+            .then(({ error }) => error && console.error("Erro ao atualizar pendência:", error.message));
+        }
+      },
+      deletePendencia: (id) => {
+        set((s) => ({ pendencias: s.pendencias.filter((p) => p.id !== id) }));
+        void createClient()
+          .from("pendencias")
+          .delete()
+          .eq("id", id)
+          .then(({ error }) => error && console.error("Erro ao excluir pendência:", error.message));
+      },
+      setPendenciasFromSupabase: (pendencias) => set({ pendencias }),
 
       addProcessoSocietario: (processo) =>
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
@@ -890,14 +936,14 @@ export const useAppStore = create<AppState>()(
     {
       name: "eleven-hub-store",
       version: 16,
-      // team, permissoes e documentos não são mais persistidos aqui — vêm do
-      // Supabase (Etapa 1 e 2 da migração) e são recarregados a cada sessão +
-      // mantidos em sincronia por Realtime, então guardá-los no localStorage
-      // só arriscaria mostrar dado desatualizado antes da store terminar de
+      // team, permissoes, documentos e pendencias não são mais persistidos
+      // aqui — vêm do Supabase e são recarregados a cada sessão + mantidos em
+      // sincronia por Realtime, então guardá-los no localStorage só
+      // arriscaria mostrar dado desatualizado antes da store terminar de
       // buscar do banco.
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { team, permissoes, documentos, ...rest } = state;
+        const { team, permissoes, documentos, pendencias, ...rest } = state;
         return rest;
       },
       // Fill in fields added to existing records after they were first persisted,
