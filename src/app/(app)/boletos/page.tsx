@@ -96,11 +96,15 @@ export default function BoletosPage() {
 
   const competencias = mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`];
 
+  // Cliente só entra a partir do mês de início do contrato — contrato
+  // começado em 09/2026 não aparece em competências anteriores.
   const linhas: Linha[] = useMemo(() => {
     const entryMap = new Map(boletosMensais.map((b) => [`${b.clienteId}__${b.competencia}`, b]));
     const list: Linha[] = [];
     for (const cliente of clientesMensais) {
+      const inicio = cliente.financeiro.inicioContrato?.slice(0, 7);
       for (const competencia of competencias) {
+        if (inicio && competencia < inicio) continue;
         const entry = entryMap.get(`${cliente.id}__${competencia}`);
         if (entry?.removido) continue;
         const valor = entry?.valor ?? cliente.financeiro.valorMensal;
