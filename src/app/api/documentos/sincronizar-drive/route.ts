@@ -20,11 +20,11 @@ export async function POST(request: Request) {
     const conhecidos = new Set((existentes ?? []).map((d) => d.drive_file_id).filter(Boolean));
 
     const linkDrive = await getClienteLinkDrive(body.clienteId);
-    const { arquivos, resumoPastas } = await listarArquivosClienteDrive(body.clienteId, body.clienteNome, linkDrive);
+    const { clienteFolderId, arquivos, resumoPastas } = await listarArquivosClienteDrive(body.clienteId, body.clienteNome, linkDrive);
     const novos = arquivos.filter(({ file }) => !conhecidos.has(file.id));
 
     if (novos.length === 0) {
-      return NextResponse.json({ ok: true, importados: 0, resumoPastas });
+      return NextResponse.json({ ok: true, importados: 0, clienteFolderId, resumoPastas });
     }
 
     const linhas = novos.map(({ file, categoria }, i) => ({
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const { error } = await admin.from("documents").insert(linhas);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 502 });
 
-    return NextResponse.json({ ok: true, importados: linhas.length, resumoPastas });
+    return NextResponse.json({ ok: true, importados: linhas.length, clienteFolderId, resumoPastas });
   } catch (err) {
     if (err instanceof GoogleDriveNaoConectadoError) {
       return NextResponse.json({ ok: false, error: err.message }, { status: 409 });

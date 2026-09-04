@@ -74,6 +74,7 @@ export default function ClientProfilePage() {
   const [sincronizandoDrive, setSincronizandoDrive] = useState(false);
   const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
   const [sincronizarInfo, setSincronizarInfo] = useState<string | null>(null);
+  const [sincronizarFolderId, setSincronizarFolderId] = useState<string | null>(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -161,6 +162,7 @@ export default function ClientProfilePage() {
     setSincronizandoDrive(true);
     setSincronizarErro(null);
     setSincronizarInfo(null);
+    setSincronizarFolderId(null);
     try {
       const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
       const res = await fetch("/api/documentos/sincronizar-drive", {
@@ -174,6 +176,7 @@ export default function ClientProfilePage() {
       } else if (json.importados === 0 && Array.isArray(json.resumoPastas)) {
         const resumo = json.resumoPastas.map((p: { nome: string; totalArquivos: number }) => `${p.nome}: ${p.totalArquivos}`).join(" • ");
         setSincronizarInfo(`Nenhum documento novo. Arquivos encontrados por pasta — ${resumo}`);
+        if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
       } else if (json.importados > 0) {
         setSincronizarInfo(`${json.importados} documento${json.importados === 1 ? "" : "s"} importado${json.importados === 1 ? "" : "s"} do Drive.`);
       }
@@ -730,7 +733,25 @@ export default function ClientProfilePage() {
                 </div>
               </div>
               {sincronizarErro && <p className="mb-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
-              {sincronizarInfo && <p className="mb-3 text-[11px] text-sand-400">{sincronizarInfo}</p>}
+              {sincronizarInfo && (
+                <p className="mb-3 text-[11px] text-sand-400">
+                  {sincronizarInfo}
+                  {sincronizarFolderId && (
+                    <>
+                      {" "}
+                      <a
+                        href={`https://drive.google.com/drive/folders/${sincronizarFolderId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-wine-700 hover:underline"
+                      >
+                        Abrir a pasta que o sistema está usando
+                      </a>{" "}
+                      — confira se é a mesma pasta onde você colocou o arquivo.
+                    </>
+                  )}
+                </p>
+              )}
               <div className="space-y-2">
                 {myDocs.map((d) => (
                   <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">

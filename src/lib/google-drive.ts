@@ -202,14 +202,14 @@ export async function ensureAllCategoriaFolders(
   clienteId: string,
   clienteNome: string,
   linkDriveExistente?: string | null
-): Promise<Record<string, string>> {
+): Promise<{ clienteFolderId: string; pastas: Record<string, string> }> {
   const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome, linkDriveExistente);
   const pastas: Record<string, string> = {};
   for (const nome of PASTAS_UNICAS) {
     const existente = await encontrarPasta(nome, clienteFolderId);
     pastas[nome] = existente ?? (await criarPasta(nome, clienteFolderId));
   }
-  return pastas;
+  return { clienteFolderId, pastas };
 }
 
 interface DriveFileInfo {
@@ -237,10 +237,11 @@ export async function listarArquivosClienteDrive(
   clienteNome: string,
   linkDriveExistente?: string | null
 ): Promise<{
+  clienteFolderId: string;
   arquivos: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }>;
   resumoPastas: Array<{ nome: string; folderId: string; totalArquivos: number }>;
 }> {
-  const pastas = await ensureAllCategoriaFolders(clienteId, clienteNome, linkDriveExistente);
+  const { clienteFolderId, pastas } = await ensureAllCategoriaFolders(clienteId, clienteNome, linkDriveExistente);
   const arquivos: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }> = [];
   const resumoPastas: Array<{ nome: string; folderId: string; totalArquivos: number }> = [];
   for (const [nomePasta, folderId] of Object.entries(pastas)) {
@@ -249,7 +250,7 @@ export async function listarArquivosClienteDrive(
     for (const file of arquivosDaPasta) arquivos.push({ file, categoria });
     resumoPastas.push({ nome: nomePasta, folderId, totalArquivos: arquivosDaPasta.length });
   }
-  return { arquivos, resumoPastas };
+  return { clienteFolderId, arquivos, resumoPastas };
 }
 
 /** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
