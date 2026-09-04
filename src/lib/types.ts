@@ -484,6 +484,15 @@ export type ObligationStatus =
   | "Aguardando informação"
   | "Em atraso";
 
+export const OBLIGATION_STATUS: ObligationStatus[] = [
+  "A fazer",
+  "Em andamento",
+  "Aguardando informação",
+  "Em atraso",
+  "Concluído",
+  "Não aplicável",
+];
+
 export interface Obligation {
   id: string;
   tipo: string;

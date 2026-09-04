@@ -205,6 +205,9 @@ interface AppState {
   updateTask: (taskId: string, patch: Partial<Task>) => void;
   addTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
+  addObligation: (obligation: Obligation) => void;
+  updateObligation: (obligationId: string, patch: Partial<Obligation>) => void;
+  deleteObligation: (obligationId: string) => void;
   toggleOnboardingItem: (clientId: string, itemId: string) => void;
   addAnotacao: (nota: Anotacao) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
@@ -401,6 +404,11 @@ export const useAppStore = create<AppState>()(
 
       addTask: (task) => set((s) => ({ tasks: [task, ...s.tasks] })),
       deleteTask: (taskId) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) })),
+      addObligation: (obligation) => set((s) => ({ obligations: [obligation, ...s.obligations] })),
+      updateObligation: (obligationId, patch) =>
+        set((s) => ({ obligations: s.obligations.map((o) => (o.id === obligationId ? { ...o, ...patch } : o)) })),
+      deleteObligation: (obligationId) =>
+        set((s) => ({ obligations: s.obligations.filter((o) => o.id !== obligationId) })),
 
       toggleOnboardingItem: (clientId, itemId) => {
         set((s) => ({
