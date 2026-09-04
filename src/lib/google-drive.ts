@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DocumentoCategoria } from "@/lib/types";
+import { PASTAS_DRIVE, PASTA_POR_CATEGORIA, CATEGORIA_POR_PASTA, type PastaDrive } from "@/lib/documento-pastas";
 
 const DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_UPLOAD_API = "https://www.googleapis.com/upload/drive/v3";
@@ -145,26 +146,6 @@ export async function ensureClienteFolder(clienteId: string, clienteNome: string
   return existente ?? criarPasta(nomePasta, rootId);
 }
 
-/** Mesma organização de subpastas que a Kauane já usa manualmente dentro
- * da pasta de cada cliente no Drive. */
-const PASTA_POR_CATEGORIA: Record<DocumentoCategoria, string> = {
-  Licenças: "LICENÇAS",
-  Contábil: "SETOR CONTÁBIL",
-  "Extratos bancários": "SETOR CONTÁBIL",
-  Fiscal: "SETOR FISCAL",
-  "Notas fiscais": "SETOR FISCAL",
-  Guias: "SETOR FISCAL",
-  Boletos: "SETOR FISCAL",
-  Folha: "SETOR PESSOAL",
-  Certificados: "DOCS SÓCIO",
-  Procurações: "DOCS SÓCIO",
-  Contratos: "DOCS EMPRESA",
-  "Documentos societários": "DOCS EMPRESA",
-  Relatórios: "DOCS EMPRESA",
-  Comprovantes: "DOCS EMPRESA",
-  Outros: "DOCS EMPRESA",
-};
-
 /** Acha (ou cria) a pasta do cliente e, dentro dela, a subpasta certa pra
  * essa categoria de documento (Licenças, Setor Fiscal, Docs Sócio etc.) —
  * a mesma organização que já era feita manualmente no Drive. */
@@ -180,20 +161,6 @@ export async function ensureCategoriaFolder(
   return existente ?? criarPasta(nomeSubpasta, clienteFolderId);
 }
 
-/** Quando um arquivo é achado direto numa dessas subpastas (sem ter sido
- * enviado pelo sistema), essa é a categoria que assumimos pra ele — o
- * "contrário" do mapa acima. */
-const CATEGORIA_POR_PASTA: Record<string, DocumentoCategoria> = {
-  "LICENÇAS": "Licenças",
-  "SETOR CONTÁBIL": "Contábil",
-  "SETOR FISCAL": "Fiscal",
-  "SETOR PESSOAL": "Folha",
-  "DOCS SÓCIO": "Certificados",
-  "DOCS EMPRESA": "Contratos",
-};
-
-const PASTAS_UNICAS = Array.from(new Set(Object.values(PASTA_POR_CATEGORIA)));
-
 /** Garante que a pasta do cliente e todas as subpastas por setor (as mesmas
  * que a Kauane já usa manualmente) existam no Drive, mesmo sem nenhum
  * documento ter sido enviado ainda pelo sistema. Assim dá pra jogar um
@@ -202,10 +169,10 @@ export async function ensureAllCategoriaFolders(
   clienteId: string,
   clienteNome: string,
   linkDriveExistente?: string | null
-): Promise<{ clienteFolderId: string; pastas: Record<string, string> }> {
+): Promise<{ clienteFolderId: string; pastas: Record<PastaDrive, string> }> {
   const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome, linkDriveExistente);
-  const pastas: Record<string, string> = {};
-  for (const nome of PASTAS_UNICAS) {
+  const pastas = {} as Record<PastaDrive, string>;
+  for (const nome of PASTAS_DRIVE) {
     const existente = await encontrarPasta(nome, clienteFolderId);
     pastas[nome] = existente ?? (await criarPasta(nome, clienteFolderId));
   }
@@ -246,7 +213,7 @@ export async function listarArquivosClienteDrive(
   const resumoPastas: Array<{ nome: string; folderId: string; totalArquivos: number }> = [];
   for (const [nomePasta, folderId] of Object.entries(pastas)) {
     const arquivosDaPasta = await listarArquivosNaPasta(folderId);
-    const categoria = CATEGORIA_POR_PASTA[nomePasta] ?? "Outros";
+    const categoria = CATEGORIA_POR_PASTA[nomePasta as PastaDrive] ?? "Outros";
     for (const file of arquivosDaPasta) arquivos.push({ file, categoria });
     resumoPastas.push({ nome: nomePasta, folderId, totalArquivos: arquivosDaPasta.length });
   }

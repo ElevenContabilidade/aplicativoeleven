@@ -34,11 +34,14 @@ export function DocumentUploadDialog({
   open,
   onOpenChange,
   fixedClienteId,
+  fixedCategoria,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** When set, the dialog is scoped to this client and skips the client picker. */
   fixedClienteId?: string;
+  /** When set, the dialog uploads straight into this categoria (and its matching Drive folder) and skips the categoria picker. */
+  fixedCategoria?: DocumentoCategoria;
 }) {
   const clients = useAppStore((s) => s.clients);
   const addDocumento = useAppStore((s) => s.addDocumento);
@@ -46,13 +49,13 @@ export function DocumentUploadDialog({
 
   const [file, setFile] = useState<File | null>(null);
   const [clienteId, setClienteId] = useState(fixedClienteId ?? clients[0]?.id ?? "");
-  const [categoria, setCategoria] = useState<DocumentoCategoria>("Outros");
+  const [categoria, setCategoria] = useState<DocumentoCategoria>(fixedCategoria ?? "Outros");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   function reset() {
     setFile(null);
-    setCategoria("Outros");
+    setCategoria(fixedCategoria ?? "Outros");
     setErro(null);
   }
 
@@ -125,17 +128,19 @@ export function DocumentUploadDialog({
             </div>
           )}
 
-          <div>
-            <Label className="mb-1 block">Categoria</Label>
-            <Select value={categoria} onValueChange={(v) => setCategoria(v as DocumentoCategoria)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {DOCUMENT_CATEGORIAS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!fixedCategoria && (
+            <div>
+              <Label className="mb-1 block">Categoria</Label>
+              <Select value={categoria} onValueChange={(v) => setCategoria(v as DocumentoCategoria)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_CATEGORIAS.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {erro && <p className="text-xs text-status-danger">{erro}</p>}
 

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, Folder, X, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -31,7 +31,8 @@ import { TiposDocumentoRecorrenteCard } from "@/components/clients/tipos-documen
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
-import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro } from "@/lib/types";
+import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro, type DocumentoCategoria } from "@/lib/types";
+import { PASTAS_DRIVE, PASTA_POR_CATEGORIA, CATEGORIA_POR_PASTA, type PastaDrive } from "@/lib/documento-pastas";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
 import { resolveBoletoLedger } from "@/lib/boleto";
@@ -71,6 +72,7 @@ export default function ClientProfilePage() {
   const [noteText, setNoteText] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
+  const [uploadCategoria, setUploadCategoria] = useState<DocumentoCategoria | undefined>(undefined);
   const [sincronizandoDrive, setSincronizandoDrive] = useState(false);
   const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
   const [sincronizarInfo, setSincronizarInfo] = useState<string | null>(null);
@@ -185,6 +187,15 @@ export default function ClientProfilePage() {
     } finally {
       setSincronizandoDrive(false);
     }
+  }
+
+  function abrirUploadPasta(pasta: PastaDrive) {
+    setUploadCategoria(CATEGORIA_POR_PASTA[pasta]);
+    setDocUploadOpen(true);
+  }
+  function abrirUploadGeral() {
+    setUploadCategoria(undefined);
+    setDocUploadOpen(true);
   }
 
   // Honorários lançados manualmente aqui + recebimentos batidos automaticamente
@@ -707,7 +718,7 @@ export default function ClientProfilePage() {
           <TiposDocumentoRecorrenteCard clienteId={client.id} />
           <Card>
             <CardContent className="p-5">
-              <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-2">
                 {client.dados.linkDrive ? (
                   <a
                     href={client.dados.linkDrive}
@@ -727,14 +738,14 @@ export default function ClientProfilePage() {
                     <RefreshCw className={cn("size-3.5", sincronizandoDrive && "animate-spin")} />
                     {sincronizandoDrive ? "Sincronizando..." : "Sincronizar com Drive"}
                   </Button>
-                  <Button size="sm" onClick={() => setDocUploadOpen(true)}>
+                  <Button size="sm" onClick={abrirUploadGeral}>
                     <Upload className="size-3.5" /> Anexar documento
                   </Button>
                 </div>
               </div>
-              {sincronizarErro && <p className="mb-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
+              {sincronizarErro && <p className="mt-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
               {sincronizarInfo && (
-                <p className="mb-3 text-[11px] text-sand-400">
+                <p className="mt-3 text-[11px] text-sand-400">
                   {sincronizarInfo}
                   {sincronizarFolderId && (
                     <>
@@ -752,24 +763,50 @@ export default function ClientProfilePage() {
                   )}
                 </p>
               )}
-              <div className="space-y-2">
-                {myDocs.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-sand-800">{d.nome}</span>
-                      <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
-                    </span>
-                    <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-sand-400">{formatDate(d.dataArquivo)}</span>
-                      <DocumentActions documento={d} />
-                    </div>
-                  </div>
-                ))}
-                {myDocs.length === 0 && <p className="text-xs text-sand-400">Nenhum documento anexado.</p>}
-              </div>
             </CardContent>
           </Card>
-          <DocumentUploadDialog open={docUploadOpen} onOpenChange={setDocUploadOpen} fixedClienteId={client.id} />
+
+          {PASTAS_DRIVE.map((pasta) => {
+            const docsDaPasta = myDocs.filter((d) => PASTA_POR_CATEGORIA[d.categoria] === pasta);
+            return (
+              <Card key={pasta}>
+                <CardContent className="p-5">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-sand-800">
+                      <Folder className="size-4 text-wine-500" /> {pasta}
+                      <span className="font-normal text-sand-400">({docsDaPasta.length})</span>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => abrirUploadPasta(pasta)}>
+                      <Plus className="size-3.5" /> Adicionar
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {docsDaPasta.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-sand-800">{d.nome}</span>
+                          <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
+                        </span>
+                        <div className="flex shrink-0 items-center gap-3">
+                          <span className="text-sand-400">{formatDate(d.dataArquivo)}</span>
+                          <DocumentActions documento={d} />
+                        </div>
+                      </div>
+                    ))}
+                    {docsDaPasta.length === 0 && <p className="text-xs text-sand-400">Nenhum documento nessa pasta.</p>}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          <DocumentUploadDialog
+            key={uploadCategoria ?? "geral"}
+            open={docUploadOpen}
+            onOpenChange={setDocUploadOpen}
+            fixedClienteId={client.id}
+            fixedCategoria={uploadCategoria}
+          />
         </TabsContent>
 
         <TabsContent value="pendencias">
