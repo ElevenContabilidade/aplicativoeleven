@@ -20,7 +20,15 @@ const DEPARTAMENTOS_TODOS = [
  * primeiro admin. Protegida por SETUP_SECRET; depois de usada uma vez pode
  * ser removida.
  */
+export async function GET(request: Request) {
+  return handleBootstrap(request);
+}
+
 export async function POST(request: Request) {
+  return handleBootstrap(request);
+}
+
+async function handleBootstrap(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get("secret") ?? request.headers.get("x-setup-secret");
   if (!process.env.SETUP_SECRET || secret !== process.env.SETUP_SECRET) {
