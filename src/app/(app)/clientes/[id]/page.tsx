@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, X } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, X, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -71,6 +71,8 @@ export default function ClientProfilePage() {
   const [noteText, setNoteText] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
+  const [sincronizandoDrive, setSincronizandoDrive] = useState(false);
+  const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -153,6 +155,25 @@ export default function ClientProfilePage() {
   const myRecebimentos = recebimentos.filter((r) => recebimentoPertenceAoCliente(r, clienteRef));
   const myBoletos = boletosMensais.filter((b) => b.clienteId === client.id && b.status === "Emitido" && !b.removido);
   const myRecebimentosParceiro = recebimentosParceiro.filter((r) => r.clienteId === client.id && !r.removido);
+
+  async function sincronizarDrive() {
+    setSincronizandoDrive(true);
+    setSincronizarErro(null);
+    try {
+      const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
+      const res = await fetch("/api/documentos/sincronizar-drive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clienteId: client!.id, clienteNome: nome }),
+      });
+      const json = await res.json();
+      if (!json.ok) setSincronizarErro(json.error ?? "Não foi possível sincronizar com o Drive.");
+    } catch {
+      setSincronizarErro("Não foi possível sincronizar com o Drive.");
+    } finally {
+      setSincronizandoDrive(false);
+    }
+  }
 
   // Honorários lançados manualmente aqui + recebimentos batidos automaticamente
   // pelo CNPJ/CPF (ou nome) lá em Financeiro, boletos emitidos em Boletos e
@@ -689,10 +710,17 @@ export default function ClientProfilePage() {
                     Nenhuma pasta do Drive vinculada — adicione o link em Dados cadastrais.
                   </p>
                 )}
-                <Button size="sm" onClick={() => setDocUploadOpen(true)}>
-                  <Upload className="size-3.5" /> Anexar documento
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={sincronizarDrive} disabled={sincronizandoDrive}>
+                    <RefreshCw className={cn("size-3.5", sincronizandoDrive && "animate-spin")} />
+                    {sincronizandoDrive ? "Sincronizando..." : "Sincronizar com Drive"}
+                  </Button>
+                  <Button size="sm" onClick={() => setDocUploadOpen(true)}>
+                    <Upload className="size-3.5" /> Anexar documento
+                  </Button>
+                </div>
               </div>
+              {sincronizarErro && <p className="mb-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
               <div className="space-y-2">
                 {myDocs.map((d) => (
                   <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">

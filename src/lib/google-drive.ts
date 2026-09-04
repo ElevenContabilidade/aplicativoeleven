@@ -150,6 +150,65 @@ export async function ensureCategoriaFolder(
   return existente ?? criarPasta(nomeSubpasta, clienteFolderId);
 }
 
+/** Quando um arquivo é achado direto numa dessas subpastas (sem ter sido
+ * enviado pelo sistema), essa é a categoria que assumimos pra ele — o
+ * "contrário" do mapa acima. */
+const CATEGORIA_POR_PASTA: Record<string, DocumentoCategoria> = {
+  "LICENÇAS": "Licenças",
+  "SETOR CONTÁBIL": "Contábil",
+  "SETOR FISCAL": "Fiscal",
+  "SETOR PESSOAL": "Folha",
+  "DOCS SÓCIO": "Certificados",
+  "DOCS EMPRESA": "Contratos",
+};
+
+const PASTAS_UNICAS = Array.from(new Set(Object.values(PASTA_POR_CATEGORIA)));
+
+/** Garante que a pasta do cliente e todas as subpastas por setor (as mesmas
+ * que a Kauane já usa manualmente) existam no Drive, mesmo sem nenhum
+ * documento ter sido enviado ainda pelo sistema. Assim dá pra jogar um
+ * arquivo direto lá que o sistema já sabe em qual pasta ele deveria estar. */
+export async function ensureAllCategoriaFolders(clienteId: string, clienteNome: string): Promise<Record<string, string>> {
+  const clienteFolderId = await ensureClienteFolder(clienteId, clienteNome);
+  const pastas: Record<string, string> = {};
+  for (const nome of PASTAS_UNICAS) {
+    const existente = await encontrarPasta(nome, clienteFolderId);
+    pastas[nome] = existente ?? (await criarPasta(nome, clienteFolderId));
+  }
+  return pastas;
+}
+
+interface DriveFileInfo {
+  id: string;
+  name: string;
+  size?: string;
+  createdTime: string;
+  webViewLink: string;
+}
+
+async function listarArquivosNaPasta(folderId: string): Promise<DriveFileInfo[]> {
+  const q = [`'${folderId}' in parents`, "trashed = false", "mimeType != 'application/vnd.google-apps.folder'"].join(" and ");
+  const json = await driveFetch(`/files?q=${encodeURIComponent(q)}&fields=files(id,name,size,createdTime,webViewLink)&pageSize=200`);
+  return json.files ?? [];
+}
+
+/** Varre as subpastas do cliente no Drive (criando as que faltarem) e
+ * devolve todo arquivo encontrado, junto da categoria que a pasta indica —
+ * pra quem chamou decidir quais já existem no sistema e quais são novos. */
+export async function listarArquivosClienteDrive(
+  clienteId: string,
+  clienteNome: string
+): Promise<Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }>> {
+  const pastas = await ensureAllCategoriaFolders(clienteId, clienteNome);
+  const resultado: Array<{ file: DriveFileInfo; categoria: DocumentoCategoria }> = [];
+  for (const [nomePasta, folderId] of Object.entries(pastas)) {
+    const arquivos = await listarArquivosNaPasta(folderId);
+    const categoria = CATEGORIA_POR_PASTA[nomePasta] ?? "Outros";
+    for (const file of arquivos) resultado.push({ file, categoria });
+  }
+  return resultado;
+}
+
 /** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
  * "qualquer um com o link" — assim quem vê o documento no Eleven Hub
  * consegue abrir sem precisar logar com uma conta Google própria. */

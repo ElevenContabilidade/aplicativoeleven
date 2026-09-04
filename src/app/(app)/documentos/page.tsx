@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FileText, Plus, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { FileText, Plus, Search, ArrowUp, ArrowDown, ArrowUpDown, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,37 @@ export default function DocumentosPage() {
   const [categoria, setCategoria] = useState("Todas");
   const [uploadOpen, setUploadOpen] = useState(() => searchParams.get("novo") === "1");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [sincronizarMsg, setSincronizarMsg] = useState<string | null>(null);
+
+  async function sincronizarTodosClientes() {
+    setSincronizando(true);
+    setSincronizarMsg(null);
+    let importados = 0;
+    let falhas = 0;
+    for (const c of clients) {
+      const nome = c.dados.nomeFantasia || c.dados.razaoSocial;
+      if (!nome) continue;
+      try {
+        const res = await fetch("/api/documentos/sincronizar-drive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clienteId: c.id, clienteNome: nome }),
+        });
+        const json = await res.json();
+        if (json.ok) importados += json.importados ?? 0;
+        else falhas += 1;
+      } catch {
+        falhas += 1;
+      }
+    }
+    setSincronizando(false);
+    setSincronizarMsg(
+      falhas > 0
+        ? `${importados} documento${importados === 1 ? "" : "s"} importado${importados === 1 ? "" : "s"} do Drive (${falhas} cliente${falhas === 1 ? "" : "s"} com erro).`
+        : `${importados} documento${importados === 1 ? "" : "s"} importado${importados === 1 ? "" : "s"} do Drive.`
+    );
+  }
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/documentos");
@@ -119,8 +150,18 @@ export default function DocumentosPage() {
       <PageHeader
         title="Documentos"
         description="Central de documentos vinculados aos clientes: contratos, guias, certificados e mais."
-        actions={<Button onClick={() => setUploadOpen(true)}><Plus className="size-3.5" /> Novo documento</Button>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={sincronizarTodosClientes} disabled={sincronizando}>
+              <RefreshCw className={cn("size-3.5", sincronizando && "animate-spin")} />
+              {sincronizando ? "Sincronizando..." : "Sincronizar com Drive"}
+            </Button>
+            <Button onClick={() => setUploadOpen(true)}><Plus className="size-3.5" /> Novo documento</Button>
+          </div>
+        }
       />
+
+      {sincronizarMsg && <p className="mb-3 text-xs text-sand-500">{sincronizarMsg}</p>}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <div className="relative w-full max-w-xs">
