@@ -183,6 +183,9 @@ export default function ClientProfilePage() {
         if (json.removidos > 0) {
           partes.push(`${json.removidos} documento${json.removidos === 1 ? "" : "s"} removido${json.removidos === 1 ? "" : "s"} (excluído${json.removidos === 1 ? "" : "s"} ou na lixeira do Drive)`);
         }
+        if (json.reclassificados > 0) {
+          partes.push(`${json.reclassificados} documento${json.reclassificados === 1 ? "" : "s"} mudou${json.reclassificados === 1 ? "" : "ram"} de pasta`);
+        }
         if (partes.length > 0) {
           setSincronizarInfo(`${partes.join(" • ")}.`);
         } else if (Array.isArray(json.resumoPastas)) {
