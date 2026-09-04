@@ -175,12 +175,21 @@ export default function ClientProfilePage() {
       const json = await res.json();
       if (!json.ok) {
         setSincronizarErro(json.error ?? "Não foi possível sincronizar com o Drive.");
-      } else if (json.importados === 0 && Array.isArray(json.resumoPastas)) {
-        const resumo = json.resumoPastas.map((p: { nome: string; totalArquivos: number }) => `${p.nome}: ${p.totalArquivos}`).join(" • ");
-        setSincronizarInfo(`Nenhum documento novo. Arquivos encontrados por pasta — ${resumo}`);
-        if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
-      } else if (json.importados > 0) {
-        setSincronizarInfo(`${json.importados} documento${json.importados === 1 ? "" : "s"} importado${json.importados === 1 ? "" : "s"} do Drive.`);
+      } else {
+        const partes: string[] = [];
+        if (json.importados > 0) {
+          partes.push(`${json.importados} documento${json.importados === 1 ? "" : "s"} importado${json.importados === 1 ? "" : "s"} do Drive`);
+        }
+        if (json.removidos > 0) {
+          partes.push(`${json.removidos} documento${json.removidos === 1 ? "" : "s"} removido${json.removidos === 1 ? "" : "s"} (excluído${json.removidos === 1 ? "" : "s"} ou na lixeira do Drive)`);
+        }
+        if (partes.length > 0) {
+          setSincronizarInfo(`${partes.join(" • ")}.`);
+        } else if (Array.isArray(json.resumoPastas)) {
+          const resumo = json.resumoPastas.map((p: { nome: string; totalArquivos: number }) => `${p.nome}: ${p.totalArquivos}`).join(" • ");
+          setSincronizarInfo(`Nenhum documento novo. Arquivos encontrados por pasta — ${resumo}`);
+          if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
+        }
       }
     } catch {
       setSincronizarErro("Não foi possível sincronizar com o Drive.");

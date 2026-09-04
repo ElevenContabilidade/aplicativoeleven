@@ -227,6 +227,20 @@ export async function listarArquivosClienteDrive(
   return { clienteFolderId, arquivos, resumoPastas };
 }
 
+/** Verifica se um arquivo já foi removido (excluído de vez) ou está na
+ * lixeira do Drive — usado pra tirar do Eleven Hub um documento cujo
+ * arquivo sumiu do Drive por lá. */
+export async function arquivoRemovidoOuNaLixeira(fileId: string): Promise<boolean> {
+  const token = await getAccessToken();
+  const res = await fetch(`${DRIVE_API}/files/${fileId}?fields=trashed&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return true;
+  if (!res.ok) return false;
+  const json = await res.json();
+  return json.trashed === true;
+}
+
 /** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
  * "qualquer um com o link" — assim quem vê o documento no Eleven Hub
  * consegue abrir sem precisar logar com uma conta Google própria. */
@@ -265,7 +279,14 @@ export async function uploadFileToDrive(
   return { id: json.id, webViewLink: json.webViewLink };
 }
 
+/** Move o arquivo pra lixeira do Drive (não apaga de vez) — assim fica
+ * recuperável por lá por um tempo, igual quando a Kauane exclui um arquivo
+ * direto pelo Drive. */
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  await fetch(`${DRIVE_API}/files/${fileId}?supportsAllDrives=true`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+  await fetch(`${DRIVE_API}/files/${fileId}?supportsAllDrives=true`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ trashed: true }),
+  });
 }
