@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { GoogleDriveCard } from "@/components/office/google-drive-card";
+import { ImportarDadosLocaisCard } from "@/components/office/importar-dados-locais-card";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DadosEscritorio, SistemaEscritorio } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
@@ -179,6 +180,7 @@ export default function DadosEscritorioPage() {
       <Suspense fallback={null}>
         <GoogleDriveCard />
       </Suspense>
+      <ImportarDadosLocaisCard />
 
       <Card className="mt-4">
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
