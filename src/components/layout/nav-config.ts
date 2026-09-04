@@ -44,6 +44,7 @@ export const NAV_GROUP_ICON: Record<string, LucideIcon> = {
 };
 
 export const NAV_ITEMS: NavItem[] = [
+  { label: "Eleven IA", href: "/eleven-ia", icon: Sparkles, section: "principal" },
   { label: "Dados do escritório", href: "/dados-escritorio", icon: Building, section: "principal" },
   { label: "Início", href: "/dashboard", icon: LayoutGrid, section: "principal" },
   { label: "Comercial", href: "/comercial", icon: Briefcase, section: "principal" },
@@ -69,6 +70,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Atendimento", href: "/atendimento", icon: Headset, section: "gestao" },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3, section: "gestao" },
   { label: "Equipe", href: "/equipe", icon: Users, section: "gestao" },
-  { label: "Eleven IA", href: "/eleven-ia", icon: Sparkles, section: "gestao" },
   { label: "Configurações", href: "/configuracoes", icon: Settings, section: "gestao" },
 ];
