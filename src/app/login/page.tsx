@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
+import { useSupabaseFinanceiroSync } from "@/lib/supabase/use-financeiro-sync";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "equipe" | "cliente";
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const clients = useAppStore((s) => s.clients);
+  useSupabaseFinanceiroSync(true);
   const [tab, setTab] = useState<Tab>("equipe");
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");

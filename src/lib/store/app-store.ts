@@ -43,6 +43,42 @@ function autorAtual(team: TeamMember[]): string {
 function novaHistoricoEntry(team: TeamMember[], acao: string): HistoricoAcaoUsuario {
   return { id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, acao, autor: autorAtual(team), data: new Date().toISOString() };
 }
+
+/** Clientes e Financeiro (Etapa 3 da migração) ficam numa tabela genérica
+ * no Supabase — cada linha guarda um item inteiro (cliente, recebimento,
+ * boleto etc.) como JSON, marcado por `tipo`. Evita ter que desenhar e
+ * manter uma tabela relacional própria pra cada um dos ~9 tipos de dado
+ * financeiro, que têm formato bem diferente entre si. */
+function pushFinanceiro(tipo: string, id: string, clienteId: string | null, data: unknown) {
+  void createClient()
+    .from("dados_financeiros")
+    .upsert({ tipo, id, cliente_id: clienteId, data }, { onConflict: "tipo,id" })
+    .then(({ error }) => error && console.error(`Erro ao salvar dado financeiro (${tipo}):`, error.message));
+}
+function deleteFinanceiro(tipo: string, id: string) {
+  void createClient()
+    .from("dados_financeiros")
+    .delete()
+    .eq("tipo", tipo)
+    .eq("id", id)
+    .then(({ error }) => error && console.error(`Erro ao excluir dado financeiro (${tipo}):`, error.message));
+}
+/** Some com a linha do cliente e com tudo que referencia esse cliente
+ * (boletos, notas fiscais mensais, recebimentos de parceiro). */
+function deleteFinanceiroPorCliente(clienteId: string) {
+  void createClient()
+    .from("dados_financeiros")
+    .delete()
+    .eq("cliente_id", clienteId)
+    .then(({ error }) => error && console.error("Erro ao excluir dados financeiros do cliente:", error.message));
+}
+/** Reflete no Supabase a mudança que uma action de cliente acabou de fazer
+ * localmente — chamada depois do `set()`, lendo o cliente já atualizado
+ * direto da store. */
+function pushCliente(clientId: string) {
+  const client = useAppStore.getState().clients.find((c) => c.id === clientId);
+  if (client) pushFinanceiro("clients", clientId, clientId, client);
+}
 import type {
   TeamMember,
   HistoricoAcaoUsuario,
@@ -235,6 +271,18 @@ interface AppState {
     patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
   ) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
+  // Etapa 3 da migração — Clientes e Financeiro vêm do Supabase agora
+  // (tabela genérica `dados_financeiros`); essas setters só aplicam
+  // localmente o que veio de lá, nunca chamadas direto pela UI.
+  setClientsFromSupabase: (clients: Client[]) => void;
+  setRecebimentosFromSupabase: (recebimentos: Recebimento[]) => void;
+  setParcelamentosFromSupabase: (parcelamentos: Parcelamento[]) => void;
+  setEnviosParcelamentoFromSupabase: (envios: EnvioParcelamento[]) => void;
+  setBoletosMensaisFromSupabase: (boletos: BoletoMensal[]) => void;
+  setNotasFiscaisMensaisFromSupabase: (notas: NotaFiscalMensal[]) => void;
+  setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
+  setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
+  setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
   deleteLicenca: (id: string) => void;
@@ -354,7 +402,7 @@ export const useAppStore = create<AppState>()(
       addTask: (task) => set((s) => ({ tasks: [task, ...s.tasks] })),
       deleteTask: (taskId) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) })),
 
-      toggleOnboardingItem: (clientId, itemId) =>
+      toggleOnboardingItem: (clientId, itemId) => {
         set((s) => ({
           clients: s.clients.map((c) => {
             if (c.id !== clientId) return c;
@@ -374,7 +422,9 @@ export const useAppStore = create<AppState>()(
             const status = completo && c.status === "Onboarding" ? "Ativo" : c.status;
             return { ...c, onboarding, status };
           }),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
       addAnotacao: (nota) => set((s) => ({ anotacoes: [nota, ...s.anotacoes] })),
       addTimelineEvent: (event) => set((s) => ({ timeline: [event, ...s.timeline] })),
@@ -384,8 +434,11 @@ export const useAppStore = create<AppState>()(
       markAllNotificationsRead: () =>
         set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) })),
 
-      addClient: (client) => set((s) => ({ clients: [client, ...s.clients] })),
-      deleteClient: (clientId) =>
+      addClient: (client) => {
+        set((s) => ({ clients: [client, ...s.clients] }));
+        pushCliente(client.id);
+      },
+      deleteClient: (clientId) => {
         set((s) => ({
           clients: s.clients.filter((c) => c.id !== clientId),
           tasks: s.tasks.filter((t) => t.clienteId !== clientId),
@@ -404,11 +457,17 @@ export const useAppStore = create<AppState>()(
           checklistFiscal: s.checklistFiscal.filter((e) => e.clienteId !== clientId),
           checklistPessoal: s.checklistPessoal.filter((e) => e.clienteId !== clientId),
           checklistMei: s.checklistMei.filter((e) => e.clienteId !== clientId),
-        })),
-      updateClientStatus: (clientId, status) =>
-        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) })),
-      updateClientTags: (clientId, tags) =>
-        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) })),
+        }));
+        deleteFinanceiroPorCliente(clientId);
+      },
+      updateClientStatus: (clientId, status) => {
+        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) }));
+        pushCliente(clientId);
+      },
+      updateClientTags: (clientId, tags) => {
+        set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) }));
+        pushCliente(clientId);
+      },
       updateTeamMemberClientes: (memberId, clientIds) => {
         set((s) => ({
           team: s.team.map((m) =>
@@ -491,13 +550,22 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.map((sis) => (sis.id === id ? { ...sis, ...patch } : sis)) })),
       deleteSistemaEscritorio: (id) => set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) })),
       updateMetaMensalClientes: (valor) => set({ metaMensalClientes: valor }),
-      addDespesaAvulsa: (despesa) => set((s) => ({ despesasAvulsas: [...s.despesasAvulsas, despesa] })),
-      updateDespesaAvulsa: (id, patch) =>
-        set((s) => ({ despesasAvulsas: s.despesasAvulsas.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
-      deleteDespesaAvulsa: (id) => set((s) => ({ despesasAvulsas: s.despesasAvulsas.filter((d) => d.id !== id) })),
-      updatePagamentoSistema: (sistemaId, competencia, patch) =>
+      addDespesaAvulsa: (despesa) => {
+        set((s) => ({ despesasAvulsas: [...s.despesasAvulsas, despesa] }));
+        pushFinanceiro("despesasAvulsas", despesa.id, null, despesa);
+      },
+      updateDespesaAvulsa: (id, patch) => {
+        set((s) => ({ despesasAvulsas: s.despesasAvulsas.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+        const item = useAppStore.getState().despesasAvulsas.find((d) => d.id === id);
+        if (item) pushFinanceiro("despesasAvulsas", id, null, item);
+      },
+      deleteDespesaAvulsa: (id) => {
+        set((s) => ({ despesasAvulsas: s.despesasAvulsas.filter((d) => d.id !== id) }));
+        deleteFinanceiro("despesasAvulsas", id);
+      },
+      updatePagamentoSistema: (sistemaId, competencia, patch) => {
+        const id = `pagsis-${sistemaId}-${competencia}`;
         set((s) => {
-          const id = `pagsis-${sistemaId}-${competencia}`;
           const existente = s.pagamentosSistemas.find((p) => p.id === id);
           if (existente) {
             return { pagamentosSistemas: s.pagamentosSistemas.map((p) => (p.id === id ? { ...p, ...patch } : p)) };
@@ -505,7 +573,10 @@ export const useAppStore = create<AppState>()(
           return {
             pagamentosSistemas: [...s.pagamentosSistemas, { id, sistemaId, competencia, status: "Em aberto", ...patch }],
           };
-        }),
+        });
+        const item = useAppStore.getState().pagamentosSistemas.find((p) => p.id === id);
+        if (item) pushFinanceiro("pagamentosSistemas", id, null, item);
+      },
       addContratoAssinatura: (contrato) => set((s) => ({ contratosAssinatura: [...s.contratosAssinatura, contrato] })),
       updateContratoAssinatura: (id, patch) =>
         set((s) => ({
@@ -574,67 +645,87 @@ export const useAppStore = create<AppState>()(
             return { ...f, rescisao: { ...f.rescisao, checklist } };
           }),
         })),
-      updateClientDados: (clientId, patch) =>
+      updateClientDados: (clientId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
-        })),
-      updateClientResponsaveis: (clientId, patch) =>
+        }));
+        pushCliente(clientId);
+      },
+      updateClientResponsaveis: (clientId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId ? { ...c, responsaveis: { ...c.responsaveis, ...patch } } : c
           ),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
-      addSocio: (clientId, socio) =>
+      addSocio: (clientId, socio) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, socios: [socio, ...c.socios] } : c)),
-        })),
-      updateSocio: (clientId, socioId, patch) =>
+        }));
+        pushCliente(clientId);
+      },
+      updateSocio: (clientId, socioId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
               ? { ...c, socios: c.socios.map((so) => (so.id === socioId ? { ...so, ...patch } : so)) }
               : c
           ),
-        })),
-      deleteSocio: (clientId, socioId) =>
+        }));
+        pushCliente(clientId);
+      },
+      deleteSocio: (clientId, socioId) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId ? { ...c, socios: c.socios.filter((so) => so.id !== socioId) } : c
           ),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
-      addContato: (clientId, contato) =>
+      addContato: (clientId, contato) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, contatos: [contato, ...c.contatos] } : c)),
-        })),
-      updateContato: (clientId, contatoId, patch) =>
+        }));
+        pushCliente(clientId);
+      },
+      updateContato: (clientId, contatoId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
               ? { ...c, contatos: c.contatos.map((co) => (co.id === contatoId ? { ...co, ...patch } : co)) }
               : c
           ),
-        })),
-      deleteContato: (clientId, contatoId) =>
+        }));
+        pushCliente(clientId);
+      },
+      deleteContato: (clientId, contatoId) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId ? { ...c, contatos: c.contatos.filter((co) => co.id !== contatoId) } : c
           ),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
-      updateFinanceiroCliente: (clientId, patch) =>
+      updateFinanceiroCliente: (clientId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, financeiro: { ...c.financeiro, ...patch } } : c)),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
-      addHistoricoCliente: (clientId, entry) =>
+      addHistoricoCliente: (clientId, entry) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId ? { ...c, historicoFinanceiro: [entry, ...c.historicoFinanceiro] } : c
           ),
-        })),
-      updateHistoricoCliente: (clientId, entryId, patch) =>
+        }));
+        pushCliente(clientId);
+      },
+      updateHistoricoCliente: (clientId, entryId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
@@ -644,15 +735,19 @@ export const useAppStore = create<AppState>()(
                 }
               : c
           ),
-        })),
-      deleteHistoricoCliente: (clientId, entryId) =>
+        }));
+        pushCliente(clientId);
+      },
+      deleteHistoricoCliente: (clientId, entryId) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
               ? { ...c, historicoFinanceiro: c.historicoFinanceiro.filter((h) => h.id !== entryId) }
               : c
           ),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
       // Otimista — o registro de verdade em `documents` já foi feito por
       // /api/documentos/upload (que também cuida do envio pro Drive); aqui
@@ -760,6 +855,15 @@ export const useAppStore = create<AppState>()(
         }).catch((err) => console.error("Erro ao salvar envio mensal:", err));
       },
       setEnviosMensaisDocumentoFromSupabase: (enviosMensaisDocumento) => set({ enviosMensaisDocumento }),
+      setClientsFromSupabase: (clients) => set({ clients }),
+      setRecebimentosFromSupabase: (recebimentos) => set({ recebimentos }),
+      setParcelamentosFromSupabase: (parcelamentos) => set({ parcelamentos }),
+      setEnviosParcelamentoFromSupabase: (enviosParcelamento) => set({ enviosParcelamento }),
+      setBoletosMensaisFromSupabase: (boletosMensais) => set({ boletosMensais }),
+      setNotasFiscaisMensaisFromSupabase: (notasFiscaisMensais) => set({ notasFiscaisMensais }),
+      setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
+      setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
+      setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
 
       addProcessoSocietario: (processo) =>
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
@@ -807,64 +911,100 @@ export const useAppStore = create<AppState>()(
           return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
         }),
 
-      addRecebimento: (entry) => set((s) => ({ recebimentos: [entry, ...s.recebimentos] })),
-      updateRecebimento: (id, patch) =>
-        set((s) => ({ recebimentos: s.recebimentos.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
-      deleteRecebimento: (id) => set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) })),
+      addRecebimento: (entry) => {
+        set((s) => ({ recebimentos: [entry, ...s.recebimentos] }));
+        pushFinanceiro("recebimentos", entry.id, null, entry);
+      },
+      updateRecebimento: (id, patch) => {
+        set((s) => ({ recebimentos: s.recebimentos.map((r) => (r.id === id ? { ...r, ...patch } : r)) }));
+        const item = useAppStore.getState().recebimentos.find((r) => r.id === id);
+        if (item) pushFinanceiro("recebimentos", id, null, item);
+      },
+      deleteRecebimento: (id) => {
+        set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) }));
+        deleteFinanceiro("recebimentos", id);
+      },
 
-      addParcelamento: (parcelamento) => set((s) => ({ parcelamentos: [parcelamento, ...s.parcelamentos] })),
-      updateParcelamento: (id, patch) =>
-        set((s) => ({ parcelamentos: s.parcelamentos.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
-      deleteParcelamento: (id) =>
+      addParcelamento: (parcelamento) => {
+        set((s) => ({ parcelamentos: [parcelamento, ...s.parcelamentos] }));
+        pushFinanceiro("parcelamentos", parcelamento.id, null, parcelamento);
+      },
+      updateParcelamento: (id, patch) => {
+        set((s) => ({ parcelamentos: s.parcelamentos.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+        const item = useAppStore.getState().parcelamentos.find((p) => p.id === id);
+        if (item) pushFinanceiro("parcelamentos", id, null, item);
+      },
+      deleteParcelamento: (id) => {
         set((s) => ({
           parcelamentos: s.parcelamentos.filter((p) => p.id !== id),
           enviosParcelamento: s.enviosParcelamento.filter((e) => e.parcelamentoId !== id),
-        })),
-      setEnvioParcelamento: (parcelamentoId, competencia, status) =>
+        }));
+        deleteFinanceiro("parcelamentos", id);
+        // Os envios desse parcelamento já saíram da tela acima — isso só limpa as linhas correspondentes no banco.
+        void createClient()
+          .from("dados_financeiros")
+          .delete()
+          .eq("tipo", "enviosParcelamento")
+          .like("id", `env-${id}-%`)
+          .then(({ error }) => error && console.error("Erro ao excluir envios do parcelamento:", error.message));
+      },
+      setEnvioParcelamento: (parcelamentoId, competencia, status) => {
+        const id = `env-${parcelamentoId}-${competencia}`;
         set((s) => {
-          const id = `env-${parcelamentoId}-${competencia}`;
           const exists = s.enviosParcelamento.some((e) => e.id === id);
           return {
             enviosParcelamento: exists
               ? s.enviosParcelamento.map((e) => (e.id === id ? { ...e, status } : e))
               : [...s.enviosParcelamento, { id, parcelamentoId, competencia, status }],
           };
-        }),
+        });
+        const item = useAppStore.getState().enviosParcelamento.find((e) => e.id === id);
+        if (item) pushFinanceiro("enviosParcelamento", id, null, item);
+      },
 
-      updateBoleto: (clienteId, competencia, patch) =>
+      updateBoleto: (clienteId, competencia, patch) => {
+        const id = `bol-${clienteId}-${competencia}`;
         set((s) => {
-          const id = `bol-${clienteId}-${competencia}`;
           const exists = s.boletosMensais.some((b) => b.id === id);
           return {
             boletosMensais: exists
               ? s.boletosMensais.map((b) => (b.id === id ? { ...b, ...patch } : b))
               : [...s.boletosMensais, { id, clienteId, competencia, status: "Não emitido", ...patch }],
           };
-        }),
+        });
+        const item = useAppStore.getState().boletosMensais.find((b) => b.id === id);
+        if (item) pushFinanceiro("boletosMensais", id, clienteId, item);
+      },
 
-      updateNotaFiscal: (clienteId, competencia, patch) =>
+      updateNotaFiscal: (clienteId, competencia, patch) => {
+        const id = `nfse-${clienteId}-${competencia}`;
         set((s) => {
-          const id = `nfse-${clienteId}-${competencia}`;
           const exists = s.notasFiscaisMensais.some((n) => n.id === id);
           return {
             notasFiscaisMensais: exists
               ? s.notasFiscaisMensais.map((n) => (n.id === id ? { ...n, ...patch } : n))
               : [...s.notasFiscaisMensais, { id, clienteId, competencia, status: "Não emitida", ...patch }],
           };
-        }),
+        });
+        const item = useAppStore.getState().notasFiscaisMensais.find((n) => n.id === id);
+        if (item) pushFinanceiro("notasFiscaisMensais", id, clienteId, item);
+      },
 
-      updateRecebimentoParceiro: (clienteId, competencia, patch) =>
+      updateRecebimentoParceiro: (clienteId, competencia, patch) => {
+        const id = `parc-${clienteId}-${competencia}`;
         set((s) => {
-          const id = `parc-${clienteId}-${competencia}`;
           const exists = s.recebimentosParceiro.some((r) => r.id === id);
           return {
             recebimentosParceiro: exists
               ? s.recebimentosParceiro.map((r) => (r.id === id ? { ...r, ...patch } : r))
               : [...s.recebimentosParceiro, { id, clienteId, competencia, status: "Em aberto", ...patch }],
           };
-        }),
+        });
+        const item = useAppStore.getState().recebimentosParceiro.find((r) => r.id === id);
+        if (item) pushFinanceiro("recebimentosParceiro", id, clienteId, item);
+      },
 
-      updateNotaDepartamento: (clientId, depto, nota) =>
+      updateNotaDepartamento: (clientId, depto, nota) => {
         set((s) => ({
           clients: s.clients.map((c) =>
             c.id === clientId
@@ -877,7 +1017,9 @@ export const useAppStore = create<AppState>()(
                 }
               : c
           ),
-        })),
+        }));
+        pushCliente(clientId);
+      },
 
       addLicenca: (licenca) =>
         set((s) => {
@@ -1001,14 +1143,33 @@ export const useAppStore = create<AppState>()(
     {
       name: "eleven-hub-store",
       version: 16,
-      // team, permissoes, documentos, pendencias, tiposDocumentoRecorrente e
-      // enviosMensaisDocumento não são mais persistidos aqui — vêm do
-      // Supabase e são recarregados a cada sessão + mantidos em sincronia
-      // por Realtime, então guardá-los no localStorage só arriscaria
-      // mostrar dado desatualizado antes da store terminar de buscar do banco.
+      // team, permissoes, documentos, pendencias, tiposDocumentoRecorrente,
+      // enviosMensaisDocumento, clients e o Financeiro inteiro não são mais
+      // persistidos aqui — vêm do Supabase e são recarregados a cada sessão
+      // + mantidos em sincronia por Realtime, então guardá-los no
+      // localStorage só arriscaria mostrar dado desatualizado antes da
+      // store terminar de buscar do banco.
       partialize: (state) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { team, permissoes, documentos, pendencias, tiposDocumentoRecorrente, enviosMensaisDocumento, ...rest } = state;
+        /* eslint-disable @typescript-eslint/no-unused-vars */
+        const {
+          team,
+          permissoes,
+          documentos,
+          pendencias,
+          tiposDocumentoRecorrente,
+          enviosMensaisDocumento,
+          clients,
+          recebimentos,
+          parcelamentos,
+          enviosParcelamento,
+          boletosMensais,
+          notasFiscaisMensais,
+          recebimentosParceiro,
+          despesasAvulsas,
+          pagamentosSistemas,
+          ...rest
+        } = state;
+        /* eslint-enable @typescript-eslint/no-unused-vars */
         return rest;
       },
       // Fill in fields added to existing records after they were first persisted,
