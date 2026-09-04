@@ -18,6 +18,24 @@ const TIPOS_LOCAIS = [
   "recebimentosParceiro",
   "despesasAvulsas",
   "pagamentosSistemas",
+  "leads",
+  "tasks",
+  "obligations",
+  "processosSocietarios",
+  "certificados",
+  "anotacoes",
+  "timeline",
+  "servicosExtras",
+  "licencas",
+  "indicacoes",
+  "servicosPortfolio",
+  "checklistContabil",
+  "checklistFiscal",
+  "checklistPessoal",
+  "checklistMei",
+  "sistemasEscritorio",
+  "contratosAssinatura",
+  "funcionarios",
 ] as const;
 
 interface ItemComId {
@@ -26,10 +44,12 @@ interface ItemComId {
 }
 
 /** Ferramenta de uso único: lê o que ainda está salvo no localStorage
- * desse navegador (Clientes + Financeiro, de antes da migração pro
- * Supabase) e sobe tudo pro banco. Só precisa ser usada uma vez, no
- * navegador que tem os dados reais mais atualizados — depois disso os
- * dados já vêm do Supabase pra todo mundo. */
+ * desse navegador (todo módulo que ainda não tinha sido migrado pro
+ * Supabase: Clientes, Financeiro, Tarefas, Obrigações, Leads, Societário,
+ * Certificados, Licenças, checklists de rotina etc.) e sobe tudo pro
+ * banco. Só precisa ser usada uma vez, no navegador que tem os dados
+ * reais mais atualizados — depois disso os dados já vêm do Supabase pra
+ * todo mundo. */
 export function ImportarDadosLocaisCard() {
   const team = useAppStore((s) => s.team);
   const { userId } = useAuthStore();
@@ -63,6 +83,21 @@ export function ImportarDadosLocaisCard() {
         }
       }
 
+      // Config de escritório: itens únicos, não listas.
+      if (state.dadosEscritorio) {
+        linhas.push({ tipo: "dadosEscritorio", id: "default", cliente_id: null, data: state.dadosEscritorio });
+      }
+      if (typeof state.metaMensalClientes === "number") {
+        linhas.push({ tipo: "metaMensalClientes", id: "default", cliente_id: null, data: { valor: state.metaMensalClientes } });
+      }
+      // Só o "lida" dos alertas — o resto é recalculado a partir do resto dos dados.
+      const notifications = state.notifications as { id: string; lida?: boolean }[] | undefined;
+      if (Array.isArray(notifications)) {
+        for (const n of notifications) {
+          if (n?.id && n.lida) linhas.push({ tipo: "notificacoesLidas", id: n.id, cliente_id: null, data: { id: n.id, lida: true } });
+        }
+      }
+
       if (linhas.length === 0) {
         setStatus("vazio");
         return;
@@ -76,7 +111,8 @@ export function ImportarDadosLocaisCard() {
         if (error) throw new Error(error.message);
       }
 
-      const porTipo = TIPOS_LOCAIS.map((t) => `${linhas.filter((l) => l.tipo === t).length} ${t}`).join(", ");
+      const tipos = Array.from(new Set(linhas.map((l) => l.tipo)));
+      const porTipo = tipos.map((t) => `${linhas.filter((l) => l.tipo === t).length} ${t}`).join(", ");
       setResumo(`${linhas.length} registros importados (${porTipo}).`);
       setStatus("feito");
     } catch (err) {
@@ -90,8 +126,9 @@ export function ImportarDadosLocaisCard() {
       <CardHeader>
         <CardTitle>Importar dados locais pro banco</CardTitle>
         <p className="mt-1 text-xs text-sand-500">
-          Ferramenta de uso único: sobe pro Supabase os Clientes e o Financeiro que ainda estão salvos só nesse
-          navegador (de antes da migração). Use no navegador com os dados mais atualizados, uma vez só.
+          Ferramenta de uso único: sobe pro Supabase tudo que ainda está salvo só nesse navegador (Clientes,
+          Financeiro, Tarefas, Obrigações, Leads, Societário, Certificados, Licenças, checklists de rotina e mais).
+          Use no navegador com os dados mais atualizados, uma vez só.
         </p>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">

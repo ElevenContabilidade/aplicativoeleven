@@ -286,6 +286,35 @@ interface AppState {
   setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
   setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
   setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
+  // Etapa 4 da migração — todo o resto que ainda só vivia no navegador
+  // (localStorage) agora também vem da mesma tabela genérica
+  // `dados_financeiros`; essas setters só aplicam localmente o que veio
+  // de lá, nunca chamadas direto pela UI.
+  setLeadsFromSupabase: (leads: Lead[]) => void;
+  setTasksFromSupabase: (tasks: Task[]) => void;
+  setObligationsFromSupabase: (obligations: Obligation[]) => void;
+  setProcessosSocietariosFromSupabase: (processos: ProcessoSocietario[]) => void;
+  setCertificadosFromSupabase: (certificados: Certificado[]) => void;
+  setAnotacoesFromSupabase: (anotacoes: Anotacao[]) => void;
+  setTimelineFromSupabase: (timeline: TimelineEvent[]) => void;
+  setServicosExtrasFromSupabase: (servicos: ServicoExtra[]) => void;
+  setLicencasFromSupabase: (licencas: Licenca[]) => void;
+  setIndicacoesFromSupabase: (indicacoes: Indicacao[]) => void;
+  setServicosPortfolioFromSupabase: (servicos: ServicoPortfolio[]) => void;
+  setChecklistContabilFromSupabase: (checklist: ChecklistEntry[]) => void;
+  setChecklistFiscalFromSupabase: (checklist: ChecklistEntry[]) => void;
+  setChecklistPessoalFromSupabase: (checklist: ChecklistEntry[]) => void;
+  setChecklistMeiFromSupabase: (checklist: ChecklistEntry[]) => void;
+  setSistemasEscritorioFromSupabase: (sistemas: SistemaEscritorio[]) => void;
+  setDadosEscritorioFromSupabase: (dados: DadosEscritorio) => void;
+  setMetaMensalClientesFromSupabase: (valor: number) => void;
+  setContratosAssinaturaFromSupabase: (contratos: ContratoAssinatura[]) => void;
+  setFuncionariosFromSupabase: (funcionarios: Funcionario[]) => void;
+  /** Aplica quais alertas já foram lidos (o resto do conteúdo do alerta é
+   * recalculado localmente a partir de licenças/certificados/clientes/
+   * checklist fiscal, que já vêm do Supabase — só o "lida" precisa vir de
+   * lá pra valer em qualquer aparelho). */
+  applyNotificationsLidas: (idsLidos: string[]) => void;
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
   deleteLicenca: (id: string) => void;
@@ -375,7 +404,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       ...initial,
 
-      moveLead: (leadId, stage, autor) =>
+      moveLead: (leadId, stage, autor) => {
         set((s) => ({
           leads: s.leads.map((l) => {
             if (l.id !== leadId) return l;
@@ -392,23 +421,52 @@ export const useAppStore = create<AppState>()(
             ];
             return { ...l, stage, historico, dataUltimoContato: new Date().toISOString().slice(0, 10) };
           }),
-        })),
+        }));
+        const lead = useAppStore.getState().leads.find((l) => l.id === leadId);
+        if (lead) pushFinanceiro("leads", leadId, null, lead);
+      },
 
-      addLead: (lead) => set((s) => ({ leads: [lead, ...s.leads] })),
-      updateLead: (leadId, patch) =>
-        set((s) => ({ leads: s.leads.map((l) => (l.id === leadId ? { ...l, ...patch } : l)) })),
-      deleteLead: (leadId) => set((s) => ({ leads: s.leads.filter((l) => l.id !== leadId) })),
+      addLead: (lead) => {
+        set((s) => ({ leads: [lead, ...s.leads] }));
+        pushFinanceiro("leads", lead.id, null, lead);
+      },
+      updateLead: (leadId, patch) => {
+        set((s) => ({ leads: s.leads.map((l) => (l.id === leadId ? { ...l, ...patch } : l)) }));
+        const lead = useAppStore.getState().leads.find((l) => l.id === leadId);
+        if (lead) pushFinanceiro("leads", leadId, null, lead);
+      },
+      deleteLead: (leadId) => {
+        set((s) => ({ leads: s.leads.filter((l) => l.id !== leadId) }));
+        deleteFinanceiro("leads", leadId);
+      },
 
-      updateTask: (taskId, patch) =>
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) })),
+      updateTask: (taskId, patch) => {
+        set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) }));
+        const task = useAppStore.getState().tasks.find((t) => t.id === taskId);
+        if (task) pushFinanceiro("tasks", taskId, task.clienteId ?? null, task);
+      },
 
-      addTask: (task) => set((s) => ({ tasks: [task, ...s.tasks] })),
-      deleteTask: (taskId) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) })),
-      addObligation: (obligation) => set((s) => ({ obligations: [obligation, ...s.obligations] })),
-      updateObligation: (obligationId, patch) =>
-        set((s) => ({ obligations: s.obligations.map((o) => (o.id === obligationId ? { ...o, ...patch } : o)) })),
-      deleteObligation: (obligationId) =>
-        set((s) => ({ obligations: s.obligations.filter((o) => o.id !== obligationId) })),
+      addTask: (task) => {
+        set((s) => ({ tasks: [task, ...s.tasks] }));
+        pushFinanceiro("tasks", task.id, task.clienteId ?? null, task);
+      },
+      deleteTask: (taskId) => {
+        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
+        deleteFinanceiro("tasks", taskId);
+      },
+      addObligation: (obligation) => {
+        set((s) => ({ obligations: [obligation, ...s.obligations] }));
+        pushFinanceiro("obligations", obligation.id, obligation.clienteId ?? null, obligation);
+      },
+      updateObligation: (obligationId, patch) => {
+        set((s) => ({ obligations: s.obligations.map((o) => (o.id === obligationId ? { ...o, ...patch } : o)) }));
+        const obligation = useAppStore.getState().obligations.find((o) => o.id === obligationId);
+        if (obligation) pushFinanceiro("obligations", obligationId, obligation.clienteId ?? null, obligation);
+      },
+      deleteObligation: (obligationId) => {
+        set((s) => ({ obligations: s.obligations.filter((o) => o.id !== obligationId) }));
+        deleteFinanceiro("obligations", obligationId);
+      },
 
       toggleOnboardingItem: (clientId, itemId) => {
         set((s) => ({
@@ -434,13 +492,27 @@ export const useAppStore = create<AppState>()(
         pushCliente(clientId);
       },
 
-      addAnotacao: (nota) => set((s) => ({ anotacoes: [nota, ...s.anotacoes] })),
-      addTimelineEvent: (event) => set((s) => ({ timeline: [event, ...s.timeline] })),
+      addAnotacao: (nota) => {
+        set((s) => ({ anotacoes: [nota, ...s.anotacoes] }));
+        pushFinanceiro("anotacoes", nota.id, nota.clienteId, nota);
+      },
+      addTimelineEvent: (event) => {
+        set((s) => ({ timeline: [event, ...s.timeline] }));
+        pushFinanceiro("timeline", event.id, event.clienteId, event);
+      },
 
-      markNotificationRead: (id) =>
-        set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, lida: true } : n)) })),
-      markAllNotificationsRead: () =>
-        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) })),
+      // Só o "lida" precisa ir pro banco — o resto do alerta é recalculado
+      // localmente a partir de dados que já vêm do Supabase.
+      markNotificationRead: (id) => {
+        set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, lida: true } : n)) }));
+        pushFinanceiro("notificacoesLidas", id, null, { id, lida: true });
+      },
+      markAllNotificationsRead: () => {
+        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) }));
+        for (const n of useAppStore.getState().notifications) {
+          pushFinanceiro("notificacoesLidas", n.id, null, { id: n.id, lida: true });
+        }
+      },
 
       addClient: (client) => {
         set((s) => ({ clients: [client, ...s.clients] }));
@@ -552,12 +624,27 @@ export const useAppStore = create<AppState>()(
       },
       setTeamFromSupabase: (team) => set({ team }),
       setPermissoesFromSupabase: (permissoes) => set({ permissoes }),
-      updateDadosEscritorio: (patch) => set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } })),
-      addSistemaEscritorio: (sistema) => set((s) => ({ sistemasEscritorio: [...s.sistemasEscritorio, sistema] })),
-      updateSistemaEscritorio: (id, patch) =>
-        set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.map((sis) => (sis.id === id ? { ...sis, ...patch } : sis)) })),
-      deleteSistemaEscritorio: (id) => set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) })),
-      updateMetaMensalClientes: (valor) => set({ metaMensalClientes: valor }),
+      updateDadosEscritorio: (patch) => {
+        set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } }));
+        pushFinanceiro("dadosEscritorio", "default", null, useAppStore.getState().dadosEscritorio);
+      },
+      addSistemaEscritorio: (sistema) => {
+        set((s) => ({ sistemasEscritorio: [...s.sistemasEscritorio, sistema] }));
+        pushFinanceiro("sistemasEscritorio", sistema.id, null, sistema);
+      },
+      updateSistemaEscritorio: (id, patch) => {
+        set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.map((sis) => (sis.id === id ? { ...sis, ...patch } : sis)) }));
+        const sistema = useAppStore.getState().sistemasEscritorio.find((sis) => sis.id === id);
+        if (sistema) pushFinanceiro("sistemasEscritorio", id, null, sistema);
+      },
+      deleteSistemaEscritorio: (id) => {
+        set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) }));
+        deleteFinanceiro("sistemasEscritorio", id);
+      },
+      updateMetaMensalClientes: (valor) => {
+        set({ metaMensalClientes: valor });
+        pushFinanceiro("metaMensalClientes", "default", null, { valor });
+      },
       addDespesaAvulsa: (despesa) => {
         set((s) => ({ despesasAvulsas: [...s.despesasAvulsas, despesa] }));
         pushFinanceiro("despesasAvulsas", despesa.id, null, despesa);
@@ -585,18 +672,35 @@ export const useAppStore = create<AppState>()(
         const item = useAppStore.getState().pagamentosSistemas.find((p) => p.id === id);
         if (item) pushFinanceiro("pagamentosSistemas", id, null, item);
       },
-      addContratoAssinatura: (contrato) => set((s) => ({ contratosAssinatura: [...s.contratosAssinatura, contrato] })),
-      updateContratoAssinatura: (id, patch) =>
+      addContratoAssinatura: (contrato) => {
+        set((s) => ({ contratosAssinatura: [...s.contratosAssinatura, contrato] }));
+        pushFinanceiro("contratosAssinatura", contrato.id, contrato.clienteId, contrato);
+      },
+      updateContratoAssinatura: (id, patch) => {
         set((s) => ({
           contratosAssinatura: s.contratosAssinatura.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-        })),
-      deleteContratoAssinatura: (id) =>
-        set((s) => ({ contratosAssinatura: s.contratosAssinatura.filter((c) => c.id !== id) })),
-      addFuncionario: (funcionario) => set((s) => ({ funcionarios: [...s.funcionarios, funcionario] })),
-      updateFuncionario: (id, patch) =>
-        set((s) => ({ funcionarios: s.funcionarios.map((f) => (f.id === id ? { ...f, ...patch } : f)) })),
-      deleteFuncionario: (id) => set((s) => ({ funcionarios: s.funcionarios.filter((f) => f.id !== id) })),
-      confirmarPeriodoFerias: (funcionarioId) =>
+        }));
+        const contrato = useAppStore.getState().contratosAssinatura.find((c) => c.id === id);
+        if (contrato) pushFinanceiro("contratosAssinatura", id, contrato.clienteId, contrato);
+      },
+      deleteContratoAssinatura: (id) => {
+        set((s) => ({ contratosAssinatura: s.contratosAssinatura.filter((c) => c.id !== id) }));
+        deleteFinanceiro("contratosAssinatura", id);
+      },
+      addFuncionario: (funcionario) => {
+        set((s) => ({ funcionarios: [...s.funcionarios, funcionario] }));
+        pushFinanceiro("funcionarios", funcionario.id, funcionario.clienteId, funcionario);
+      },
+      updateFuncionario: (id, patch) => {
+        set((s) => ({ funcionarios: s.funcionarios.map((f) => (f.id === id ? { ...f, ...patch } : f)) }));
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === id);
+        if (funcionario) pushFinanceiro("funcionarios", id, funcionario.clienteId, funcionario);
+      },
+      deleteFuncionario: (id) => {
+        set((s) => ({ funcionarios: s.funcionarios.filter((f) => f.id !== id) }));
+        deleteFinanceiro("funcionarios", id);
+      },
+      confirmarPeriodoFerias: (funcionarioId) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) => {
             if (f.id !== funcionarioId || !f.feriasProgramadasInicio || !f.feriasProgramadasFim) return f;
@@ -615,8 +719,11 @@ export const useAppStore = create<AppState>()(
               feriasProgramadasFim: undefined,
             };
           }),
-        })),
-      updateDecimo13: (funcionarioId, ano, patch) =>
+        }));
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === funcionarioId);
+        if (funcionario) pushFinanceiro("funcionarios", funcionarioId, funcionario.clienteId, funcionario);
+      },
+      updateDecimo13: (funcionarioId, ano, patch) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) => {
             if (f.id !== funcionarioId) return f;
@@ -626,8 +733,11 @@ export const useAppStore = create<AppState>()(
               : [...f.decimosTerceiros, { ano, primeiraParcelaPaga: false, segundaParcelaPaga: false, ...patch }];
             return { ...f, decimosTerceiros };
           }),
-        })),
-      iniciarRescisao: (funcionarioId, dataDesligamento, motivo) =>
+        }));
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === funcionarioId);
+        if (funcionario) pushFinanceiro("funcionarios", funcionarioId, funcionario.clienteId, funcionario);
+      },
+      iniciarRescisao: (funcionarioId, dataDesligamento, motivo) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) =>
             f.id === funcionarioId
@@ -642,8 +752,11 @@ export const useAppStore = create<AppState>()(
                 }
               : f
           ),
-        })),
-      toggleRescisaoItem: (funcionarioId, itemId) =>
+        }));
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === funcionarioId);
+        if (funcionario) pushFinanceiro("funcionarios", funcionarioId, funcionario.clienteId, funcionario);
+      },
+      toggleRescisaoItem: (funcionarioId, itemId) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) => {
             if (f.id !== funcionarioId || !f.rescisao) return f;
@@ -652,7 +765,10 @@ export const useAppStore = create<AppState>()(
             );
             return { ...f, rescisao: { ...f.rescisao, checklist } };
           }),
-        })),
+        }));
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === funcionarioId);
+        if (funcionario) pushFinanceiro("funcionarios", funcionarioId, funcionario.clienteId, funcionario);
+      },
       updateClientDados: (clientId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
@@ -872,52 +988,101 @@ export const useAppStore = create<AppState>()(
       setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
+      setLeadsFromSupabase: (leads) => set({ leads }),
+      setTasksFromSupabase: (tasks) => set({ tasks }),
+      setObligationsFromSupabase: (obligations) => set({ obligations }),
+      setProcessosSocietariosFromSupabase: (processosSocietarios) => set({ processosSocietarios }),
+      setCertificadosFromSupabase: (certificados) =>
+        set((s) => ({ certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) })),
+      setAnotacoesFromSupabase: (anotacoes) => set({ anotacoes }),
+      setTimelineFromSupabase: (timeline) => set({ timeline }),
+      setServicosExtrasFromSupabase: (servicosExtras) => set({ servicosExtras }),
+      setLicencasFromSupabase: (licencas) =>
+        set((s) => ({ licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) })),
+      setIndicacoesFromSupabase: (indicacoes) => set({ indicacoes }),
+      setServicosPortfolioFromSupabase: (servicosPortfolio) => set({ servicosPortfolio }),
+      setChecklistContabilFromSupabase: (checklistContabil) => set({ checklistContabil }),
+      setChecklistFiscalFromSupabase: (checklistFiscal) =>
+        set((s) => ({ checklistFiscal, notifications: syncFiscalAlerts(s.notifications, checklistFiscal, s.clients) })),
+      setChecklistPessoalFromSupabase: (checklistPessoal) => set({ checklistPessoal }),
+      setChecklistMeiFromSupabase: (checklistMei) => set({ checklistMei }),
+      setSistemasEscritorioFromSupabase: (sistemasEscritorio) => set({ sistemasEscritorio }),
+      setDadosEscritorioFromSupabase: (dadosEscritorio) => set({ dadosEscritorio }),
+      setMetaMensalClientesFromSupabase: (metaMensalClientes) => set({ metaMensalClientes }),
+      setContratosAssinaturaFromSupabase: (contratosAssinatura) => set({ contratosAssinatura }),
+      setFuncionariosFromSupabase: (funcionarios) => set({ funcionarios }),
+      applyNotificationsLidas: (idsLidos) =>
+        set((s) => {
+          const lidos = new Set(idsLidos);
+          return { notifications: s.notifications.map((n) => (lidos.has(n.id) ? { ...n, lida: true } : n)) };
+        }),
 
-      addProcessoSocietario: (processo) =>
-        set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] })),
+      addProcessoSocietario: (processo) => {
+        set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] }));
+        pushFinanceiro("processosSocietarios", processo.id, processo.clienteId, processo);
+      },
 
-      updateProcessoSocietario: (id, patch) =>
+      updateProcessoSocietario: (id, patch) => {
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
-        })),
+        }));
+        const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === id);
+        if (processo) pushFinanceiro("processosSocietarios", id, processo.clienteId, processo);
+      },
 
-      deleteProcessoSocietario: (id) =>
-        set((s) => ({ processosSocietarios: s.processosSocietarios.filter((p) => p.id !== id) })),
+      deleteProcessoSocietario: (id) => {
+        set((s) => ({ processosSocietarios: s.processosSocietarios.filter((p) => p.id !== id) }));
+        deleteFinanceiro("processosSocietarios", id);
+      },
 
-      addEtapaProcesso: (processoId, etapa) =>
+      addEtapaProcesso: (processoId, etapa) => {
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
             p.id === processoId ? { ...p, etapas: [...(p.etapas ?? []), etapa] } : p
           ),
-        })),
+        }));
+        const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+      },
 
-      setEtapaStatus: (processoId, etapaId, status) =>
+      setEtapaStatus: (processoId, etapaId, status) => {
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
             p.id === processoId
               ? { ...p, etapas: (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, status } : e)) }
               : p
           ),
-        })),
+        }));
+        const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+      },
 
-      deleteEtapaProcesso: (processoId, etapaId) =>
+      deleteEtapaProcesso: (processoId, etapaId) => {
         set((s) => ({
           processosSocietarios: s.processosSocietarios.map((p) =>
             p.id === processoId ? { ...p, etapas: (p.etapas ?? []).filter((e) => e.id !== etapaId) } : p
           ),
-        })),
+        }));
+        const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+      },
 
-      addCertificado: (certificado) =>
+      addCertificado: (certificado) => {
         set((s) => {
           const certificados = [certificado, ...s.certificados];
           return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
-        }),
+        });
+        pushFinanceiro("certificados", certificado.id, certificado.clienteId, certificado);
+      },
 
-      updateCertificado: (id, patch) =>
+      updateCertificado: (id, patch) => {
         set((s) => {
           const certificados = s.certificados.map((c) => (c.id === id ? { ...c, ...patch } : c));
           return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
-        }),
+        });
+        const certificado = useAppStore.getState().certificados.find((c) => c.id === id);
+        if (certificado) pushFinanceiro("certificados", id, certificado.clienteId, certificado);
+      },
 
       addRecebimento: (entry) => {
         set((s) => ({ recebimentos: [entry, ...s.recebimentos] }));
@@ -1029,37 +1194,61 @@ export const useAppStore = create<AppState>()(
         pushCliente(clientId);
       },
 
-      addLicenca: (licenca) =>
+      addLicenca: (licenca) => {
         set((s) => {
           const licencas = [licenca, ...s.licencas];
           return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
-        }),
-      updateLicenca: (id, patch) =>
+        });
+        pushFinanceiro("licencas", licenca.id, licenca.clienteId, licenca);
+      },
+      updateLicenca: (id, patch) => {
         set((s) => {
           const licencas = s.licencas.map((l) => (l.id === id ? { ...l, ...patch } : l));
           return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
-        }),
-      deleteLicenca: (id) =>
+        });
+        const licenca = useAppStore.getState().licencas.find((l) => l.id === id);
+        if (licenca) pushFinanceiro("licencas", id, licenca.clienteId, licenca);
+      },
+      deleteLicenca: (id) => {
         set((s) => {
           const licencas = s.licencas.filter((l) => l.id !== id);
           return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
-        }),
+        });
+        deleteFinanceiro("licencas", id);
+      },
 
-      addIndicacao: (indicacao) => set((s) => ({ indicacoes: [indicacao, ...s.indicacoes] })),
-      updateIndicacao: (id, patch) =>
-        set((s) => ({ indicacoes: s.indicacoes.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
-      deleteIndicacao: (id) => set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) })),
+      addIndicacao: (indicacao) => {
+        set((s) => ({ indicacoes: [indicacao, ...s.indicacoes] }));
+        pushFinanceiro("indicacoes", indicacao.id, indicacao.clienteId, indicacao);
+      },
+      updateIndicacao: (id, patch) => {
+        set((s) => ({ indicacoes: s.indicacoes.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
+        const indicacao = useAppStore.getState().indicacoes.find((i) => i.id === id);
+        if (indicacao) pushFinanceiro("indicacoes", id, indicacao.clienteId, indicacao);
+      },
+      deleteIndicacao: (id) => {
+        set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) }));
+        deleteFinanceiro("indicacoes", id);
+      },
 
-      addServicoPortfolio: (servico) =>
-        set((s) => ({ servicosPortfolio: [servico, ...s.servicosPortfolio] })),
-      updateServicoPortfolio: (id, patch) =>
+      addServicoPortfolio: (servico) => {
+        set((s) => ({ servicosPortfolio: [servico, ...s.servicosPortfolio] }));
+        pushFinanceiro("servicosPortfolio", servico.id, null, servico);
+      },
+      updateServicoPortfolio: (id, patch) => {
         set((s) => ({
           servicosPortfolio: s.servicosPortfolio.map((sp) => (sp.id === id ? { ...sp, ...patch } : sp)),
-        })),
-      deleteServicoPortfolio: (id) =>
-        set((s) => ({ servicosPortfolio: s.servicosPortfolio.filter((sp) => sp.id !== id) })),
+        }));
+        const servico = useAppStore.getState().servicosPortfolio.find((sp) => sp.id === id);
+        if (servico) pushFinanceiro("servicosPortfolio", id, null, servico);
+      },
+      deleteServicoPortfolio: (id) => {
+        set((s) => ({ servicosPortfolio: s.servicosPortfolio.filter((sp) => sp.id !== id) }));
+        deleteFinanceiro("servicosPortfolio", id);
+      },
 
-      setChecklistContabil: (clienteId, competencia, rotina, status) =>
+      setChecklistContabil: (clienteId, competencia, rotina, status) => {
+        const id = `chk-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
           const existing = s.checklistContabil.find(
             (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
@@ -1073,14 +1262,15 @@ export const useAppStore = create<AppState>()(
             };
           }
           return {
-            checklistContabil: [
-              ...s.checklistContabil,
-              { id: `chk-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
-            ],
+            checklistContabil: [...s.checklistContabil, { id, clienteId, competencia, rotina, status }],
           };
-        }),
+        });
+        if (!status) deleteFinanceiro("checklistContabil", id);
+        else pushFinanceiro("checklistContabil", id, clienteId, { id, clienteId, competencia, rotina, status });
+      },
 
-      setChecklistFiscal: (clienteId, competencia, rotina, status) =>
+      setChecklistFiscal: (clienteId, competencia, rotina, status) => {
+        const id = `chkf-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
           const existing = s.checklistFiscal.find(
             (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
@@ -1089,17 +1279,18 @@ export const useAppStore = create<AppState>()(
             ? s.checklistFiscal.filter((e) => e !== existing)
             : existing
               ? s.checklistFiscal.map((e) => (e === existing ? { ...e, status } : e))
-              : [
-                  ...s.checklistFiscal,
-                  { id: `chkf-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
-                ];
+              : [...s.checklistFiscal, { id, clienteId, competencia, rotina, status }];
           return {
             checklistFiscal,
             notifications: syncFiscalAlerts(s.notifications, checklistFiscal, s.clients),
           };
-        }),
+        });
+        if (!status) deleteFinanceiro("checklistFiscal", id);
+        else pushFinanceiro("checklistFiscal", id, clienteId, { id, clienteId, competencia, rotina, status });
+      },
 
-      setChecklistPessoal: (clienteId, competencia, rotina, status) =>
+      setChecklistPessoal: (clienteId, competencia, rotina, status) => {
+        const id = `chkp-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
           const existing = s.checklistPessoal.find(
             (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
@@ -1113,14 +1304,15 @@ export const useAppStore = create<AppState>()(
             };
           }
           return {
-            checklistPessoal: [
-              ...s.checklistPessoal,
-              { id: `chkp-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
-            ],
+            checklistPessoal: [...s.checklistPessoal, { id, clienteId, competencia, rotina, status }],
           };
-        }),
+        });
+        if (!status) deleteFinanceiro("checklistPessoal", id);
+        else pushFinanceiro("checklistPessoal", id, clienteId, { id, clienteId, competencia, rotina, status });
+      },
 
-      setChecklistMei: (clienteId, competencia, rotina, status) =>
+      setChecklistMei: (clienteId, competencia, rotina, status) => {
+        const id = `chkm-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
           const existing = s.checklistMei.find(
             (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
@@ -1134,12 +1326,12 @@ export const useAppStore = create<AppState>()(
             };
           }
           return {
-            checklistMei: [
-              ...s.checklistMei,
-              { id: `chkm-${clienteId}-${competencia}-${rotina}`, clienteId, competencia, rotina, status },
-            ],
+            checklistMei: [...s.checklistMei, { id, clienteId, competencia, rotina, status }],
           };
-        }),
+        });
+        if (!status) deleteFinanceiro("checklistMei", id);
+        else pushFinanceiro("checklistMei", id, clienteId, { id, clienteId, competencia, rotina, status });
+      },
 
       resyncAlerts: () =>
         set((s) => ({
@@ -1151,12 +1343,12 @@ export const useAppStore = create<AppState>()(
     {
       name: "eleven-hub-store",
       version: 16,
-      // team, permissoes, documentos, pendencias, tiposDocumentoRecorrente,
-      // enviosMensaisDocumento, clients e o Financeiro inteiro não são mais
-      // persistidos aqui — vêm do Supabase e são recarregados a cada sessão
-      // + mantidos em sincronia por Realtime, então guardá-los no
-      // localStorage só arriscaria mostrar dado desatualizado antes da
-      // store terminar de buscar do banco.
+      // Praticamente nada é persistido aqui — tudo já foi migrado pro
+      // Supabase (Etapas 1 a 4) e é recarregado a cada sessão + mantido em
+      // sincronia por Realtime, então guardar no localStorage só arriscaria
+      // mostrar dado desatualizado antes da store terminar de buscar do
+      // banco. `notifications` continua local (é recalculado a partir do
+      // resto, só o "lida" vem do banco via applyNotificationsLidas).
       partialize: (state) => {
         /* eslint-disable @typescript-eslint/no-unused-vars */
         const {
@@ -1175,6 +1367,26 @@ export const useAppStore = create<AppState>()(
           recebimentosParceiro,
           despesasAvulsas,
           pagamentosSistemas,
+          leads,
+          tasks,
+          obligations,
+          processosSocietarios,
+          certificados,
+          anotacoes,
+          timeline,
+          servicosExtras,
+          licencas,
+          indicacoes,
+          servicosPortfolio,
+          checklistContabil,
+          checklistFiscal,
+          checklistPessoal,
+          checklistMei,
+          sistemasEscritorio,
+          dadosEscritorio,
+          metaMensalClientes,
+          contratosAssinatura,
+          funcionarios,
           ...rest
         } = state;
         /* eslint-enable @typescript-eslint/no-unused-vars */
