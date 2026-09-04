@@ -38,9 +38,20 @@ async function handleBootstrap(request: Request) {
   const email = "kauanegomescontadora@gmail.com";
   const admin = createAdminClient();
 
-  const { data: existingProfile } = await admin.from("profiles").select("id, email").eq("email", email).maybeSingle();
+  const { data: existingProfile } = await admin.from("profiles").select("id, email, perfil").eq("email", email).maybeSingle();
   if (existingProfile) {
-    return NextResponse.json({ ok: false, error: "Essa conta de administrador já existe. Faça login normalmente." }, { status: 409 });
+    const { error: fixError } = await admin
+      .from("profiles")
+      .update({ nome: "Kauane Gomes", perfil: "Administrador", departamentos: DEPARTAMENTOS_TODOS, ativo: true })
+      .eq("id", existingProfile.id);
+    if (fixError) {
+      return NextResponse.json({ ok: false, error: fixError.message }, { status: 502 });
+    }
+    return NextResponse.json({
+      ok: true,
+      email,
+      mensagem: "Conta já existia — perfil corrigido para Administrador. Use a senha que você já tem pra entrar.",
+    });
   }
 
   const senha = gerarSenhaTemporaria();
