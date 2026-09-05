@@ -533,6 +533,14 @@ export const useAppStore = create<AppState>()(
       addClient: (client) => {
         set((s) => ({ clients: [client, ...s.clients] }));
         pushCliente(client.id);
+        // Melhor esforço — cria de uma vez a pasta do cliente e as 6
+        // subpastas por setor no Drive, mesmo sem Drive conectado o
+        // cadastro do cliente não deve travar por isso.
+        void fetch("/api/integracoes/google-drive/criar-pastas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clienteId: client.id, clienteNome: client.dados.nomeFantasia || client.dados.razaoSocial }),
+        }).catch((err) => console.error("Erro ao criar pastas no Drive:", err));
       },
       deleteClient: (clientId) => {
         set((s) => ({
