@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { listarArquivosClienteDrive, getClienteLinkDrive, arquivoRemovidoOuNaLixeira, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
+import { listarArquivosClienteDrive, getClienteLinkDrive, arquivoRemovidoOuNaLixeira, getEscopoConectado, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
 import { formatBytes } from "@/lib/utils";
 
 export async function POST(request: Request) {
@@ -85,6 +85,7 @@ export async function POST(request: Request) {
     }
 
     if (novos.length === 0) {
+      const escopoConectado = await getEscopoConectado().catch(() => null);
       return NextResponse.json({
         ok: true,
         importados: 0,
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
         jaCadastradosEmOutroCliente,
         clienteFolderId,
         resumoPastas,
+        escopoConectado,
       });
     }
 

@@ -58,6 +58,17 @@ async function getAccessToken(): Promise<string> {
   return json.access_token as string;
 }
 
+/** Diagnóstico: qual permissão (escopo) o Google concedeu de verdade pro
+ * token atual — útil pra confirmar se uma reconexão realmente trocou de
+ * "drive.file" pro "drive" completo, sem precisar adivinhar. */
+export async function getEscopoConectado(): Promise<string | null> {
+  const token = await getAccessToken();
+  const res = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.scope ?? null;
+}
+
 async function driveFetch(path: string, init: RequestInit = {}) {
   const token = await getAccessToken();
   const res = await fetch(`${DRIVE_API}${path}`, {

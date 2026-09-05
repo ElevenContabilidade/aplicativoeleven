@@ -80,6 +80,7 @@ export default function ClientProfilePage() {
   const [sincronizarResumoPastas, setSincronizarResumoPastas] = useState<
     Array<{ nome: string; folderId: string; totalArquivos: number }> | null
   >(null);
+  const [sincronizarEscopo, setSincronizarEscopo] = useState<string | null>(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -169,6 +170,7 @@ export default function ClientProfilePage() {
     setSincronizarInfo(null);
     setSincronizarFolderId(null);
     setSincronizarResumoPastas(null);
+    setSincronizarEscopo(null);
     try {
       const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
       const res = await fetch("/api/documentos/sincronizar-drive", {
@@ -203,6 +205,7 @@ export default function ClientProfilePage() {
         }
         if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
         if (Array.isArray(json.resumoPastas)) setSincronizarResumoPastas(json.resumoPastas);
+        if (json.escopoConectado) setSincronizarEscopo(json.escopoConectado);
       }
     } catch {
       setSincronizarErro("Não foi possível sincronizar com o Drive.");
@@ -801,6 +804,9 @@ export default function ClientProfilePage() {
                     </li>
                   ))}
                 </ul>
+              )}
+              {sincronizarEscopo && (
+                <p className="mt-2 text-[11px] text-sand-400">Permissão atual concedida pelo Google: {sincronizarEscopo}</p>
               )}
             </CardContent>
           </Card>
