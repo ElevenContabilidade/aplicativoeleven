@@ -656,6 +656,20 @@ export interface NotaFiscalMensal {
   removido?: boolean;
 }
 
+// ---------- Faturamento e impostos do cliente ----------
+
+/** Faturamento e imposto pago pelo cliente numa competência — lançado à mão
+ * pela equipe a partir da guia do mês (PGDAS no Simples Nacional, DAS no MEI
+ * etc.), pra alimentar o dashboard de faturamento no Portal do Cliente. */
+export interface FaturamentoMensal {
+  id: string;
+  clienteId: string;
+  competencia: string; // "YYYY-MM"
+  faturamento?: number;
+  imposto?: number;
+  observacao?: string;
+}
+
 // ---------- Recebimentos de parceiros ----------
 
 export type StatusPagamentoParceiro = "Pago" | "Em aberto";

@@ -120,6 +120,7 @@ import type {
   StatusEnvioParcelamento,
   BoletoMensal,
   NotaFiscalMensal,
+  FaturamentoMensal,
   RecebimentoParceiroMensal,
   DadosEscritorio,
   SistemaEscritorio,
@@ -164,6 +165,7 @@ interface AppState {
   enviosParcelamento: EnvioParcelamento[];
   boletosMensais: BoletoMensal[];
   notasFiscaisMensais: NotaFiscalMensal[];
+  faturamentoMensal: FaturamentoMensal[];
   recebimentosParceiro: RecebimentoParceiroMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
@@ -268,6 +270,11 @@ interface AppState {
     patch: Partial<Pick<BoletoMensal, "status" | "valor" | "vencimento" | "removido" | "recebido" | "dataRecebimento" | "valorRecebido" | "banco">>
   ) => void;
   updateNotaFiscal: (clienteId: string, competencia: string, patch: Partial<Pick<NotaFiscalMensal, "status" | "valor" | "numeroNota" | "removido">>) => void;
+  updateFaturamentoMensal: (
+    clienteId: string,
+    competencia: string,
+    patch: Partial<Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao">>
+  ) => void;
   updateRecebimentoParceiro: (
     clienteId: string,
     competencia: string,
@@ -283,6 +290,7 @@ interface AppState {
   setEnviosParcelamentoFromSupabase: (envios: EnvioParcelamento[]) => void;
   setBoletosMensaisFromSupabase: (boletos: BoletoMensal[]) => void;
   setNotasFiscaisMensaisFromSupabase: (notas: NotaFiscalMensal[]) => void;
+  setFaturamentoMensalFromSupabase: (faturamentoMensal: FaturamentoMensal[]) => void;
   setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
   setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
   setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
@@ -370,6 +378,7 @@ const initial = {
   enviosParcelamento: ENVIOS_PARCELAMENTO,
   boletosMensais: [] as BoletoMensal[],
   notasFiscaisMensais: [] as NotaFiscalMensal[],
+  faturamentoMensal: [] as FaturamentoMensal[],
   recebimentosParceiro: [] as RecebimentoParceiroMensal[],
   checklistContabil: [],
   checklistFiscal: [],
@@ -985,6 +994,7 @@ export const useAppStore = create<AppState>()(
       setEnviosParcelamentoFromSupabase: (enviosParcelamento) => set({ enviosParcelamento }),
       setBoletosMensaisFromSupabase: (boletosMensais) => set({ boletosMensais }),
       setNotasFiscaisMensaisFromSupabase: (notasFiscaisMensais) => set({ notasFiscaisMensais }),
+      setFaturamentoMensalFromSupabase: (faturamentoMensal) => set({ faturamentoMensal }),
       setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
@@ -1161,6 +1171,20 @@ export const useAppStore = create<AppState>()(
         });
         const item = useAppStore.getState().notasFiscaisMensais.find((n) => n.id === id);
         if (item) pushFinanceiro("notasFiscaisMensais", id, clienteId, item);
+      },
+
+      updateFaturamentoMensal: (clienteId, competencia, patch) => {
+        const id = `fat-${clienteId}-${competencia}`;
+        set((s) => {
+          const exists = s.faturamentoMensal.some((f) => f.id === id);
+          return {
+            faturamentoMensal: exists
+              ? s.faturamentoMensal.map((f) => (f.id === id ? { ...f, ...patch } : f))
+              : [...s.faturamentoMensal, { id, clienteId, competencia, ...patch }],
+          };
+        });
+        const item = useAppStore.getState().faturamentoMensal.find((f) => f.id === id);
+        if (item) pushFinanceiro("faturamentoMensal", id, clienteId, item);
       },
 
       updateRecebimentoParceiro: (clienteId, competencia, patch) => {
@@ -1364,6 +1388,7 @@ export const useAppStore = create<AppState>()(
           enviosParcelamento,
           boletosMensais,
           notasFiscaisMensais,
+          faturamentoMensal,
           recebimentosParceiro,
           despesasAvulsas,
           pagamentosSistemas,

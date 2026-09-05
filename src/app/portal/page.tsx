@@ -18,6 +18,7 @@ import { DocumentUploadCard } from "@/components/portal/document-upload-card";
 import { PendenciasCard } from "@/components/portal/pendencias-card";
 import { ChecklistMensalCard } from "@/components/portal/checklist-mensal-card";
 import { SolicitacaoCard } from "@/components/portal/solicitacao-card";
+import { FaturamentoDashboardCard } from "@/components/portal/faturamento-dashboard-card";
 import { teamName } from "@/lib/team-lookup";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import type { DocumentoCategoria } from "@/lib/types";
@@ -42,6 +43,7 @@ export default function ClientPortalPage() {
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const notasFiscaisMensais = useAppStore((s) => s.notasFiscaisMensais);
   const licencas = useAppStore((s) => s.licencas);
+  const faturamentoMensal = useAppStore((s) => s.faturamentoMensal);
   const [filtroCategoria, setFiltroCategoria] = useState<DocumentoCategoria | "Todos">("Todos");
 
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function ClientPortalPage() {
     .filter((n) => n.clienteId === client.id && !n.removido)
     .sort((a, b) => b.competencia.localeCompare(a.competencia));
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
+  const myFaturamento = faturamentoMensal.filter((f) => f.clienteId === client.id);
   const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
 
   // Honorários lançados manualmente + boletos emitidos em Boletos — assim que
@@ -163,6 +166,8 @@ export default function ClientPortalPage() {
             </CardContent>
           </Card>
         </div>
+
+        <FaturamentoDashboardCard faturamento={myFaturamento} />
 
         {alertas.length > 0 && (
           <Card className="border-status-danger/30">

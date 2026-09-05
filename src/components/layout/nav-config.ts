@@ -27,6 +27,7 @@ import {
   Percent,
   Handshake,
   Boxes,
+  TrendingUp,
 } from "lucide-react";
 
 export interface NavItem {
@@ -67,6 +68,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Financeiro", href: "/financeiro", icon: Wallet, section: "gestao" },
   { label: "Boletos", href: "/boletos", icon: CreditCard, section: "gestao" },
   { label: "NFSe", href: "/nfse", icon: FileText, section: "gestao" },
+  { label: "Faturamento", href: "/faturamento", icon: TrendingUp, section: "gestao" },
   { label: "Parceiros", href: "/parceiros", icon: Handshake, section: "gestao" },
   { label: "Portfólio", href: "/portfolio", icon: Layers, section: "gestao" },
   { label: "Atendimento", href: "/atendimento", icon: Headset, section: "gestao" },
