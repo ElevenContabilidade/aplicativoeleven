@@ -1,5 +1,6 @@
 {
   "crons": [
-    { "path": "/api/whatsapp/lembrete-boletos", "schedule": "0 12 * * *" }
+    { "path": "/api/whatsapp/lembrete-boletos", "schedule": "0 12 * * *" },
+    { "path": "/api/documentos/lembrete-mensal", "schedule": "0 12 * * *" }
   ]
 }
