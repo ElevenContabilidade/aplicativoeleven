@@ -1,15 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TrendingUp, Receipt, Percent, Search } from "lucide-react";
+import { TrendingUp, Receipt, Percent, Search, FileSearch, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import { setorAtendidoPelaEleven } from "@/lib/types";
+import { extractPdfText } from "@/lib/pdf-text";
+import { extractPgdasValores } from "@/lib/pgdas-extract";
+import { onlyDigits } from "@/lib/cnpj";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -46,6 +50,15 @@ export default function FaturamentoPage() {
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [lendoPgdas, setLendoPgdas] = useState(false);
+  const [pgdasErro, setPgdasErro] = useState<string | null>(null);
+  const [pgdasPreview, setPgdasPreview] = useState<{
+    clienteId: string;
+    competencia: string;
+    faturamento: number;
+    imposto: number;
+    cnpjNaoEncontrado?: string;
+  } | null>(null);
 
   const clientesAtendidos = useMemo(
     () =>
@@ -54,6 +67,47 @@ export default function FaturamentoPage() {
       ),
     [clients]
   );
+
+  async function lerPgdas(file: File) {
+    setLendoPgdas(true);
+    setPgdasErro(null);
+    setPgdasPreview(null);
+    try {
+      const texto = await extractPdfText(file);
+      const extraido = extractPgdasValores(texto);
+      if (!extraido.competencia || extraido.faturamento === undefined || extraido.imposto === undefined) {
+        setPgdasErro(
+          "Não consegui ler os valores desse PDF automaticamente. Confira se é um PGDAS-D digital (não digitalizado/foto) e lance manualmente na tabela abaixo."
+        );
+        return;
+      }
+      const cliente = extraido.cnpj
+        ? clientesAtendidos.find((c) => onlyDigits(c.dados.cnpj) === onlyDigits(extraido.cnpj!))
+        : undefined;
+      setPgdasPreview({
+        clienteId: cliente?.id ?? "",
+        competencia: extraido.competencia,
+        faturamento: extraido.faturamento,
+        imposto: extraido.imposto,
+        cnpjNaoEncontrado: !cliente ? extraido.cnpj : undefined,
+      });
+    } catch {
+      setPgdasErro("Não consegui ler esse PDF. Confira se o arquivo não está corrompido.");
+    } finally {
+      setLendoPgdas(false);
+    }
+  }
+
+  function confirmarPgdas() {
+    if (!pgdasPreview || !pgdasPreview.clienteId) return;
+    updateFaturamentoMensal(pgdasPreview.clienteId, pgdasPreview.competencia, {
+      faturamento: pgdasPreview.faturamento,
+      imposto: pgdasPreview.imposto,
+    });
+    setYear(pgdasPreview.competencia.slice(0, 4));
+    setMes(pgdasPreview.competencia.slice(5, 7));
+    setPgdasPreview(null);
+  }
 
   const competencia = `${year}-${mes}`;
 
@@ -88,6 +142,88 @@ export default function FaturamentoPage() {
         title="Faturamento"
         description="Faturamento e imposto pago por cliente em cada competência — lançado a partir da guia do mês (PGDAS, DAS etc). Alimenta o dashboard que o cliente vê no Portal."
       />
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><FileSearch className="size-4 text-wine-600" /> Ler PGDAS automaticamente</CardTitle>
+          <p className="mt-1 text-xs text-sand-500">
+            Sobe o PGDAS-D em PDF e a gente tenta ler competência, faturamento e imposto sozinho — confira os valores antes de salvar.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3 pt-4">
+          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sand-300 bg-sand-50 px-4 py-4 text-center hover:border-wine-400 hover:bg-wine-50">
+            <FileUp className="size-4 text-wine-500" />
+            <span className="text-xs font-medium text-sand-700">{lendoPgdas ? "Lendo PDF..." : "Clique pra selecionar o PGDAS-D em PDF"}</span>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              disabled={lendoPgdas}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void lerPgdas(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+
+          {pgdasErro && <p className="text-xs text-status-danger">{pgdasErro}</p>}
+
+          {pgdasPreview && (
+            <div className="space-y-3 rounded-lg border border-sand-200 p-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div>
+                  <p className="mb-1 text-[11px] text-sand-500">Cliente</p>
+                  <Select
+                    value={pgdasPreview.clienteId}
+                    onValueChange={(v) => setPgdasPreview((p) => (p ? { ...p, clienteId: v } : p))}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clientesAtendidos.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] text-sand-500">Competência</p>
+                  <p className="mt-1.5 text-sm font-medium text-sand-900">{pgdasPreview.competencia}</p>
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] text-sand-500">Faturamento</p>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={pgdasPreview.faturamento}
+                    onChange={(e) => setPgdasPreview((p) => (p ? { ...p, faturamento: Number(e.target.value) || 0 } : p))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-[11px] text-sand-500">Imposto pago</p>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={pgdasPreview.imposto}
+                    onChange={(e) => setPgdasPreview((p) => (p ? { ...p, imposto: Number(e.target.value) || 0 } : p))}
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+              {pgdasPreview.cnpjNaoEncontrado && (
+                <p className="text-xs text-status-warning">
+                  CNPJ {pgdasPreview.cnpjNaoEncontrado} não bate com nenhum cliente cadastrado — selecione manualmente acima.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button type="button" size="sm" disabled={!pgdasPreview.clienteId} onClick={confirmarPgdas}>Salvar lançamento</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setPgdasPreview(null)}>Cancelar</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <MetricCard label="Faturamento no período" value={formatCurrency(totalFaturamento)} icon={TrendingUp} tone="wine" />
