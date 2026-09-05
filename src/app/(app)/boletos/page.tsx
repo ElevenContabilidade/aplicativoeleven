@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from "lucide-react";
+import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2, MessageCircle, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import { vencimentoDaCompetencia } from "@/lib/boleto";
+import { telefonePrincipalCliente } from "@/lib/contato-telefone";
 import type { Client, StatusEmissaoBoleto } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -79,6 +80,7 @@ export default function BoletosPage() {
 
   const [busca, setBusca] = useState("");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
+  const [enviandoWhatsapp, setEnviandoWhatsapp] = useState<string | null>(null);
   const [year, setYear] = useState(() => {
     const current = new Date().getFullYear().toString();
     return YEARS.includes(current) ? current : YEARS[0];
@@ -169,6 +171,26 @@ export default function BoletosPage() {
     }
   }
 
+  async function enviarLembreteWhatsapp(l: Linha) {
+    const chave = `${l.cliente.id}-${l.competencia}`;
+    setEnviandoWhatsapp(chave);
+    try {
+      const res = await fetch("/api/whatsapp/enviar-lembrete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clienteId: l.cliente.id, competencia: l.competencia }),
+      });
+      const json = await res.json();
+      if (!json.ok) alert(json.error ?? "Não foi possível enviar o lembrete.");
+      else if (!json.enviado) alert(json.motivo ?? "Lembrete não enviado.");
+      else alert(`Lembrete enviado no WhatsApp para ${json.clienteNome ?? "o cliente"}.`);
+    } catch {
+      alert("Erro ao enviar o lembrete no WhatsApp.");
+    } finally {
+      setEnviandoWhatsapp(null);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -221,6 +243,7 @@ export default function BoletosPage() {
                   <TableHead className="w-24 text-center">Recebido</TableHead>
                   <TableHead className="w-40">Data recebimento</TableHead>
                   <TableHead className="w-32">Valor recebido</TableHead>
+                  <TableHead className="w-10" />
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -291,6 +314,24 @@ export default function BoletosPage() {
                       />
                     </TableCell>
                     <TableCell>
+                      {(() => {
+                        const chave = `${l.cliente.id}-${l.competencia}`;
+                        const telefone = telefonePrincipalCliente(l.cliente);
+                        const enviando = enviandoWhatsapp === chave;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => enviarLembreteWhatsapp(l)}
+                            disabled={!telefone || enviando}
+                            title={telefone ? "Enviar lembrete de vencimento no WhatsApp" : "Cliente sem telefone cadastrado"}
+                            className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-success/10 hover:text-status-success disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                          >
+                            {enviando ? <Loader2 className="size-4 animate-spin" /> : <MessageCircle className="size-4" />}
+                          </button>
+                        );
+                      })()}
+                    </TableCell>
+                    <TableCell>
                       <button
                         type="button"
                         onClick={() => handleDelete(l)}
@@ -303,7 +344,7 @@ export default function BoletosPage() {
                   </TableRow>
                 ))}
                 {sorted.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="py-10 text-center text-sand-400">Nenhum cliente mensal encontrado.</TableCell></TableRow>
                 )}
               </TableBody>
           </Table>

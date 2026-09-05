@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/whatsapp/lembrete-boletos", "schedule": "0 12 * * *" }
+  ]
+}
