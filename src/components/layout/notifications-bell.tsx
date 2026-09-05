@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, Award, Landmark } from "lucide-react";
+import { Bell, AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, Award, Landmark, Paperclip } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ const ICONS: Record<NotificationTipo, typeof Bell> = {
   tarefa: ListChecks,
   licenca: Award,
   fiscal: Landmark,
+  documento: Paperclip,
 };
 
 const TONES: Record<NotificationTipo, string> = {
@@ -31,6 +32,7 @@ const TONES: Record<NotificationTipo, string> = {
   tarefa: "text-status-neutral bg-status-neutral-bg",
   licenca: "text-status-warning bg-status-warning-bg",
   fiscal: "text-status-danger bg-status-danger-bg",
+  documento: "text-status-info bg-status-info-bg",
 };
 
 export function NotificationsBell() {

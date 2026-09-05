@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, CheckCheck, Award, Landmark } from "lucide-react";
+import { AlertTriangle, ShieldAlert, TrendingUp, Wallet, ListChecks, CheckCheck, Award, Landmark, Paperclip } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const ICONS: Record<NotificationTipo, typeof AlertTriangle> = {
   tarefa: ListChecks,
   licenca: Award,
   fiscal: Landmark,
+  documento: Paperclip,
 };
 
 const LABELS: Record<NotificationTipo, string> = {
@@ -27,6 +28,7 @@ const LABELS: Record<NotificationTipo, string> = {
   tarefa: "Tarefa",
   licenca: "Licença",
   fiscal: "Fiscal",
+  documento: "Documento",
 };
 
 const TONES: Record<NotificationTipo, string> = {
@@ -37,6 +39,7 @@ const TONES: Record<NotificationTipo, string> = {
   tarefa: "text-status-neutral bg-status-neutral-bg",
   licenca: "text-status-warning bg-status-warning-bg",
   fiscal: "text-status-danger bg-status-danger-bg",
+  documento: "text-status-info bg-status-info-bg",
 };
 
 export default function AlertasPage() {

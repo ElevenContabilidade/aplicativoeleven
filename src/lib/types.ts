@@ -823,7 +823,7 @@ export interface ContratoAssinatura {
 
 // ---------- Notificações ----------
 
-export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca" | "fiscal";
+export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca" | "fiscal" | "documento";
 
 export interface AppNotification {
   id: string;

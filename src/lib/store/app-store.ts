@@ -24,6 +24,7 @@ import {
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
+import { syncDocumentoAlerts } from "@/lib/documento-alerts";
 import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { createClient } from "@/lib/supabase/client";
@@ -346,11 +347,16 @@ function syncAllAlerts(
   licencas: Licenca[],
   certificados: Certificado[],
   clients: Client[],
-  checklistFiscal: ChecklistEntry[]
+  checklistFiscal: ChecklistEntry[],
+  documentos: Documento[]
 ): AppNotification[] {
-  return syncFiscalAlerts(
-    syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients),
-    checklistFiscal,
+  return syncDocumentoAlerts(
+    syncFiscalAlerts(
+      syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients),
+      checklistFiscal,
+      clients
+    ),
+    documentos,
     clients
   );
 }
@@ -369,7 +375,7 @@ const initial = {
   enviosMensaisDocumento: [] as EnvioMensalDocumento[],
   anotacoes: ANOTACOES,
   timeline: TIMELINE,
-  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, []),
+  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, [], DOCUMENTOS),
   servicosExtras: SERVICOS_EXTRAS,
   licencas: LICENCAS,
   indicacoes: INDICACOES,
@@ -897,7 +903,8 @@ export const useAppStore = create<AppState>()(
           body: JSON.stringify({ id }),
         }).catch((err) => console.error("Erro ao excluir documento:", err));
       },
-      setDocumentosFromSupabase: (documentos) => set({ documentos }),
+      setDocumentosFromSupabase: (documentos) =>
+        set((s) => ({ documentos, notifications: syncDocumentoAlerts(s.notifications, documentos, s.clients) })),
       addPendencia: (pendencia) => {
         set((s) => ({ pendencias: [pendencia, ...s.pendencias] }));
         void createClient()
@@ -1366,7 +1373,7 @@ export const useAppStore = create<AppState>()(
 
       resyncAlerts: () =>
         set((s) => ({
-          notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal),
+          notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal, s.documentos),
         })),
 
       resetData: () => set(initial),
