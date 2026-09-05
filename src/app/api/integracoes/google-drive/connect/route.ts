@@ -15,9 +15,14 @@ export async function GET() {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
+  // "drive.file" só deixa o app enxergar arquivos que ele mesmo criou —
+  // mesmo compartilhando uma pasta manualmente com a conta conectada,
+  // arquivos colocados ali por fora do app continuam invisíveis pra API.
+  // Precisa do escopo "drive" completo pra sincronizar de verdade nos
+  // dois sentidos com pastas organizadas manualmente no Drive.
   url.searchParams.set(
     "scope",
-    "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email"
   );
 
   return NextResponse.redirect(url.toString());
