@@ -273,8 +273,9 @@ interface AppState {
   updateFaturamentoMensal: (
     clienteId: string,
     competencia: string,
-    patch: Partial<Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao">>
+    patch: Partial<Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao" | "pgdasUrl">>
   ) => void;
+  deleteFaturamentoMensal: (clienteId: string, competencia: string) => void;
   updateRecebimentoParceiro: (
     clienteId: string,
     competencia: string,
@@ -1185,6 +1186,12 @@ export const useAppStore = create<AppState>()(
         });
         const item = useAppStore.getState().faturamentoMensal.find((f) => f.id === id);
         if (item) pushFinanceiro("faturamentoMensal", id, clienteId, item);
+      },
+
+      deleteFaturamentoMensal: (clienteId, competencia) => {
+        const id = `fat-${clienteId}-${competencia}`;
+        set((s) => ({ faturamentoMensal: s.faturamentoMensal.filter((f) => f.id !== id) }));
+        deleteFinanceiro("faturamentoMensal", id);
       },
 
       updateRecebimentoParceiro: (clienteId, competencia, patch) => {

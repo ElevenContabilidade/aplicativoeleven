@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TrendingUp, Receipt, Percent, Search, FileSearch, FileUp } from "lucide-react";
+import { TrendingUp, Receipt, Percent, Search, FileSearch, FileUp, Eye, Trash2, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,11 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { setorAtendidoPelaEleven } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractPgdasValores } from "@/lib/pgdas-extract";
+import { uploadDocumento } from "@/lib/upload-documento";
 import { onlyDigits } from "@/lib/cnpj";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -43,6 +45,8 @@ export default function FaturamentoPage() {
   const clients = useAppStore((s) => s.clients);
   const faturamentoMensal = useAppStore((s) => s.faturamentoMensal);
   const updateFaturamentoMensal = useAppStore((s) => s.updateFaturamentoMensal);
+  const deleteFaturamentoMensal = useAppStore((s) => s.deleteFaturamentoMensal);
+  const { userId } = useAuthStore();
 
   const [busca, setBusca] = useState("");
   const [year, setYear] = useState(() => {
@@ -51,8 +55,10 @@ export default function FaturamentoPage() {
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
   const [lendoPgdas, setLendoPgdas] = useState(false);
+  const [salvandoPgdas, setSalvandoPgdas] = useState(false);
   const [pgdasErro, setPgdasErro] = useState<string | null>(null);
   const [pgdasPreview, setPgdasPreview] = useState<{
+    file: File;
     clienteId: string;
     competencia: string;
     faturamento: number;
@@ -85,6 +91,7 @@ export default function FaturamentoPage() {
         ? clientesAtendidos.find((c) => onlyDigits(c.dados.cnpj) === onlyDigits(extraido.cnpj!))
         : undefined;
       setPgdasPreview({
+        file,
         clienteId: cliente?.id ?? "",
         competencia: extraido.competencia,
         faturamento: extraido.faturamento,
@@ -98,15 +105,45 @@ export default function FaturamentoPage() {
     }
   }
 
-  function confirmarPgdas() {
+  async function confirmarPgdas() {
     if (!pgdasPreview || !pgdasPreview.clienteId) return;
-    updateFaturamentoMensal(pgdasPreview.clienteId, pgdasPreview.competencia, {
-      faturamento: pgdasPreview.faturamento,
-      imposto: pgdasPreview.imposto,
-    });
-    setYear(pgdasPreview.competencia.slice(0, 4));
-    setMes(pgdasPreview.competencia.slice(5, 7));
-    setPgdasPreview(null);
+    setSalvandoPgdas(true);
+    try {
+      const cliente = clientesAtendidos.find((c) => c.id === pgdasPreview.clienteId);
+      let pgdasUrl: string | undefined;
+      if (cliente) {
+        try {
+          const documento = await uploadDocumento({
+            file: pgdasPreview.file,
+            clienteId: cliente.id,
+            clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+            categoria: "Guias",
+            responsavelId: userId ?? undefined,
+          });
+          pgdasUrl = documento.url;
+        } catch (err) {
+          setPgdasErro(
+            `Lançamento salvo, mas não consegui guardar o PDF no Drive: ${err instanceof Error ? err.message : "erro desconhecido"}`
+          );
+        }
+      }
+      updateFaturamentoMensal(pgdasPreview.clienteId, pgdasPreview.competencia, {
+        faturamento: pgdasPreview.faturamento,
+        imposto: pgdasPreview.imposto,
+        pgdasUrl,
+      });
+      setYear(pgdasPreview.competencia.slice(0, 4));
+      setMes(pgdasPreview.competencia.slice(5, 7));
+      setPgdasPreview(null);
+    } finally {
+      setSalvandoPgdas(false);
+    }
+  }
+
+  function handleDeleteFaturamento(clienteId: string, clienteNome: string) {
+    if (confirm(`Excluir o lançamento de faturamento de ${clienteNome} em ${competencia}?`)) {
+      deleteFaturamentoMensal(clienteId, competencia);
+    }
   }
 
   const competencia = `${year}-${mes}`;
@@ -122,6 +159,7 @@ export default function FaturamentoPage() {
           faturamento: entry?.faturamento ?? 0,
           imposto: entry?.imposto ?? 0,
           observacao: entry?.observacao ?? "",
+          pgdasUrl: entry?.pgdasUrl,
         };
       });
   }, [clientesAtendidos, faturamentoMensal, competencia]);
@@ -217,8 +255,10 @@ export default function FaturamentoPage() {
                 </p>
               )}
               <div className="flex gap-2">
-                <Button type="button" size="sm" disabled={!pgdasPreview.clienteId} onClick={confirmarPgdas}>Salvar lançamento</Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setPgdasPreview(null)}>Cancelar</Button>
+                <Button type="button" size="sm" disabled={!pgdasPreview.clienteId || salvandoPgdas} onClick={() => void confirmarPgdas()}>
+                  {salvandoPgdas ? <><Loader2 className="size-3.5 animate-spin" /> Salvando...</> : "Salvar lançamento"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" disabled={salvandoPgdas} onClick={() => setPgdasPreview(null)}>Cancelar</Button>
               </div>
             </div>
           )}
@@ -263,6 +303,8 @@ export default function FaturamentoPage() {
                 <TableHead className="w-40">Imposto pago</TableHead>
                 <TableHead className="w-28">Carga tributária</TableHead>
                 <TableHead>Observação</TableHead>
+                <TableHead className="w-10" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -300,11 +342,38 @@ export default function FaturamentoPage() {
                         className="h-8 text-xs"
                       />
                     </TableCell>
+                    <TableCell>
+                      {l.pgdasUrl ? (
+                        <a
+                          href={l.pgdasUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Ver PGDAS"
+                          className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700"
+                        >
+                          <Eye className="size-3.5" />
+                        </a>
+                      ) : (
+                        <span title="Nenhum PDF anexado" className="flex size-7 items-center justify-center text-sand-200">
+                          <Eye className="size-3.5" />
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFaturamento(l.cliente.id, l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial)}
+                        title="Excluir lançamento"
+                        className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
               {filtradas.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sand-400">Nenhum cliente encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sand-400">Nenhum cliente encontrado.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>

@@ -668,6 +668,9 @@ export interface FaturamentoMensal {
   faturamento?: number;
   imposto?: number;
   observacao?: string;
+  /** Link do PGDAS/guia lido automaticamente que gerou este lançamento —
+   * fica salvo no Drive do cliente (categoria Guias) pra conferência depois. */
+  pgdasUrl?: string;
 }
 
 // ---------- Recebimentos de parceiros ----------
