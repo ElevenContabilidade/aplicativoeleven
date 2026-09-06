@@ -87,7 +87,7 @@ async function registrarLembreteEnviado(
 
 function montarEmail(clienteNome: string, nomesDocumentos: string[], competencia: string, marcaTeste = false): { subject: string; html: string; text: string } {
   const url = appUrl();
-  const portalUrl = `${url}/portal`;
+  const portalUrl = `${url}/portal?competencia=${competencia}#documentos-a-enviar`;
   const compLabel = labelCompetencia(competencia);
   const itens = nomesDocumentos.map((n) => `<li style="margin-bottom:4px;">${n}</li>`).join("");
 

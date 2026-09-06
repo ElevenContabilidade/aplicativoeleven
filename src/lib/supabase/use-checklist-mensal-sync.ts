@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAppStore } from "@/lib/store/app-store";
-import type { TipoDocumentoRecorrente, EnvioMensalDocumento, StatusEnvioMensal } from "@/lib/types";
+import type { TipoDocumentoRecorrente, EnvioMensalDocumento, StatusEnvioMensal, DocumentoCategoria } from "@/lib/types";
 
 interface TipoRow {
   id: string;
@@ -11,6 +11,7 @@ interface TipoRow {
   nome: string;
   ativo: boolean;
   criado_em: string;
+  categoria: string | null;
 }
 
 interface EnvioRow {
@@ -23,7 +24,14 @@ interface EnvioRow {
 }
 
 function mapTipo(row: TipoRow): TipoDocumentoRecorrente {
-  return { id: row.id, clienteId: row.cliente_id, nome: row.nome, ativo: row.ativo, criadoEm: row.criado_em };
+  return {
+    id: row.id,
+    clienteId: row.cliente_id,
+    nome: row.nome,
+    ativo: row.ativo,
+    criadoEm: row.criado_em,
+    categoria: (row.categoria as DocumentoCategoria | null) ?? undefined,
+  };
 }
 
 function mapEnvio(row: EnvioRow): EnvioMensalDocumento {

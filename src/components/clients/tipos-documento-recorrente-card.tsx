@@ -6,7 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+import { DOCUMENT_CATEGORIAS } from "@/components/documents/document-upload-dialog";
+import type { DocumentoCategoria } from "@/lib/types";
 
 /** Configura, por cliente, quais tipos de documento o escritório espera
  * receber todo mês (ex: "Extrato Bancário OFX") — vira o checklist mensal
@@ -20,6 +23,7 @@ export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string 
   const deleteTipoDocumentoRecorrente = useAppStore((s) => s.deleteTipoDocumentoRecorrente);
 
   const [novoNome, setNovoNome] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState<DocumentoCategoria>("Outros");
   const [enviandoLembrete, setEnviandoLembrete] = useState(false);
   const [emailTeste, setEmailTeste] = useState("");
   const [enviandoTeste, setEnviandoTeste] = useState(false);
@@ -34,6 +38,7 @@ export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string 
       nome: novoNome.trim(),
       ativo: true,
       criadoEm: new Date().toISOString(),
+      categoria: novaCategoria,
     });
     setNovoNome("");
   }
@@ -92,7 +97,16 @@ export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string 
           {tipos.map((t) => (
             <div key={t.id} className="flex items-center justify-between gap-2 rounded-lg border border-sand-200 px-3 py-2 text-xs">
               <span className={t.ativo ? "text-sand-800" : "text-sand-400 line-through"}>{t.nome}</span>
-              <div className="flex shrink-0 items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
+                <Select
+                  value={t.categoria ?? "Outros"}
+                  onValueChange={(v) => updateTipoDocumentoRecorrente(t.id, { categoria: v as DocumentoCategoria })}
+                >
+                  <SelectTrigger className="h-7 w-36 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_CATEGORIAS.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                  </SelectContent>
+                </Select>
                 <Switch checked={t.ativo} onCheckedChange={(v) => updateTipoDocumentoRecorrente(t.id, { ativo: v })} />
                 <button
                   type="button"
@@ -114,6 +128,12 @@ export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string 
             placeholder="Ex.: Extrato Bancário OFX"
             className="h-8 text-xs"
           />
+          <Select value={novaCategoria} onValueChange={(v) => setNovaCategoria(v as DocumentoCategoria)}>
+            <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {DOCUMENT_CATEGORIAS.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+            </SelectContent>
+          </Select>
           <Button type="submit" size="sm" variant="outline">
             <Plus className="size-3.5" /> Adicionar
           </Button>

@@ -32,7 +32,16 @@ export function ChecklistMensalCard({ clienteId, clienteNome }: { clienteId: str
   const addDocumento = useAppStore((s) => s.addDocumento);
 
   const anoAtual = Number(HOJE.slice(0, 4));
-  const [competenciaSelecionada, setCompetenciaSelecionada] = useState(HOJE);
+  // O e-mail de lembrete linka direto pra competência que ele está cobrando
+  // (?competencia=YYYY-MM) — sem isso, o cliente clicava no botão e caía no
+  // mês atual em vez do mês que precisa enviar.
+  const [competenciaSelecionada, setCompetenciaSelecionada] = useState(() => {
+    if (typeof window !== "undefined") {
+      const daUrl = new URLSearchParams(window.location.search).get("competencia");
+      if (daUrl && /^\d{4}-\d{2}$/.test(daUrl)) return daUrl;
+    }
+    return HOJE;
+  });
   const [enviandoTipoId, setEnviandoTipoId] = useState<string | null>(null);
 
   function statusDe(tipoId: string, competencia: string): StatusEnvioMensal {
@@ -51,12 +60,14 @@ export function ChecklistMensalCard({ clienteId, clienteNome }: { clienteId: str
     }).length;
   }
 
-  const anos = [anoAtual - 1, anoAtual];
+  const anoSelecionado = Number(competenciaSelecionada.slice(0, 4));
+  const anos = [...new Set([anoAtual - 1, anoAtual, anoSelecionado])].sort((a, b) => a - b);
 
   async function enviarArquivo(tipoId: string, competencia: string, file: File) {
     setEnviandoTipoId(tipoId);
     try {
-      const documento = await uploadDocumento({ file, clienteId, clienteNome, categoria: "Outros" });
+      const categoria = tipos.find((t) => t.id === tipoId)?.categoria ?? "Outros";
+      const documento = await uploadDocumento({ file, clienteId, clienteNome, categoria });
       addDocumento(documento);
       setEnvioMensal(clienteId, tipoId, competencia, "Concluído", documento.id);
     } catch {
@@ -83,7 +94,7 @@ export function ChecklistMensalCard({ clienteId, clienteNome }: { clienteId: str
   if (tipos.length === 0) return null;
 
   return (
-    <Card>
+    <Card id="documentos-a-enviar">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ListChecks className="size-4 text-wine-600" /> Documentos a enviar

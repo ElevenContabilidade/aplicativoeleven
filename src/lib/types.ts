@@ -759,6 +759,9 @@ export interface TipoDocumentoRecorrente {
   nome: string;
   ativo: boolean;
   criadoEm: string;
+  /** Em qual pasta/categoria o documento enviado pelo cliente cai — sem
+   * isso definido, cai em "Outros" (pasta Docs Empresa). */
+  categoria?: DocumentoCategoria;
 }
 
 export interface EnvioMensalDocumento {

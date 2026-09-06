@@ -956,7 +956,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ tiposDocumentoRecorrente: [...s.tiposDocumentoRecorrente, tipo] }));
         void createClient()
           .from("tipos_documento_recorrente")
-          .insert({ id: tipo.id, cliente_id: tipo.clienteId, nome: tipo.nome, ativo: tipo.ativo })
+          .insert({ id: tipo.id, cliente_id: tipo.clienteId, nome: tipo.nome, ativo: tipo.ativo, categoria: tipo.categoria ?? null })
           .then(({ error }) => error && console.error("Erro ao salvar tipo de documento recorrente:", error.message));
       },
       updateTipoDocumentoRecorrente: (id, patch) => {
@@ -966,6 +966,7 @@ export const useAppStore = create<AppState>()(
         const dbPatch: Record<string, unknown> = {};
         if (patch.nome !== undefined) dbPatch.nome = patch.nome;
         if (patch.ativo !== undefined) dbPatch.ativo = patch.ativo;
+        if (patch.categoria !== undefined) dbPatch.categoria = patch.categoria ?? null;
         if (Object.keys(dbPatch).length > 0) {
           void createClient()
             .from("tipos_documento_recorrente")
