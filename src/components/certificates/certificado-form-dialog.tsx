@@ -38,8 +38,13 @@ export function CertificadoFormDialog({
 
   // The parent remounts this component (via a `key` tied to the certificado's id,
   // or a fresh id for "create new") whenever it should show a different record, so
-  // plain useState initializers are enough — no effect needed to resync on open.
-  const [clienteId, setClienteId] = useState(certificado?.clienteId ?? clients[0]?.id ?? "");
+  // plain useState initializers are enough for editing an existing certificado.
+  // Creating a new one is different: the topbar's "+ Novo" shortcut can open this
+  // dialog right on page load (?novo=1), before "clients" has loaded from Supabase
+  // — falling back to clients[0] at render time (instead of freezing it into the
+  // initial state) means it still resolves once the list arrives.
+  const [clienteId, setClienteId] = useState(certificado?.clienteId ?? "");
+  const effectiveClienteId = clienteId || clients[0]?.id || "";
   const [tipo, setTipo] = useState<Certificado["tipo"]>(certificado?.tipo ?? "e-CNPJ A1");
   const [documento, setDocumento] = useState(certificado?.documento ?? "");
   const [dataEmissao, setDataEmissao] = useState(certificado?.dataEmissao ?? "");
@@ -87,8 +92,8 @@ export function CertificadoFormDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clienteId || !documento || !dataVencimento) return;
-    const cliente = clients.find((c) => c.id === clienteId);
+    if (!effectiveClienteId || !documento || !dataVencimento) return;
+    const cliente = clients.find((c) => c.id === effectiveClienteId);
 
     setSalvando(true);
     setErro(null);
@@ -97,7 +102,7 @@ export function CertificadoFormDialog({
       if (file && cliente) {
         const doc = await uploadDocumento({
           file,
-          clienteId,
+          clienteId: effectiveClienteId,
           clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
           categoria: "Certificados",
           responsavelId: userId ?? undefined,
@@ -107,7 +112,7 @@ export function CertificadoFormDialog({
       }
 
       const patch = {
-        clienteId,
+        clienteId: effectiveClienteId,
         documento,
         tipo,
         dataEmissao: dataEmissao || undefined,
@@ -181,7 +186,7 @@ export function CertificadoFormDialog({
           </div>
           <div>
             <Label className="mb-1 block">Cliente</Label>
-            <Select value={clienteId} onValueChange={handleClienteChange}>
+            <Select value={effectiveClienteId} onValueChange={handleClienteChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {clients.map((c) => (

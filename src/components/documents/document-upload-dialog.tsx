@@ -48,10 +48,16 @@ export function DocumentUploadDialog({
   const { userId } = useAuthStore();
 
   const [file, setFile] = useState<File | null>(null);
-  const [clienteId, setClienteId] = useState(fixedClienteId ?? clients[0]?.id ?? "");
+  const [clienteId, setClienteId] = useState("");
   const [categoria, setCategoria] = useState<DocumentoCategoria>(fixedCategoria ?? "Outros");
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  // O atalho "+ Novo" do topbar pode abrir esse dialog já na carga da página
+  // (?novo=1), antes de "clients" ter chegado do Supabase — calcular o
+  // fallback pro primeiro cliente a cada render (em vez de travá-lo no
+  // estado inicial) garante que resolve assim que a lista chegar.
+  const effectiveClienteId = fixedClienteId || clienteId || clients[0]?.id || "";
 
   function reset() {
     setFile(null);
@@ -61,7 +67,7 @@ export function DocumentUploadDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const targetCliente = fixedClienteId ?? clienteId;
+    const targetCliente = effectiveClienteId;
     if (!file || !targetCliente) return;
     const cliente = clients.find((c) => c.id === targetCliente);
     if (!cliente) return;
@@ -115,7 +121,7 @@ export function DocumentUploadDialog({
           {!fixedClienteId && (
             <div>
               <Label className="mb-1 block">Cliente</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
+              <Select value={effectiveClienteId} onValueChange={setClienteId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (

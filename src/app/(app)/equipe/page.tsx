@@ -24,13 +24,19 @@ export default function EquipePage() {
   const updateTeamMember = useAppStore((s) => s.updateTeamMember);
   const perms = useAppStore((s) => s.permissoes);
   const updatePermissoes = useAppStore((s) => s.updatePermissoes);
-  const [selectedId, setSelectedId] = useState(team[0]?.id);
+  // No F5, a store começa vazia e "team" só chega um instante depois do
+  // Supabase — em vez de fixar o primeiro id no momento da montagem (que
+  // ficaria undefined pra sempre nesse caso), calcula o selecionado
+  // "efetivo" a cada render: undefined até o usuário clicar em alguém,
+  // caindo pro primeiro da lista assim que ela carregar.
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  const effectiveSelectedId = selectedId ?? team[0]?.id;
   const [activeMap, setActiveMap] = useState<Record<string, boolean>>(Object.fromEntries(team.map((m) => [m.id, m.ativo])));
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TeamMember | null>(null);
   const [resendStatus, setResendStatus] = useState<Record<string, "enviando" | "enviado" | "copiado" | "erro">>({});
 
-  const selected = team.find((m) => m.id === selectedId);
+  const selected = team.find((m) => m.id === effectiveSelectedId);
 
   async function reenviarConvite(m: TeamMember) {
     setResendStatus((s) => ({ ...s, [m.id]: "enviando" }));
@@ -105,7 +111,7 @@ export default function EquipePage() {
   function handleDelete(m: TeamMember) {
     if (!confirm(`Excluir o colaborador "${m.nome}"? Essa ação não pode ser desfeita.`)) return;
     deleteTeamMember(m.id);
-    if (selectedId === m.id) {
+    if (effectiveSelectedId === m.id) {
       const remaining = team.filter((t) => t.id !== m.id);
       setSelectedId(remaining[0]?.id);
     }
@@ -131,7 +137,7 @@ export default function EquipePage() {
                 onClick={() => setSelectedId(m.id)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setSelectedId(m.id)}
                 className={`flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors ${
-                  selectedId === m.id ? "bg-wine-50" : "hover:bg-sand-50"
+                  effectiveSelectedId === m.id ? "bg-wine-50" : "hover:bg-sand-50"
                 }`}
               >
                 <Avatar>

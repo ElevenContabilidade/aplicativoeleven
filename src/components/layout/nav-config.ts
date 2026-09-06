@@ -51,7 +51,7 @@ export const NAV_GROUP_ICON: Record<string, LucideIcon> = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Eleven IA", href: "/eleven-ia", icon: Sparkles, section: "principal" },
-  { label: "Dados do escritório", href: "/dados-escritorio", icon: Building, section: "principal" },
+  { label: "Dados do Escritório", href: "/dados-escritorio", icon: Building, section: "principal" },
   { label: "Início", href: "/dashboard", icon: LayoutGrid, section: "principal" },
   { label: "Comercial", href: "/comercial", icon: Briefcase, section: "principal" },
   { label: "Leads", href: "/leads", icon: UsersRound, section: "principal" },

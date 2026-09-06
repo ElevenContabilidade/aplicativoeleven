@@ -38,9 +38,15 @@ export default function AtendimentoPage() {
 
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [open, setOpen] = useState(() => searchParams.get("novo") === "1");
-  const [clienteId, setClienteId] = useState(clients[0]?.id ?? "");
+  const [clienteId, setClienteId] = useState("");
   const [tipo, setTipo] = useState<TimelineEvent["tipo"]>("ligacao");
   const [descricao, setDescricao] = useState("");
+
+  // Se o atalho "+ Novo" abre esse dialog logo no carregamento da página (via
+  // ?novo=1), "clients" pode ainda estar vazio nesse instante — calcular o
+  // fallback pro primeiro cliente a cada render (em vez de travá-lo no estado
+  // inicial) garante que resolve assim que a lista chegar.
+  const effectiveClienteId = clienteId || clients[0]?.id || "";
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/atendimento");
@@ -54,10 +60,10 @@ export default function AtendimentoPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!descricao.trim() || !clienteId) return;
+    if (!descricao.trim() || !effectiveClienteId) return;
     addTimelineEvent({
       id: `tl-${Date.now()}`,
-      clienteId,
+      clienteId: effectiveClienteId,
       data: new Date().toISOString().slice(0, 10),
       autor: teamName(userId ?? ""),
       tipo,
@@ -114,7 +120,7 @@ export default function AtendimentoPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <Label className="mb-1 block">Cliente</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
+              <Select value={effectiveClienteId} onValueChange={setClienteId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>))}
