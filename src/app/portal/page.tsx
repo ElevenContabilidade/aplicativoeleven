@@ -17,6 +17,7 @@ import { useSupabaseFinanceiroSync } from "@/lib/supabase/use-financeiro-sync";
 import { PendenciasCard } from "@/components/portal/pendencias-card";
 import { ChecklistMensalCard } from "@/components/portal/checklist-mensal-card";
 import { FaturamentoDashboardCard } from "@/components/portal/faturamento-dashboard-card";
+import { GuiasFiscaisCard } from "@/components/portal/guias-fiscais-card";
 import { teamName } from "@/lib/team-lookup";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import type { DocumentoCategoria } from "@/lib/types";
@@ -42,6 +43,7 @@ export default function ClientPortalPage() {
   const notasFiscaisMensais = useAppStore((s) => s.notasFiscaisMensais);
   const licencas = useAppStore((s) => s.licencas);
   const faturamentoMensal = useAppStore((s) => s.faturamentoMensal);
+  const guiasFiscais = useAppStore((s) => s.guiasFiscais);
   const [filtroCategoria, setFiltroCategoria] = useState<DocumentoCategoria | "Todos">("Todos");
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function ClientPortalPage() {
     .sort((a, b) => b.competencia.localeCompare(a.competencia));
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myFaturamento = faturamentoMensal.filter((f) => f.clienteId === client.id);
+  const myGuiasFiscais = guiasFiscais.filter((g) => g.clienteId === client.id);
   const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
 
   // Honorários lançados manualmente + boletos emitidos em Boletos — assim que
@@ -374,6 +377,8 @@ export default function ClientPortalPage() {
             </CardContent>
           </Card>
         )}
+
+        <GuiasFiscaisCard guias={myGuiasFiscais} />
       </main>
     </div>
   );

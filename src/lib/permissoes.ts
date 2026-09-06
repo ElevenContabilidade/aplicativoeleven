@@ -21,6 +21,7 @@ export const MODULO_POR_ROTA: Record<string, string> = {
   "/boletos": "Boletos",
   "/nfse": "NFSe",
   "/faturamento": "Faturamento",
+  "/guias-fiscais": "Guias Fiscais",
   "/parceiros": "Parceiros",
   "/portfolio": "Portfólio",
   "/atendimento": "Atendimento",
@@ -36,9 +37,9 @@ export function moduloDaRota(pathname: string): string | undefined {
 }
 
 export const MODULOS_OPERACAO = [
-  "Dados do Escritório", "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Obrigações", "Fiscal", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
+  "Dados do Escritório", "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Obrigações", "Fiscal", "Faturamento", "Guias Fiscais", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
 ];
-export const MODULOS_GESTAO = ["Financeiro", "Boletos", "NFSe", "Faturamento", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
+export const MODULOS_GESTAO = ["Financeiro", "Boletos", "NFSe", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Eleven IA", "Configurações"];
 export const ACOES = ["Visualizar", "Criar", "Editar", "Excluir", "Exportar"];
 
 // "|" e não "-" porque memberId agora é um UUID do Supabase (tem hífen

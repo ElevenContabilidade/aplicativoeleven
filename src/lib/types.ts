@@ -683,6 +683,29 @@ export interface FaturamentoMensal {
   pgdasUrl?: string;
 }
 
+// ---------- Guias fiscais (DARF, GPS, DAS) ----------
+
+export const TIPOS_GUIA_FISCAL = ["DARF", "GPS", "DAS"] as const;
+export type TipoGuiaFiscal = (typeof TIPOS_GUIA_FISCAL)[number];
+
+/** Guia de recolhimento (DARF/GPS/DAS) lida automaticamente do PDF ou
+ * lançada à mão — fica disponível pro cliente ver no Portal e recalcular
+ * o valor atualizado se pagar depois do vencimento (multa de mora). */
+export interface GuiaFiscal {
+  id: string;
+  clienteId: string;
+  tipo: TipoGuiaFiscal;
+  competencia: string; // "YYYY-MM"
+  vencimento: string; // "YYYY-MM-DD"
+  valorOriginal: number;
+  numeroDocumento?: string;
+  observacao?: string;
+  /** Link do PDF da guia, salvo no Drive do cliente (categoria Guias). */
+  arquivoUrl?: string;
+  paga?: boolean;
+  dataPagamento?: string;
+}
+
 // ---------- Recebimentos de parceiros ----------
 
 export type StatusPagamentoParceiro = "Pago" | "Em aberto";

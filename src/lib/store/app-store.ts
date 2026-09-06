@@ -122,6 +122,7 @@ import type {
   BoletoMensal,
   NotaFiscalMensal,
   FaturamentoMensal,
+  GuiaFiscal,
   RecebimentoParceiroMensal,
   DadosEscritorio,
   SistemaEscritorio,
@@ -167,6 +168,7 @@ interface AppState {
   boletosMensais: BoletoMensal[];
   notasFiscaisMensais: NotaFiscalMensal[];
   faturamentoMensal: FaturamentoMensal[];
+  guiasFiscais: GuiaFiscal[];
   recebimentosParceiro: RecebimentoParceiroMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
@@ -277,6 +279,9 @@ interface AppState {
     patch: Partial<Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao" | "pgdasUrl">>
   ) => void;
   deleteFaturamentoMensal: (clienteId: string, competencia: string) => void;
+  addGuiaFiscal: (guia: GuiaFiscal) => void;
+  updateGuiaFiscal: (id: string, patch: Partial<GuiaFiscal>) => void;
+  deleteGuiaFiscal: (id: string) => void;
   updateRecebimentoParceiro: (
     clienteId: string,
     competencia: string,
@@ -293,6 +298,7 @@ interface AppState {
   setBoletosMensaisFromSupabase: (boletos: BoletoMensal[]) => void;
   setNotasFiscaisMensaisFromSupabase: (notas: NotaFiscalMensal[]) => void;
   setFaturamentoMensalFromSupabase: (faturamentoMensal: FaturamentoMensal[]) => void;
+  setGuiasFiscaisFromSupabase: (guiasFiscais: GuiaFiscal[]) => void;
   setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
   setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
   setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
@@ -386,6 +392,7 @@ const initial = {
   boletosMensais: [] as BoletoMensal[],
   notasFiscaisMensais: [] as NotaFiscalMensal[],
   faturamentoMensal: [] as FaturamentoMensal[],
+  guiasFiscais: [] as GuiaFiscal[],
   recebimentosParceiro: [] as RecebimentoParceiroMensal[],
   checklistContabil: [],
   checklistFiscal: [],
@@ -1012,6 +1019,7 @@ export const useAppStore = create<AppState>()(
       setBoletosMensaisFromSupabase: (boletosMensais) => set({ boletosMensais }),
       setNotasFiscaisMensaisFromSupabase: (notasFiscaisMensais) => set({ notasFiscaisMensais }),
       setFaturamentoMensalFromSupabase: (faturamentoMensal) => set({ faturamentoMensal }),
+      setGuiasFiscaisFromSupabase: (guiasFiscais) => set({ guiasFiscais }),
       setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
@@ -1208,6 +1216,20 @@ export const useAppStore = create<AppState>()(
         const id = `fat-${clienteId}-${competencia}`;
         set((s) => ({ faturamentoMensal: s.faturamentoMensal.filter((f) => f.id !== id) }));
         deleteFinanceiro("faturamentoMensal", id);
+      },
+
+      addGuiaFiscal: (guia) => {
+        set((s) => ({ guiasFiscais: [guia, ...s.guiasFiscais] }));
+        pushFinanceiro("guiasFiscais", guia.id, guia.clienteId, guia);
+      },
+      updateGuiaFiscal: (id, patch) => {
+        set((s) => ({ guiasFiscais: s.guiasFiscais.map((g) => (g.id === id ? { ...g, ...patch } : g)) }));
+        const guia = useAppStore.getState().guiasFiscais.find((g) => g.id === id);
+        if (guia) pushFinanceiro("guiasFiscais", id, guia.clienteId, guia);
+      },
+      deleteGuiaFiscal: (id) => {
+        set((s) => ({ guiasFiscais: s.guiasFiscais.filter((g) => g.id !== id) }));
+        deleteFinanceiro("guiasFiscais", id);
       },
 
       updateRecebimentoParceiro: (clienteId, competencia, patch) => {
@@ -1412,6 +1434,7 @@ export const useAppStore = create<AppState>()(
           boletosMensais,
           notasFiscaisMensais,
           faturamentoMensal,
+          guiasFiscais,
           recebimentosParceiro,
           despesasAvulsas,
           pagamentosSistemas,

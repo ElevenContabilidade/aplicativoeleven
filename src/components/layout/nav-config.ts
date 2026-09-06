@@ -28,6 +28,7 @@ import {
   Handshake,
   Boxes,
   TrendingUp,
+  ScrollText,
 } from "lucide-react";
 
 export interface NavItem {
@@ -60,6 +61,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Parcelamentos", href: "/parcelamentos", icon: Receipt, section: "operacao" },
   { label: "Fiscal", href: "/fiscal", icon: Landmark, section: "operacao", group: "Departamentos" },
   { label: "Faturamento", href: "/faturamento", icon: TrendingUp, section: "operacao" },
+  { label: "Guias Fiscais", href: "/guias-fiscais", icon: ScrollText, section: "operacao" },
   { label: "Contábil", href: "/contabil", icon: Calculator, section: "operacao", group: "Departamentos" },
   { label: "Departamento Pessoal", href: "/dp", icon: UserCog, section: "operacao", group: "Departamentos" },
   { label: "Societário", href: "/societario", icon: Scale, section: "operacao", group: "Departamentos" },
