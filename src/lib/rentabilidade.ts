@@ -1,4 +1,5 @@
-import type { Client, TeamMember } from "@/lib/types";
+import type { Client, DespesaAvulsa, PagamentoSistemaMensal, SistemaEscritorio } from "@/lib/types";
+import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 
 export interface RentabilidadeCliente {
   clienteId: string;
@@ -11,39 +12,32 @@ export interface RentabilidadeCliente {
 
 /**
  * Estimativa de rentabilidade por cliente: receita vem do honorário mensal
- * cadastrado; custo reparte o custo mensal de cada colaborador (informado em
- * Equipe) entre todos os clientes em que ele aparece como responsável (em
- * qualquer setor) — não é apontamento de horas reais, só uma aproximação por
- * carteira/carga de clientes.
+ * cadastrado; custo rateia igualmente as despesas da empresa numa
+ * competência (sistemas + despesas avulsas de Contas a Pagar) entre todos
+ * os clientes ativos (honorário > 0) — cada cliente "pesa" o mesmo na
+ * estrutura, independente do que paga de honorário.
  */
-export function calcularRentabilidade(clients: Client[], team: TeamMember[]): RentabilidadeCliente[] {
-  const custoPorMembro = new Map(team.map((m) => [m.id, m.custoMensal ?? 0]));
+export function calcularRentabilidade(
+  clients: Client[],
+  sistemas: SistemaEscritorio[],
+  pagamentosSistemas: PagamentoSistemaMensal[],
+  despesasAvulsas: DespesaAvulsa[],
+  competencia: string
+): RentabilidadeCliente[] {
+  const clientesAtivos = clients.filter((c) => (c.financeiro.valorMensal ?? 0) > 0);
 
-  const clientesPorMembro = new Map<string, Set<string>>();
-  for (const c of clients) {
-    const membros = new Set(Object.values(c.responsaveis).filter((v): v is string => Boolean(v)));
-    for (const memberId of membros) {
-      if (!clientesPorMembro.has(memberId)) clientesPorMembro.set(memberId, new Set());
-      clientesPorMembro.get(memberId)!.add(c.id);
-    }
-  }
+  const despesasDoMes = contasAPagarDoPeriodo(sistemas, pagamentosSistemas, despesasAvulsas, [competencia]);
+  const totalDespesas = despesasDoMes.reduce((acc, d) => acc + d.valor, 0);
+  const custoPorCliente = clientesAtivos.length > 0 ? totalDespesas / clientesAtivos.length : 0;
 
-  return clients.map((c) => {
-    const membros = new Set(Object.values(c.responsaveis).filter((v): v is string => Boolean(v)));
-    let custo = 0;
-    for (const memberId of membros) {
-      const custoMembro = custoPorMembro.get(memberId) ?? 0;
-      const nClientes = clientesPorMembro.get(memberId)?.size ?? 1;
-      custo += custoMembro / nClientes;
-    }
-
+  return clientesAtivos.map((c) => {
     const receita = c.financeiro.valorMensal ?? 0;
-    const margem = receita - custo;
+    const margem = receita - custoPorCliente;
     return {
       clienteId: c.id,
       nome: c.dados.nomeFantasia || c.dados.razaoSocial,
       receita,
-      custo,
+      custo: custoPorCliente,
       margem,
       margemPercentual: receita > 0 ? (margem / receita) * 100 : 0,
     };

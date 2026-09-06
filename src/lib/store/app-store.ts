@@ -622,7 +622,6 @@ export const useAppStore = create<AppState>()(
         if (patch.avatarColor !== undefined) dbPatch.avatar_color = patch.avatarColor;
         if (patch.ativo !== undefined) dbPatch.ativo = patch.ativo;
         if (patch.clientesVinculados !== undefined) dbPatch.clientes_vinculados = patch.clientesVinculados;
-        if (patch.custoMensal !== undefined) dbPatch.custo_mensal = patch.custoMensal;
         if (Object.keys(dbPatch).length > 0) {
           void createClient()
             .from("profiles")

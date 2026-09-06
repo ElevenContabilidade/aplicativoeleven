@@ -13,7 +13,6 @@ export async function POST(request: Request) {
     departamentos?: string[];
     senha?: string;
     avatarColor?: string;
-    custoMensal?: number;
   };
   try {
     body = await request.json();
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Requisição inválida." }, { status: 400 });
   }
 
-  const { nome, email, celular, perfil, departamentos, senha, avatarColor, custoMensal } = body;
+  const { nome, email, celular, perfil, departamentos, senha, avatarColor } = body;
   if (!nome || !email || !perfil || !senha) {
     return NextResponse.json({ ok: false, error: "Nome, e-mail, perfil e senha são obrigatórios." }, { status: 400 });
   }
@@ -49,7 +48,6 @@ export async function POST(request: Request) {
     departamentos: departamentos ?? [],
     avatar_color: avatarColor ?? "#5C1420",
     ativo: true,
-    custo_mensal: custoMensal ?? null,
   });
   if (profileError) {
     // Sem o perfil o usuário fica órfão (login sem dado nenhum) — desfaz.

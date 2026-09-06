@@ -41,6 +41,9 @@ export default function RelatoriosPage() {
   const tasks = useAppStore((s) => s.tasks);
   const obligations = useAppStore((s) => s.obligations);
   const team = useAppStore((s) => s.team);
+  const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
+  const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
+  const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
 
   const leadsPorOrigem = useMemo(() => {
     const map = new Map<string, number>();
@@ -72,14 +75,14 @@ export default function RelatoriosPage() {
     return Array.from(map, ([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes));
   }, [clients]);
 
+  const mesAtual = useMemo(() => new Date().toISOString().slice(0, 7), []);
+
   const pioresMargens = useMemo(() => {
-    const clientesComHonorario = clients.filter((c) => (c.financeiro.valorMensal ?? 0) > 0);
-    return calcularRentabilidade(clientesComHonorario, team)
+    return calcularRentabilidade(clients, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, mesAtual)
       .sort((a, b) => a.margemPercentual - b.margemPercentual)
       .slice(0, 5);
-  }, [clients, team]);
+  }, [clients, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, mesAtual]);
 
-  const mesAtual = useMemo(() => new Date().toISOString().slice(0, 7), []);
   const maisSobrecarregados = useMemo(() => {
     return calcularProdutividade(team, tasks, obligations, mesAtual)
       .map((p) => ({ ...p, totalAtraso: p.tarefasAtrasadas + p.obrigacoesAtrasadas }))
