@@ -29,6 +29,9 @@ import {
   Boxes,
   TrendingUp,
   ScrollText,
+  KeyRound,
+  PiggyBank,
+  Gauge,
 } from "lucide-react";
 
 export interface NavItem {
@@ -68,9 +71,12 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Certificados", href: "/certificados", icon: ShieldCheck, section: "operacao" },
   { label: "Documentos", href: "/documentos", icon: FolderOpen, section: "operacao" },
 
+  { label: "Senhas", href: "/senhas", icon: KeyRound, section: "gestao" },
   { label: "Financeiro", href: "/financeiro", icon: Wallet, section: "gestao" },
   { label: "Boletos", href: "/boletos", icon: CreditCard, section: "gestao" },
   { label: "NFSe", href: "/nfse", icon: FileText, section: "gestao" },
+  { label: "Rentabilidade", href: "/rentabilidade", icon: PiggyBank, section: "gestao" },
+  { label: "Produtividade", href: "/produtividade", icon: Gauge, section: "gestao" },
   { label: "Parceiros", href: "/parceiros", icon: Handshake, section: "gestao" },
   { label: "Portfólio", href: "/portfolio", icon: Layers, section: "gestao" },
   { label: "Atendimento", href: "/atendimento", icon: Headset, section: "gestao" },
