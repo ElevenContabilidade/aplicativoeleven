@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Check, Eye, EyeOff, Copy, Pencil, Trash2, Plus, ExternalLink, Search, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,17 @@ export default function DadosEscritorioPage() {
   const sistemas = useAppStore((s) => s.sistemasEscritorio);
   const deleteSistemaEscritorio = useAppStore((s) => s.deleteSistemaEscritorio);
   const [form, setForm] = useState<DadosEscritorio>(dadosEscritorio);
+  const dirtyRef = useRef(false);
+
+  // No F5, a store começa vazia e só recebe os dados de verdade do Supabase
+  // um instante depois do primeiro render — sem isso, o formulário fica
+  // travado nos campos em branco do momento em que montou. Resincroniza
+  // assim que os dados chegam, mas só enquanto o usuário não começou a
+  // editar (senão apagaria uma edição em andamento).
+  useEffect(() => {
+    if (!dirtyRef.current) setForm(dadosEscritorio);
+  }, [dadosEscritorio]);
+
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [buscaErro, setBuscaErro] = useState<string | null>(null);
@@ -31,6 +42,7 @@ export default function DadosEscritorioPage() {
   const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
 
   function set<K extends keyof DadosEscritorio>(key: K, value: DadosEscritorio[K]) {
+    dirtyRef.current = true;
     setForm((f) => ({ ...f, [key]: value }));
   }
 
@@ -46,6 +58,7 @@ export default function DadosEscritorioPage() {
     setBuscaErro(null);
     try {
       const dados = await lookupCnpj(form.cnpj);
+      dirtyRef.current = true;
       setForm((f) => ({
         ...f,
         razaoSocial: dados.razaoSocial || f.razaoSocial,
