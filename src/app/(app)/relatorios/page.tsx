@@ -1,11 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
-import { formatCurrency } from "@/lib/utils";
+import { calcularRentabilidade } from "@/lib/rentabilidade";
+import { calcularProdutividade } from "@/lib/produtividade";
+import { mesesSemReajuste } from "@/lib/reajuste-alerts";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const WINE = "#5C1420";
 const GOLD = "#E6C378";
@@ -22,10 +27,20 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   );
 }
 
+const MESES_PARA_ALERTA_REAJUSTE = 12;
+
+function margemTone(percentual: number): string {
+  if (percentual < 20) return "text-status-danger";
+  if (percentual < 50) return "text-status-warning";
+  return "text-status-success";
+}
+
 export default function RelatoriosPage() {
   const leads = useAppStore((s) => s.leads);
   const clients = useAppStore((s) => s.clients);
   const tasks = useAppStore((s) => s.tasks);
+  const obligations = useAppStore((s) => s.obligations);
+  const team = useAppStore((s) => s.team);
 
   const leadsPorOrigem = useMemo(() => {
     const map = new Map<string, number>();
@@ -55,6 +70,30 @@ export default function RelatoriosPage() {
     const map = new Map<string, number>();
     clients.forEach((c) => c.historicoFinanceiro.forEach((h) => map.set(h.competencia, (map.get(h.competencia) ?? 0) + h.valor)));
     return Array.from(map, ([mes, total]) => ({ mes, total })).sort((a, b) => a.mes.localeCompare(b.mes));
+  }, [clients]);
+
+  const pioresMargens = useMemo(() => {
+    const clientesComHonorario = clients.filter((c) => (c.financeiro.valorMensal ?? 0) > 0);
+    return calcularRentabilidade(clientesComHonorario, team)
+      .sort((a, b) => a.margemPercentual - b.margemPercentual)
+      .slice(0, 5);
+  }, [clients, team]);
+
+  const mesAtual = useMemo(() => new Date().toISOString().slice(0, 7), []);
+  const maisSobrecarregados = useMemo(() => {
+    return calcularProdutividade(team, tasks, obligations, mesAtual)
+      .map((p) => ({ ...p, totalAtraso: p.tarefasAtrasadas + p.obrigacoesAtrasadas }))
+      .sort((a, b) => b.totalAtraso - a.totalAtraso)
+      .slice(0, 5);
+  }, [team, tasks, obligations, mesAtual]);
+
+  const reajustesPendentes = useMemo(() => {
+    return clients
+      .filter((c) => (c.financeiro.valorMensal ?? 0) > 0)
+      .map((c) => ({ cliente: c, meses: mesesSemReajuste(c) }))
+      .filter((r): r is { cliente: typeof r.cliente; meses: number } => r.meses !== null && r.meses >= MESES_PARA_ALERTA_REAJUSTE)
+      .sort((a, b) => b.meses - a.meses)
+      .slice(0, 5);
   }, [clients]);
 
   return (
@@ -125,6 +164,106 @@ export default function RelatoriosPage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Piores margens</CardTitle>
+            <p className="mt-1 text-xs text-sand-500">
+              Clientes com menor rentabilidade estimada. <Link href="/rentabilidade" className="text-wine-700 hover:underline">Ver tudo</Link>
+            </p>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead className="w-20 text-right">Margem</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pioresMargens.map((l) => (
+                  <TableRow key={l.clienteId}>
+                    <TableCell className="max-w-[160px] truncate font-medium">
+                      <Link href={`/clientes/${l.clienteId}`} className="hover:text-wine-700 hover:underline">{l.nome}</Link>
+                    </TableCell>
+                    <TableCell className={cn("text-right font-medium", margemTone(l.margemPercentual))}>
+                      {l.margemPercentual.toFixed(0)}%
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {pioresMargens.length === 0 && (
+                  <TableRow><TableCell colSpan={2} className="py-6 text-center text-sand-400">Sem dados.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Colaboradores mais sobrecarregados</CardTitle>
+            <p className="mt-1 text-xs text-sand-500">
+              Mais tarefas + obrigações em atraso. <Link href="/produtividade" className="text-wine-700 hover:underline">Ver tudo</Link>
+            </p>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Colaborador</TableHead>
+                  <TableHead className="w-24 text-right">Em atraso</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {maisSobrecarregados.map((p) => (
+                  <TableRow key={p.membroId}>
+                    <TableCell className="max-w-[160px] truncate font-medium">{p.nome}</TableCell>
+                    <TableCell className={cn("text-right font-medium", p.totalAtraso > 0 && "text-status-danger")}>
+                      {p.totalAtraso}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {maisSobrecarregados.length === 0 && (
+                  <TableRow><TableCell colSpan={2} className="py-6 text-center text-sand-400">Sem dados.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reajustes pendentes</CardTitle>
+            <p className="mt-1 text-xs text-sand-500">Clientes há 12+ meses sem reajuste de honorário.</p>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead className="w-24 text-right">Meses</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reajustesPendentes.map(({ cliente, meses }) => (
+                  <TableRow key={cliente.id}>
+                    <TableCell className="max-w-[160px] truncate font-medium">
+                      <Link href={`/clientes/${cliente.id}`} className="hover:text-wine-700 hover:underline">
+                        {cliente.dados.nomeFantasia || cliente.dados.razaoSocial}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-status-warning">{meses}</TableCell>
+                  </TableRow>
+                ))}
+                {reajustesPendentes.length === 0 && (
+                  <TableRow><TableCell colSpan={2} className="py-6 text-center text-sand-400">Nenhum reajuste pendente.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

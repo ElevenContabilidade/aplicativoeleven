@@ -53,6 +53,14 @@ export function FinanceiroClienteForm({ client }: { client: Client }) {
             <Input value={form.reajuste ?? ""} onChange={(e) => set("reajuste", e.target.value)} placeholder="Ex: anual, IGP-M" />
           </div>
           <div>
+            <Label className="mb-1 block">Data do último reajuste</Label>
+            <Input
+              type="date"
+              value={form.dataUltimoReajuste ?? ""}
+              onChange={(e) => set("dataUltimoReajuste", e.target.value || undefined)}
+            />
+          </div>
+          <div>
             <Label className="mb-1 block">Status financeiro</Label>
             <Select value={form.statusFinanceiro} onValueChange={(v) => set("statusFinanceiro", v as FinanceiroCliente["statusFinanceiro"])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
