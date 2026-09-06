@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -45,7 +45,7 @@ export function ContabilChecklist() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const myClients = useMemo(
+  const clientesDoSetor = useMemo(
     () =>
       clients.filter(
         (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "contabil")
@@ -55,6 +55,11 @@ export function ContabilChecklist() {
 
   const rotinas = period === "anual" ? ROTINAS_CONTABEIS_ANUAIS : ROTINAS_CONTABEIS_MENSAIS;
   const competencia = period === "anual" ? year : `${year}-${period}`;
+
+  const myClients = useMemo(
+    () => clientesDoSetor.filter((c) => clienteAtivoNaCompetencia(c, competencia)),
+    [clientesDoSetor, competencia]
+  );
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -85,14 +90,14 @@ export function ContabilChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients
-          .filter((c) => rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS).length > 0)
+        const pcts = clientesDoSetor
+          .filter((c) => clienteAtivoNaCompetencia(c, comp) && rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS).length > 0)
           .map((c) => pctFor(c.id, comp, rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS)));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [myClients, checklist, year]
+    [clientesDoSetor, checklist, year]
   );
 
   return (

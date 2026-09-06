@@ -379,6 +379,16 @@ export function setorAtendidoPelaEleven(client: Pick<Client, "dados">, setor: De
   return client.dados.setoresAtendidos?.includes(setor) ?? false;
 }
 
+/** Um cliente só entra num checklist de rotinas (Fiscal/Contábil/Pessoal) a
+ * partir da competência em que o contrato começou — cliente que só entrou
+ * em setembro/2026 não deve aparecer nas rotinas de meses ou anos
+ * anteriores. `competencia` pode ser "YYYY-MM" (mensal) ou "YYYY" (anual). */
+export function clienteAtivoNaCompetencia(client: Pick<Client, "financeiro">, competencia: string): boolean {
+  const inicio = client.financeiro.inicioContrato;
+  if (!inicio) return true;
+  return competencia >= inicio.slice(0, competencia.length);
+}
+
 export interface NotaDepartamento {
   nota: string;
   atualizadoEm?: string;

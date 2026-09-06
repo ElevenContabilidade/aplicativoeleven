@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -59,7 +59,7 @@ export function FiscalChecklist() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const myClients = useMemo(
+  const clientesDoSetor = useMemo(
     () =>
       clients.filter(
         (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "fiscal")
@@ -68,6 +68,11 @@ export function FiscalChecklist() {
   );
 
   const competencia = period === "anual" ? year : `${year}-${period}`;
+
+  const myClients = useMemo(
+    () => clientesDoSetor.filter((c) => clienteAtivoNaCompetencia(c, competencia)),
+    [clientesDoSetor, competencia]
+  );
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -102,12 +107,13 @@ export function FiscalChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients.map((c) => pctForList(c.id, comp, rotinasFiscaisMensaisFor(c)));
+        const ativos = clientesDoSetor.filter((c) => clienteAtivoNaCompetencia(c, comp));
+        const pcts = ativos.map((c) => pctForList(c.id, comp, rotinasFiscaisMensaisFor(c)));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [myClients, checklist, year]
+    [clientesDoSetor, checklist, year]
   );
 
   const groupsWithClients = REGIME_GROUPS.map((g) => ({ ...g, clients: myClients.filter(g.match) })).filter((g) => g.clients.length > 0);

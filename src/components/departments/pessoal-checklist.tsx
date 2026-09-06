@@ -14,6 +14,7 @@ import {
   possuiFuncionarios,
   rotinasPessoalMensalFor,
   setorAtendidoPelaEleven,
+  clienteAtivoNaCompetencia,
   type ChecklistStatus,
   type Client,
 } from "@/lib/types";
@@ -60,7 +61,7 @@ export function PessoalChecklist() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const myClients = useMemo(
+  const clientesDoSetor = useMemo(
     () =>
       clients.filter(
         (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "pessoal")
@@ -69,6 +70,11 @@ export function PessoalChecklist() {
   );
 
   const competencia = period === "anual" ? year : `${year}-${period}`;
+
+  const myClients = useMemo(
+    () => clientesDoSetor.filter((c) => clienteAtivoNaCompetencia(c, competencia)),
+    [clientesDoSetor, competencia]
+  );
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -105,14 +111,14 @@ export function PessoalChecklist() {
     () =>
       MESES.map((m) => {
         const comp = `${year}-${m.value}`;
-        const pcts = myClients
-          .filter((c) => rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS]).length > 0)
+        const pcts = clientesDoSetor
+          .filter((c) => clienteAtivoNaCompetencia(c, comp) && rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS]).length > 0)
           .map((c) => pctForList(c.id, comp, rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS])));
         const avg = pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
         return { mes: m.label, pct: avg };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [myClients, checklist, year]
+    [clientesDoSetor, checklist, year]
   );
 
   const clientesComFuncionarios = myClients.filter(possuiFuncionarios);
