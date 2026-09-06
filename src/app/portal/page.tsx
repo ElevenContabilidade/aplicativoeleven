@@ -14,7 +14,6 @@ import { useSupabaseDocumentosSync } from "@/lib/supabase/use-documentos-sync";
 import { useSupabasePendenciasSync } from "@/lib/supabase/use-pendencias-sync";
 import { useSupabaseChecklistMensalSync } from "@/lib/supabase/use-checklist-mensal-sync";
 import { useSupabaseFinanceiroSync } from "@/lib/supabase/use-financeiro-sync";
-import { DocumentUploadCard } from "@/components/portal/document-upload-card";
 import { PendenciasCard } from "@/components/portal/pendencias-card";
 import { ChecklistMensalCard } from "@/components/portal/checklist-mensal-card";
 import { FaturamentoDashboardCard } from "@/components/portal/faturamento-dashboard-card";
@@ -245,8 +244,6 @@ export default function ClientPortalPage() {
             </CardContent>
           </Card>
         )}
-
-        <DocumentUploadCard clienteId={client.id} clienteNome={clienteNome} />
 
         <div className="grid gap-6 sm:grid-cols-2">
           <Card>
