@@ -30,6 +30,7 @@ import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { createClient } from "@/lib/supabase/client";
 import { parsePermissaoKey } from "@/lib/permissoes";
+import { formatCurrency } from "@/lib/utils";
 
 /** Nome de quem está logado no momento, para registrar no histórico de
  * ações do colaborador (quem criou/editou o quê). */
@@ -44,6 +45,22 @@ function autorAtual(team: TeamMember[]): string {
 
 function novaHistoricoEntry(team: TeamMember[], acao: string): HistoricoAcaoUsuario {
   return { id: `h-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, acao, autor: autorAtual(team), data: new Date().toISOString() };
+}
+
+/** Registra um evento no log de auditoria global (tela "Auditoria") — só
+ * pras ações de maior risco (exclusões, ciclo de vida de cliente/colaborador,
+ * honorário, permissões), não pra toda edição de campo. */
+function logAuditoria(acao: string, modulo: string, detalhe?: string) {
+  const entry: AuditLogEntry = {
+    id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    data: new Date().toISOString(),
+    autor: autorAtual(useAppStore.getState().team),
+    acao,
+    modulo,
+    detalhe,
+  };
+  useAppStore.setState((s) => ({ auditLog: [entry, ...s.auditLog] }));
+  pushFinanceiro("auditLog", entry.id, null, entry);
 }
 
 /** Clientes e Financeiro (Etapa 3 da migração) ficam numa tabela genérica
@@ -133,6 +150,7 @@ import type {
   Funcionario,
   FeriasRegistro,
   RescisaoChecklistItem,
+  AuditLogEntry,
 } from "@/lib/types";
 import { RESCISAO_CHECKLIST } from "@/lib/types";
 import { periodoAtivo } from "@/lib/ferias";
@@ -178,6 +196,10 @@ interface AppState {
   /** Matriz de permissões por colaborador, chave `${memberId}-${modulo}-${acao}`
    * (mesmo formato usado na tela de Equipe). Ausência de chave = liberado. */
   permissoes: Record<string, boolean>;
+  /** Log de auditoria (tela "Auditoria") — quem fez o quê, cobrindo as ações
+   * de maior risco: exclusões, ciclo de vida de cliente/colaborador,
+   * honorário e permissões. */
+  auditLog: AuditLogEntry[];
 
   updatePermissoes: (patch: Record<string, boolean>) => void;
   /** team/permissoes agora vêm do Supabase (Etapa 1 da migração) — essas
@@ -185,6 +207,7 @@ interface AppState {
    * local, nunca chamadas direto pela UI. */
   setTeamFromSupabase: (team: TeamMember[]) => void;
   setPermissoesFromSupabase: (permissoes: Record<string, boolean>) => void;
+  setAuditLogFromSupabase: (auditLog: AuditLogEntry[]) => void;
   updateDadosEscritorio: (patch: Partial<DadosEscritorio>) => void;
   addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
   updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
@@ -403,6 +426,7 @@ const initial = {
   checklistPessoal: [],
   checklistMei: [],
   permissoes: {},
+  auditLog: [] as AuditLogEntry[],
   dadosEscritorio: {
     razaoSocial: "Eleven Contabilidade & Consultoria",
     nomeFantasia: "Eleven",
@@ -463,8 +487,10 @@ export const useAppStore = create<AppState>()(
         if (lead) pushFinanceiro("leads", leadId, null, lead);
       },
       deleteLead: (leadId) => {
+        const lead = useAppStore.getState().leads.find((l) => l.id === leadId);
         set((s) => ({ leads: s.leads.filter((l) => l.id !== leadId) }));
         deleteFinanceiro("leads", leadId);
+        if (lead) logAuditoria("Lead excluído", "Comercial", lead.nome);
       },
 
       updateTask: (taskId, patch) => {
@@ -478,8 +504,10 @@ export const useAppStore = create<AppState>()(
         pushFinanceiro("tasks", task.id, task.clienteId ?? null, task);
       },
       deleteTask: (taskId) => {
+        const task = useAppStore.getState().tasks.find((t) => t.id === taskId);
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
         deleteFinanceiro("tasks", taskId);
+        if (task) logAuditoria("Tarefa excluída", "Tarefas", task.titulo);
       },
       addObligation: (obligation) => {
         set((s) => ({ obligations: [obligation, ...s.obligations] }));
@@ -491,8 +519,10 @@ export const useAppStore = create<AppState>()(
         if (obligation) pushFinanceiro("obligations", obligationId, obligation.clienteId ?? null, obligation);
       },
       deleteObligation: (obligationId) => {
+        const obligation = useAppStore.getState().obligations.find((o) => o.id === obligationId);
         set((s) => ({ obligations: s.obligations.filter((o) => o.id !== obligationId) }));
         deleteFinanceiro("obligations", obligationId);
+        if (obligation) logAuditoria("Obrigação excluída", "Obrigações", `${obligation.tipo} — ${obligation.competencia}`);
       },
 
       toggleOnboardingItem: (clientId, itemId) => {
@@ -544,6 +574,7 @@ export const useAppStore = create<AppState>()(
       addClient: (client) => {
         set((s) => ({ clients: [client, ...s.clients] }));
         pushCliente(client.id);
+        logAuditoria("Cliente cadastrado", "Clientes", client.dados.nomeFantasia || client.dados.razaoSocial);
         // Melhor esforço — cria de uma vez a pasta do cliente e as 6
         // subpastas por setor no Drive, mesmo sem Drive conectado o
         // cadastro do cliente não deve travar por isso.
@@ -554,6 +585,7 @@ export const useAppStore = create<AppState>()(
         }).catch((err) => console.error("Erro ao criar pastas no Drive:", err));
       },
       deleteClient: (clientId) => {
+        const clienteExcluido = useAppStore.getState().clients.find((c) => c.id === clientId);
         set((s) => ({
           clients: s.clients.filter((c) => c.id !== clientId),
           tasks: s.tasks.filter((t) => t.clienteId !== clientId),
@@ -574,10 +606,17 @@ export const useAppStore = create<AppState>()(
           checklistMei: s.checklistMei.filter((e) => e.clienteId !== clientId),
         }));
         deleteFinanceiroPorCliente(clientId);
+        if (clienteExcluido) {
+          logAuditoria("Cliente excluído", "Clientes", clienteExcluido.dados.nomeFantasia || clienteExcluido.dados.razaoSocial);
+        }
       },
       updateClientStatus: (clientId, status) => {
+        const cliente = useAppStore.getState().clients.find((c) => c.id === clientId);
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) }));
         pushCliente(clientId);
+        if (cliente) {
+          logAuditoria("Status do cliente alterado", "Clientes", `${cliente.dados.nomeFantasia || cliente.dados.razaoSocial}: ${cliente.status} → ${status}`);
+        }
       },
       updateClientTags: (clientId, tags) => {
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, tags } : c)) }));
@@ -601,10 +640,12 @@ export const useAppStore = create<AppState>()(
       // profiles) acontece via /api/colaboradores/criar (precisa da secret
       // key, roda no servidor). Essa action só reflete na tela na hora,
       // enquanto o Realtime não confirma o insert vindo do banco.
-      addTeamMember: (member) =>
+      addTeamMember: (member) => {
         set((s) => ({
           team: [...s.team, { ...member, historico: [novaHistoricoEntry(s.team, "Cadastro criado")] }],
-        })),
+        }));
+        logAuditoria("Colaborador cadastrado", "Equipe", member.nome);
+      },
       updateTeamMember: (memberId, patch) => {
         set((s) => ({
           team: s.team.map((m) =>
@@ -613,6 +654,8 @@ export const useAppStore = create<AppState>()(
               : m
           ),
         }));
+        const membroAtualizado = useAppStore.getState().team.find((m) => m.id === memberId);
+        if (membroAtualizado) logAuditoria("Colaborador atualizado", "Equipe", membroAtualizado.nome);
         const dbPatch: Record<string, unknown> = {};
         if (patch.nome !== undefined) dbPatch.nome = patch.nome;
         if (patch.email !== undefined) dbPatch.email = patch.email;
@@ -635,12 +678,14 @@ export const useAppStore = create<AppState>()(
       // tira da tela na hora; a rota já cuida de apagar em profiles também
       // (cascade), e o Realtime confirma.
       deleteTeamMember: (memberId) => {
+        const membroExcluido = useAppStore.getState().team.find((m) => m.id === memberId);
         set((s) => ({ team: s.team.filter((m) => m.id !== memberId) }));
         void fetch("/api/colaboradores/excluir", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: memberId }),
         }).catch((err) => console.error("Erro ao excluir colaborador:", err));
+        if (membroExcluido) logAuditoria("Colaborador excluído", "Equipe", membroExcluido.nome);
       },
       updatePermissoes: (patch) => {
         set((s) => ({ permissoes: { ...s.permissoes, ...patch } }));
@@ -655,10 +700,14 @@ export const useAppStore = create<AppState>()(
             .from("permissions")
             .upsert(rows, { onConflict: "member_id,modulo,acao" })
             .then(({ error }) => error && console.error("Erro ao salvar permissões:", error.message));
+          const membro = useAppStore.getState().team.find((m) => m.id === rows[0].member_id);
+          const detalhe = rows.map((r) => `${r.modulo}/${r.acao}: ${r.allowed ? "liberado" : "bloqueado"}`).join(", ");
+          logAuditoria("Permissões alteradas", "Equipe", membro ? `${membro.nome} — ${detalhe}` : detalhe);
         }
       },
       setTeamFromSupabase: (team) => set({ team }),
       setPermissoesFromSupabase: (permissoes) => set({ permissoes }),
+      setAuditLogFromSupabase: (auditLog) => set({ auditLog }),
       updateDadosEscritorio: (patch) => {
         set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } }));
         pushFinanceiro("dadosEscritorio", "default", null, useAppStore.getState().dadosEscritorio);
@@ -673,8 +722,10 @@ export const useAppStore = create<AppState>()(
         if (sistema) pushFinanceiro("sistemasEscritorio", id, null, sistema);
       },
       deleteSistemaEscritorio: (id) => {
+        const sistema = useAppStore.getState().sistemasEscritorio.find((sis) => sis.id === id);
         set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) }));
         deleteFinanceiro("sistemasEscritorio", id);
+        if (sistema) logAuditoria("Sistema excluído", "Dados do Escritório", sistema.nome);
       },
       updateMetaMensalClientes: (valor) => {
         set({ metaMensalClientes: valor });
@@ -690,8 +741,10 @@ export const useAppStore = create<AppState>()(
         if (item) pushFinanceiro("despesasAvulsas", id, null, item);
       },
       deleteDespesaAvulsa: (id) => {
+        const despesa = useAppStore.getState().despesasAvulsas.find((d) => d.id === id);
         set((s) => ({ despesasAvulsas: s.despesasAvulsas.filter((d) => d.id !== id) }));
         deleteFinanceiro("despesasAvulsas", id);
+        if (despesa) logAuditoria("Despesa excluída", "Financeiro", `${despesa.descricao} (${formatCurrency(despesa.valor)})`);
       },
       updatePagamentoSistema: (sistemaId, competencia, patch) => {
         const id = `pagsis-${sistemaId}-${competencia}`;
@@ -719,8 +772,10 @@ export const useAppStore = create<AppState>()(
         if (contrato) pushFinanceiro("contratosAssinatura", id, contrato.clienteId, contrato);
       },
       deleteContratoAssinatura: (id) => {
+        const contrato = useAppStore.getState().contratosAssinatura.find((c) => c.id === id);
         set((s) => ({ contratosAssinatura: s.contratosAssinatura.filter((c) => c.id !== id) }));
         deleteFinanceiro("contratosAssinatura", id);
+        if (contrato) logAuditoria("Contrato de assinatura excluído", "Clientes", contrato.nomeArquivo);
       },
       addFuncionario: (funcionario) => {
         set((s) => ({ funcionarios: [...s.funcionarios, funcionario] }));
@@ -732,8 +787,10 @@ export const useAppStore = create<AppState>()(
         if (funcionario) pushFinanceiro("funcionarios", id, funcionario.clienteId, funcionario);
       },
       deleteFuncionario: (id) => {
+        const funcionario = useAppStore.getState().funcionarios.find((f) => f.id === id);
         set((s) => ({ funcionarios: s.funcionarios.filter((f) => f.id !== id) }));
         deleteFinanceiro("funcionarios", id);
+        if (funcionario) logAuditoria("Funcionário excluído", "Departamento Pessoal", funcionario.nome);
       },
       confirmarPeriodoFerias: (funcionarioId) => {
         set((s) => ({
@@ -870,10 +927,18 @@ export const useAppStore = create<AppState>()(
       },
 
       updateFinanceiroCliente: (clientId, patch) => {
+        const before = useAppStore.getState().clients.find((c) => c.id === clientId);
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, financeiro: { ...c.financeiro, ...patch } } : c)),
         }));
         pushCliente(clientId);
+        if (before && patch.valorMensal !== undefined && patch.valorMensal !== before.financeiro.valorMensal) {
+          logAuditoria(
+            "Honorário do cliente alterado",
+            "Clientes",
+            `${before.dados.nomeFantasia || before.dados.razaoSocial}: ${formatCurrency(before.financeiro.valorMensal)} → ${formatCurrency(patch.valorMensal)}`
+          );
+        }
       },
 
       addHistoricoCliente: (clientId, entry) => {
@@ -915,12 +980,14 @@ export const useAppStore = create<AppState>()(
       // Some da tela na hora; a exclusão de verdade (linha em `documents` +
       // arquivo no Drive) acontece em /api/documentos/excluir.
       deleteDocumento: (id) => {
+        const documento = useAppStore.getState().documentos.find((d) => d.id === id);
         set((s) => ({ documentos: s.documentos.filter((d) => d.id !== id) }));
         void fetch("/api/documentos/excluir", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id }),
         }).catch((err) => console.error("Erro ao excluir documento:", err));
+        if (documento) logAuditoria("Documento excluído", "Documentos", documento.nome);
       },
       setDocumentosFromSupabase: (documentos) =>
         set((s) => ({ documentos, notifications: syncDocumentoAlerts(s.notifications, documentos, s.clients) })),
@@ -1070,8 +1137,10 @@ export const useAppStore = create<AppState>()(
       },
 
       deleteProcessoSocietario: (id) => {
+        const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === id);
         set((s) => ({ processosSocietarios: s.processosSocietarios.filter((p) => p.id !== id) }));
         deleteFinanceiro("processosSocietarios", id);
+        if (processo) logAuditoria("Processo societário excluído", "Societário", processo.tipoServico);
       },
 
       addEtapaProcesso: (processoId, etapa) => {
@@ -1133,8 +1202,10 @@ export const useAppStore = create<AppState>()(
         if (item) pushFinanceiro("recebimentos", id, null, item);
       },
       deleteRecebimento: (id) => {
+        const recebimento = useAppStore.getState().recebimentos.find((r) => r.id === id);
         set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) }));
         deleteFinanceiro("recebimentos", id);
+        if (recebimento) logAuditoria("Recebimento excluído", "Financeiro", `${recebimento.nome} (${formatCurrency(recebimento.valor)})`);
       },
 
       addParcelamento: (parcelamento) => {
@@ -1147,11 +1218,13 @@ export const useAppStore = create<AppState>()(
         if (item) pushFinanceiro("parcelamentos", id, null, item);
       },
       deleteParcelamento: (id) => {
+        const parcelamento = useAppStore.getState().parcelamentos.find((p) => p.id === id);
         set((s) => ({
           parcelamentos: s.parcelamentos.filter((p) => p.id !== id),
           enviosParcelamento: s.enviosParcelamento.filter((e) => e.parcelamentoId !== id),
         }));
         deleteFinanceiro("parcelamentos", id);
+        if (parcelamento) logAuditoria("Parcelamento excluído", "Parcelamentos", `${parcelamento.clienteNome} — ${parcelamento.nome}`);
         // Os envios desse parcelamento já saíram da tela acima — isso só limpa as linhas correspondentes no banco.
         void createClient()
           .from("dados_financeiros")
@@ -1232,8 +1305,10 @@ export const useAppStore = create<AppState>()(
         if (guia) pushFinanceiro("guiasFiscais", id, guia.clienteId, guia);
       },
       deleteGuiaFiscal: (id) => {
+        const guia = useAppStore.getState().guiasFiscais.find((g) => g.id === id);
         set((s) => ({ guiasFiscais: s.guiasFiscais.filter((g) => g.id !== id) }));
         deleteFinanceiro("guiasFiscais", id);
+        if (guia) logAuditoria("Guia fiscal excluída", "Guias Fiscais", `${guia.tipo} — ${guia.competencia}`);
       },
 
       updateRecebimentoParceiro: (clienteId, competencia, patch) => {
@@ -1283,11 +1358,13 @@ export const useAppStore = create<AppState>()(
         if (licenca) pushFinanceiro("licencas", id, licenca.clienteId, licenca);
       },
       deleteLicenca: (id) => {
+        const licenca = useAppStore.getState().licencas.find((l) => l.id === id);
         set((s) => {
           const licencas = s.licencas.filter((l) => l.id !== id);
           return { licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) };
         });
         deleteFinanceiro("licencas", id);
+        if (licenca) logAuditoria("Licença excluída", "Licenças", licenca.nome);
       },
 
       addIndicacao: (indicacao) => {
@@ -1300,8 +1377,10 @@ export const useAppStore = create<AppState>()(
         if (indicacao) pushFinanceiro("indicacoes", id, indicacao.clienteId, indicacao);
       },
       deleteIndicacao: (id) => {
+        const indicacao = useAppStore.getState().indicacoes.find((i) => i.id === id);
         set((s) => ({ indicacoes: s.indicacoes.filter((i) => i.id !== id) }));
         deleteFinanceiro("indicacoes", id);
+        if (indicacao) logAuditoria("Indicação excluída", "Clientes", indicacao.nomeIndicado);
       },
 
       addServicoPortfolio: (servico) => {
@@ -1316,8 +1395,10 @@ export const useAppStore = create<AppState>()(
         if (servico) pushFinanceiro("servicosPortfolio", id, null, servico);
       },
       deleteServicoPortfolio: (id) => {
+        const servico = useAppStore.getState().servicosPortfolio.find((sp) => sp.id === id);
         set((s) => ({ servicosPortfolio: s.servicosPortfolio.filter((sp) => sp.id !== id) }));
         deleteFinanceiro("servicosPortfolio", id);
+        if (servico) logAuditoria("Serviço do portfólio excluído", "Portfólio", servico.nome);
       },
 
       setChecklistContabil: (clienteId, competencia, rotina, status) => {
@@ -1427,6 +1508,7 @@ export const useAppStore = create<AppState>()(
         const {
           team,
           permissoes,
+          auditLog,
           documentos,
           pendencias,
           tiposDocumentoRecorrente,

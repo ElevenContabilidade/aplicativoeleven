@@ -32,6 +32,7 @@ import {
   KeyRound,
   PiggyBank,
   Gauge,
+  ShieldAlert,
 } from "lucide-react";
 
 export interface NavItem {
@@ -82,5 +83,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Atendimento", href: "/atendimento", icon: Headset, section: "gestao" },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3, section: "gestao" },
   { label: "Equipe", href: "/equipe", icon: Users, section: "gestao" },
+  { label: "Auditoria", href: "/auditoria", icon: ShieldAlert, section: "gestao" },
   { label: "Configurações", href: "/configuracoes", icon: Settings, section: "gestao" },
 ];

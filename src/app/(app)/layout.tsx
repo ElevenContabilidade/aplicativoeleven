@@ -58,10 +58,11 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
 
   const modulo = moduloDaRota(pathname);
   const colaborador = team.find((m) => m.id === userId);
-  // A tela de Equipe controla as permissões de todo mundo — só Administrador
-  // acessa, e essa regra é fixa (não passa pela matriz de permissões
-  // granular), senão alguém poderia se auto-liberar acesso por lá.
-  const somenteAdmin = modulo === "Equipe" && colaborador?.perfil !== "Administrador";
+  // Equipe controla as permissões de todo mundo e Auditoria vê o que
+  // qualquer colaborador fez — só Administrador acessa, e essa regra é fixa
+  // (não passa pela matriz de permissões granular), senão alguém poderia se
+  // auto-liberar acesso por lá.
+  const somenteAdmin = (modulo === "Equipe" || modulo === "Auditoria") && colaborador?.perfil !== "Administrador";
   const podeVisualizar = !somenteAdmin && (!modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar"));
 
   return (

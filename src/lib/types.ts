@@ -861,6 +861,20 @@ export interface ContratoAssinatura {
   atualizadoEm: string;
 }
 
+// ---------- Log de auditoria ----------
+
+/** Um evento de "quem fez o quê" no sistema, pra tela de Auditoria — cobre
+ * as ações de maior risco (exclusões, ciclo de vida de cliente/colaborador,
+ * mudanças de honorário e de permissão), não toda edição de campo. */
+export interface AuditLogEntry {
+  id: string;
+  data: string; // ISO datetime
+  autor: string;
+  acao: string;
+  modulo: string;
+  detalhe?: string;
+}
+
 // ---------- Notificações ----------
 
 export type NotificationTipo =

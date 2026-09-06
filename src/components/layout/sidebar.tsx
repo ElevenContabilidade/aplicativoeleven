@@ -34,9 +34,10 @@ export function SidebarNav({
 
   function podeVer(href: string) {
     const modulo = moduloDaRota(href);
-    // Equipe gerencia as permissões de todo mundo — fica visível só pra
-    // Administrador, independente da matriz de permissões granular.
-    if (modulo === "Equipe") return colaborador?.perfil === "Administrador";
+    // Equipe gerencia as permissões de todo mundo e Auditoria vê o que
+    // qualquer colaborador fez — ambas ficam visíveis só pra Administrador,
+    // independente da matriz de permissões granular.
+    if (modulo === "Equipe" || modulo === "Auditoria") return colaborador?.perfil === "Administrador";
     return !modulo || !userId || temPermissao(permissoes, userId, modulo, "Visualizar");
   }
 

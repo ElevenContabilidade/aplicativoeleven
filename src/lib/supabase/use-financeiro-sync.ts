@@ -31,6 +31,7 @@ import type {
   DadosEscritorio,
   ContratoAssinatura,
   Funcionario,
+  AuditLogEntry,
 } from "@/lib/types";
 
 interface DadosFinanceirosRow {
@@ -76,6 +77,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setMetaMensalClientesFromSupabase = useAppStore((s) => s.setMetaMensalClientesFromSupabase);
   const setContratosAssinaturaFromSupabase = useAppStore((s) => s.setContratosAssinaturaFromSupabase);
   const setFuncionariosFromSupabase = useAppStore((s) => s.setFuncionariosFromSupabase);
+  const setAuditLogFromSupabase = useAppStore((s) => s.setAuditLogFromSupabase);
   const applyNotificationsLidas = useAppStore((s) => s.applyNotificationsLidas);
 
   useEffect(() => {
@@ -127,6 +129,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setSistemasEscritorioFromSupabase(porTipo<SistemaEscritorio>("sistemasEscritorio"));
       setContratosAssinaturaFromSupabase(porTipo<ContratoAssinatura>("contratosAssinatura"));
       setFuncionariosFromSupabase(porTipo<Funcionario>("funcionarios"));
+      setAuditLogFromSupabase(porTipo<AuditLogEntry>("auditLog"));
 
       const dadosEscritorio = itemUnico<DadosEscritorio>("dadosEscritorio");
       if (dadosEscritorio) setDadosEscritorioFromSupabase(dadosEscritorio);
@@ -181,6 +184,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setMetaMensalClientesFromSupabase,
     setContratosAssinaturaFromSupabase,
     setFuncionariosFromSupabase,
+    setAuditLogFromSupabase,
     applyNotificationsLidas,
   ]);
 }
