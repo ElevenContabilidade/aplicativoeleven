@@ -160,8 +160,9 @@ export function TiposDocumentoRecorrenteCard({ clienteId }: { clienteId: string 
           <div className="space-y-2 rounded-lg border border-sand-200 p-3">
             <p className="text-[11px] font-semibold text-sand-700">Lembrete mensal por e-mail</p>
             <p className="text-[11px] text-sand-500">
-              Todo mês (dia configurado em LEMBRETE_DOCUMENTOS_DIA), quem tiver documento pendente do mês anterior recebe um
-              e-mail cobrando automaticamente. Pra disparar na hora, escolha a competência que o e-mail vai cobrar:
+              Nos dias configurados em LEMBRETE_DOCUMENTOS_DIAS (padrão: dias 1, 3 e 5 do mês), quem ainda tiver documento
+              pendente do mês anterior recebe um e-mail cobrando — continua cobrando em cada um desses dias até o cliente
+              enviar tudo. Pra disparar na hora, escolha a competência que o e-mail vai cobrar:
             </p>
             <div className="flex items-center gap-2">
               <Select value={mesLembrete} onValueChange={(v) => setCompetenciaLembrete((c) => ({ ...c, mes: v }))}>

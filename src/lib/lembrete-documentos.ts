@@ -57,12 +57,22 @@ async function buscarEnviosDaCompetencia(
   }));
 }
 
+// Dedup por DIA (não por competência inteira) — assim o mesmo lembrete pode
+// disparar de novo em cada dia configurado em LEMBRETE_DOCUMENTOS_DIAS
+// (ex: dias 1, 3 e 5), continuando a cobrar quem ainda não enviou, sem
+// reenviar duas vezes no mesmo dia. Some sozinho quando os documentos da
+// competência já estão todos enviados (checado antes, em `pendentes`).
+function idLembreteHoje(clienteId: string, competencia: string): string {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return `${clienteId}-${competencia}-${hoje}`;
+}
+
 async function jaEnviouLembrete(admin: ReturnType<typeof createAdminClient>, clienteId: string, competencia: string): Promise<boolean> {
   const { data } = await admin
     .from("dados_financeiros")
     .select("id")
     .eq("tipo", "lembretesDocumentos")
-    .eq("id", `${clienteId}-${competencia}`)
+    .eq("id", idLembreteHoje(clienteId, competencia))
     .maybeSingle();
   return !!data;
 }
@@ -76,7 +86,7 @@ async function registrarLembreteEnviado(
   await admin.from("dados_financeiros").upsert(
     {
       tipo: "lembretesDocumentos",
-      id: `${clienteId}-${competencia}`,
+      id: idLembreteHoje(clienteId, competencia),
       cliente_id: clienteId,
       data: { clienteId, competencia, email, enviadoEm: new Date().toISOString() },
       atualizado_em: new Date().toISOString(),
