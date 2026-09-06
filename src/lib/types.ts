@@ -39,6 +39,10 @@ export interface TeamMember {
    * a senha é exibida na tela para quem cadastrou repassar manualmente. */
   senhaDefinida?: boolean;
   senhaTemporaria?: string;
+  /** Custo mensal estimado desse colaborador (ex: salário + encargos) —
+   * opcional, usado só pra estimar rentabilidade por cliente em Relatórios/
+   * Rentabilidade (reparte esse custo entre os clientes que ele atende). */
+  custoMensal?: number;
 }
 
 /** Dados cadastrais e de contato da própria Eleven (o escritório), não de
@@ -301,6 +305,10 @@ export interface FinanceiroCliente {
   formaPagamento: string;
   inicioContrato: string;
   reajuste?: string;
+  /** Data do último reajuste de honorário aplicado — quando ausente, o
+   * início do contrato vale como referência. Alimenta o alerta de "reajuste
+   * pendente" (12+ meses sem reajustar) em Alertas/Relatórios. */
+  dataUltimoReajuste?: string;
   statusFinanceiro: "Pago" | "Em aberto" | "Atrasado" | "Negociado" | "Cancelado";
 }
 
@@ -859,7 +867,16 @@ export interface ContratoAssinatura {
 
 // ---------- Notificações ----------
 
-export type NotificationTipo = "urgente" | "certificado" | "comercial" | "financeiro" | "tarefa" | "licenca" | "fiscal" | "documento";
+export type NotificationTipo =
+  | "urgente"
+  | "certificado"
+  | "comercial"
+  | "financeiro"
+  | "tarefa"
+  | "licenca"
+  | "fiscal"
+  | "documento"
+  | "reajuste";
 
 export interface AppNotification {
   id: string;

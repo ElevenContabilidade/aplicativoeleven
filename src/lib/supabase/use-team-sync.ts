@@ -16,6 +16,7 @@ interface ProfileRow {
   avatar_color: string;
   ativo: boolean;
   clientes_vinculados: string[] | null;
+  custo_mensal: number | null;
 }
 
 interface PermissionRow {
@@ -36,6 +37,7 @@ function mapProfileRow(row: ProfileRow): TeamMember {
     avatarColor: row.avatar_color,
     ativo: row.ativo,
     clientesVinculados: row.clientes_vinculados ?? undefined,
+    custoMensal: row.custo_mensal ?? undefined,
     historico: [],
   };
 }

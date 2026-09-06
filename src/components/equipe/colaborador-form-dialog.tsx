@@ -38,6 +38,7 @@ export function ColaboradorFormDialog({
   const [celular, setCelular] = useState(colaborador?.celular ?? "");
   const [perfil, setPerfil] = useState<PerfilEquipe>(colaborador?.perfil ?? "Comercial");
   const [departamentos, setDepartamentos] = useState<Departamento[]>(colaborador?.departamentos ?? []);
+  const [custoMensal, setCustoMensal] = useState(colaborador?.custoMensal !== undefined ? String(colaborador.custoMensal) : "");
   const [convite, setConvite] = useState<{ email: string; senha: string } | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [envioStatus, setEnvioStatus] = useState<"enviando" | "enviado" | "nao_configurado" | "erro" | null>(null);
@@ -90,12 +91,14 @@ export function ColaboradorFormDialog({
       return;
     }
     setEmailErro(null);
+    const custoMensalNum = custoMensal.trim() === "" ? undefined : Number(custoMensal);
     const patch = {
       nome: nome.trim(),
       email: email.trim(),
       celular: celular.trim() || undefined,
       perfil,
       departamentos,
+      custoMensal: custoMensalNum,
     };
     if (colaborador) {
       updateTeamMember(colaborador.id, patch);
@@ -228,7 +231,21 @@ export function ColaboradorFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="mb-1 block">Custo mensal estimado (R$)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={custoMensal}
+                onChange={(e) => setCustoMensal(e.target.value)}
+                placeholder="Opcional"
+              />
+            </div>
           </div>
+          <p className="-mt-1 text-[11px] text-sand-500">
+            Usado só pra estimar a rentabilidade por cliente (Relatórios/Rentabilidade) — não aparece em nenhum lugar
+            visível pro cliente.
+          </p>
           <div>
             <Label className="mb-1.5 block">Departamentos</Label>
             <p className="mb-1.5 text-[11px] text-sand-500">
