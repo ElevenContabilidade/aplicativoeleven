@@ -13,7 +13,13 @@ export function TaskCard({ task, onOpen }: { task: Task; onOpen: () => void }) {
   const client = clients.find((c) => c.id === task.clienteId);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
 
-  const overdue = !["Concluída", "Cancelada"].includes(task.status) && new Date(task.prazo) < new Date(new Date().toDateString());
+  // Comparação por string (não por Date) pra não misturar interpretação
+  // UTC (task.prazo, "YYYY-MM-DD") com local (toDateString()) — essa mistura
+  // fazia tarefas com prazo hoje aparecerem como atrasadas um dia antes da
+  // hora, em qualquer fuso atrás de UTC (todo o Brasil).
+  const hoje = new Date();
+  const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+  const overdue = !["Concluída", "Cancelada"].includes(task.status) && task.prazo < hojeStr;
 
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }

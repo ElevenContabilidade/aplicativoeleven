@@ -278,9 +278,13 @@ export default function ClientProfilePage() {
   ].sort((a, b) => b.competencia.localeCompare(a.competencia));
   const onboardingPct = Math.round((client.onboarding.filter((o) => o.concluido).length / client.onboarding.length) * 100);
 
+  // "Cliente desde" reflete o início do contrato (data real da parceria,
+  // editável em Financeiro), não client.criadoEm — que é só quando o
+  // cadastro foi criado no sistema e, pra clientes antigos importados
+  // depois, seria sempre "hoje".
   const parceriaMeses = Math.max(
     0,
-    Math.round((new Date().getTime() - new Date(client.criadoEm).getTime()) / (1000 * 60 * 60 * 24 * 30))
+    Math.round((new Date().getTime() - new Date(client.financeiro.inicioContrato).getTime()) / (1000 * 60 * 60 * 24 * 30))
   );
 
   function addNote() {
@@ -459,7 +463,7 @@ export default function ClientProfilePage() {
             <CardContent className="space-y-2 pt-4 text-xs">
               <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
                 <span className="text-sand-500">Cliente desde</span>
-                <span className="font-medium text-sand-800">{formatDate(client.criadoEm)} · {parceriaMeses} {parceriaMeses === 1 ? "mês" : "meses"}</span>
+                <span className="font-medium text-sand-800">{formatDate(client.financeiro.inicioContrato)} · {parceriaMeses} {parceriaMeses === 1 ? "mês" : "meses"}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2">
                 <span className="text-sand-500">Início do contrato</span>

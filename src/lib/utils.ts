@@ -9,7 +9,18 @@ export function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/** "YYYY-MM-DD" (sem horário) — usado em vencimento, início de contrato,
+ * data de abertura etc. `new Date("YYYY-MM-DD")` interpreta isso como meia-
+ * noite em UTC; num fuso atrás de UTC (todo o Brasil) isso já é o dia
+ * anterior lá, então exibiria uma data errada. Monta a data pelos
+ * componentes, no fuso local, pra não sofrer esse deslocamento. */
+const DATA_SEM_HORARIO_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 export function formatDate(value: string | Date) {
+  if (typeof value === "string" && DATA_SEM_HORARIO_RE.test(value)) {
+    const [ano, mes, dia] = value.split("-").map(Number);
+    return new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR");
+  }
   const d = typeof value === "string" ? new Date(value) : value;
   return d.toLocaleDateString("pt-BR");
 }
