@@ -238,6 +238,7 @@ interface AppState {
   updateTeamMember: (memberId: string, patch: Partial<TeamMember>) => void;
   deleteTeamMember: (memberId: string) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
+  updateClienteSegmento: (clientId: string, segmento: string) => void;
   updateClientResponsaveis: (clientId: string, patch: Partial<Responsaveis>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
@@ -858,6 +859,12 @@ export const useAppStore = create<AppState>()(
       updateClientDados: (clientId, patch) => {
         set((s) => ({
           clients: s.clients.map((c) => (c.id === clientId ? { ...c, dados: { ...c.dados, ...patch } } : c)),
+        }));
+        pushCliente(clientId);
+      },
+      updateClienteSegmento: (clientId, segmento) => {
+        set((s) => ({
+          clients: s.clients.map((c) => (c.id === clientId ? { ...c, segmento } : c)),
         }));
         pushCliente(clientId);
       },

@@ -22,7 +22,9 @@ const SETORES: { value: DepartamentoChave; label: string }[] = [
 
 export function CadastroForm({ client }: { client: Client }) {
   const updateClientDados = useAppStore((s) => s.updateClientDados);
+  const updateClienteSegmento = useAppStore((s) => s.updateClienteSegmento);
   const [form, setForm] = useState<DadosCadastrais>(client.dados);
+  const [segmento, setSegmento] = useState(client.segmento);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [buscaErro, setBuscaErro] = useState<string | null>(null);
@@ -76,6 +78,7 @@ export function CadastroForm({ client }: { client: Client }) {
     // rápido do Societário foi completado de verdade — passa a aparecer
     // normalmente na tela de Clientes.
     updateClientDados(client.id, { ...form, criadoViaSocietario: false });
+    updateClienteSegmento(client.id, segmento);
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
   }
@@ -89,6 +92,9 @@ export function CadastroForm({ client }: { client: Client }) {
           </Field>
           <Field label="Nome fantasia">
             <Input value={form.nomeFantasia ?? ""} onChange={(e) => set("nomeFantasia", e.target.value)} />
+          </Field>
+          <Field label="Segmento">
+            <Input value={segmento} onChange={(e) => setSegmento(e.target.value)} placeholder="Ex: Clínica odontológica" />
           </Field>
           <Field label="CNPJ" className="sm:col-span-2 lg:col-span-1">
             <div className="flex gap-2">
