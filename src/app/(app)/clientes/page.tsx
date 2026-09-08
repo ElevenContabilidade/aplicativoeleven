@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, UploadCloud } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { ImportarClientesDialog } from "@/components/clients/importar-clientes-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
@@ -80,6 +81,7 @@ export default function ClientesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/clientes");
@@ -119,7 +121,14 @@ export default function ClientesPage() {
       <PageHeader
         title="Clientes"
         description={`${clients.length} clientes cadastrados na carteira da Eleven.`}
-        actions={<Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo cliente</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <UploadCloud className="size-3.5" /> Importar planilha
+            </Button>
+            <Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo cliente</Button>
+          </div>
+        }
       />
 
       <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)} className="mb-4">
@@ -224,6 +233,7 @@ export default function ClientesPage() {
       )}
 
       <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <ImportarClientesDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }
