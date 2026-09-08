@@ -13,7 +13,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { CLIENT_STATUS, ONBOARDING_TEMPLATE, type Client, type ClientStatus, type DadosCadastrais } from "@/lib/types";
 import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
-const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
+const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real", "Doméstica"];
 
 export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const router = useRouter();

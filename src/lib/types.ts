@@ -241,7 +241,7 @@ export interface DadosCadastrais {
   naturezaJuridica: string;
   dataAbertura: string;
   capitalSocial: number;
-  regimeTributario: "MEI" | "Simples Nacional" | "Lucro Presumido" | "Lucro Real";
+  regimeTributario: "MEI" | "Simples Nacional" | "Lucro Presumido" | "Lucro Real" | "Doméstica";
   municipio: string;
   estado: string;
   endereco: string;
@@ -976,10 +976,14 @@ export const ROTINAS_FISCAIS_MENSAIS = [
 export function obrigacaoAnualPorRegime(regime: DadosCadastrais["regimeTributario"]): string {
   if (regime === "MEI") return "DASN-MEI";
   if (regime === "Simples Nacional") return "DEFIS";
+  if (regime === "Doméstica") return "—";
   return "ECF";
 }
 
+/** Empregador doméstico não tem obrigação fiscal anual (nem DEFIS/DASN-MEI/ECF
+ * — é regido só pelo eSocial doméstico, mensal, à parte desse checklist). */
 export function rotinasFiscaisAnuais(client: Pick<Client, "dados" | "tags">): string[] {
+  if (client.dados.regimeTributario === "Doméstica") return [];
   const base = obrigacaoAnualPorRegime(client.dados.regimeTributario);
   return client.tags.includes("#Saúde") ? [base, "DMED"] : [base];
 }
@@ -1005,6 +1009,7 @@ const ROTINAS_EXCLUSIVAS_REGIME_NORMAL = [
  * isso, ficam travadas. A emissão do DAS MEI em si tem módulo próprio (MEI),
  * não entra nesse checklist. */
 export function rotinasFiscaisMensaisFor(client: Pick<Client, "dados">): string[] {
+  if (client.dados.regimeTributario === "Doméstica") return [];
   const isMei = client.dados.regimeTributario === "MEI";
   if (isMei && !client.dados.contabilidadeRegular) {
     return ROTINAS_FISCAIS_MENSAIS.filter((r) => !(ROTINAS_EXCLUSIVAS_REGIME_NORMAL as readonly string[]).includes(r));
@@ -1014,8 +1019,10 @@ export function rotinasFiscaisMensaisFor(client: Pick<Client, "dados">): string[
 
 /** Rotinas contábeis (mensais ou anuais) aplicáveis ao cliente — um MEI só
  * tem contabilidade formal (e, portanto, essas rotinas) quando o cadastro
- * marca "contabilidade regular"; sem isso, nenhuma rotina contábil se aplica. */
+ * marca "contabilidade regular"; sem isso, nenhuma rotina contábil se aplica.
+ * Empregador doméstico (pessoa física) nunca tem contabilidade formal. */
 export function rotinasContabeisFor(client: Pick<Client, "dados">, rotinas: readonly string[]): string[] {
+  if (client.dados.regimeTributario === "Doméstica") return [];
   if (client.dados.regimeTributario === "MEI" && !client.dados.contabilidadeRegular) return [];
   return [...rotinas];
 }

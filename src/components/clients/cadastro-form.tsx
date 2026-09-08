@@ -12,7 +12,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import type { Client, DadosCadastrais, DepartamentoChave } from "@/lib/types";
 import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
-const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real"];
+const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real", "Doméstica"];
 
 const SETORES: { value: DepartamentoChave; label: string }[] = [
   { value: "fiscal", label: "Fiscal" },
