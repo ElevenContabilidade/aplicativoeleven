@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, Folder, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Building2, ShieldCheck, Wallet, User, ClipboardCheck, Upload, Award, Share2, Trash2, Plus, Handshake, Pencil, Eye, EyeOff, Receipt, FolderOpen, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -31,8 +31,7 @@ import { TiposDocumentoRecorrenteCard } from "@/components/clients/tipos-documen
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
-import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro, type DocumentoCategoria } from "@/lib/types";
-import { PASTAS_DRIVE, PASTA_POR_CATEGORIA, CATEGORIA_POR_PASTA, type PastaDrive } from "@/lib/documento-pastas";
+import { CLIENT_STATUS, type ClientStatus, type Socio, type Contato, type HistoricoFinanceiro } from "@/lib/types";
 import { isParcelamentoAtivo, parcelamentoPertenceAoCliente } from "@/lib/parcelamento";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
 import { resolveBoletoLedger } from "@/lib/boleto";
@@ -72,15 +71,6 @@ export default function ClientProfilePage() {
   const [noteText, setNoteText] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [docUploadOpen, setDocUploadOpen] = useState(false);
-  const [uploadCategoria, setUploadCategoria] = useState<DocumentoCategoria | undefined>(undefined);
-  const [sincronizandoDrive, setSincronizandoDrive] = useState(false);
-  const [sincronizarErro, setSincronizarErro] = useState<string | null>(null);
-  const [sincronizarInfo, setSincronizarInfo] = useState<string | null>(null);
-  const [sincronizarFolderId, setSincronizarFolderId] = useState<string | null>(null);
-  const [sincronizarResumoPastas, setSincronizarResumoPastas] = useState<
-    Array<{ nome: string; folderId: string; totalArquivos: number }> | null
-  >(null);
-  const [sincronizarEscopo, setSincronizarEscopo] = useState<string | null>(null);
   const [licencaOpen, setLicencaOpen] = useState(false);
   const [indicacaoOpen, setIndicacaoOpen] = useState(false);
   const [socioOpen, setSocioOpen] = useState(false);
@@ -164,62 +154,7 @@ export default function ClientProfilePage() {
   const myBoletos = boletosMensais.filter((b) => b.clienteId === client.id && b.status === "Emitido" && !b.removido);
   const myRecebimentosParceiro = recebimentosParceiro.filter((r) => r.clienteId === client.id && !r.removido);
 
-  async function sincronizarDrive() {
-    setSincronizandoDrive(true);
-    setSincronizarErro(null);
-    setSincronizarInfo(null);
-    setSincronizarFolderId(null);
-    setSincronizarResumoPastas(null);
-    setSincronizarEscopo(null);
-    try {
-      const nome = client!.dados.nomeFantasia || client!.dados.razaoSocial;
-      const res = await fetch("/api/documentos/sincronizar-drive", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clienteId: client!.id, clienteNome: nome }),
-      });
-      const json = await res.json();
-      if (!json.ok) {
-        setSincronizarErro(json.error ?? "Não foi possível sincronizar com o Drive.");
-      } else {
-        const partes: string[] = [];
-        if (json.importados > 0) {
-          partes.push(`${json.importados} documento${json.importados === 1 ? "" : "s"} importado${json.importados === 1 ? "" : "s"} do Drive`);
-        }
-        if (json.removidos > 0) {
-          partes.push(`${json.removidos} documento${json.removidos === 1 ? "" : "s"} removido${json.removidos === 1 ? "" : "s"} (excluído${json.removidos === 1 ? "" : "s"} ou na lixeira do Drive)`);
-        }
-        if (json.reclassificados > 0) {
-          partes.push(`${json.reclassificados} documento${json.reclassificados === 1 ? "" : "s"} mudou${json.reclassificados === 1 ? "" : "ram"} de pasta`);
-        }
-        if (Array.isArray(json.jaCadastradosEmOutroCliente) && json.jaCadastradosEmOutroCliente.length > 0) {
-          const lista = json.jaCadastradosEmOutroCliente
-            .map((j: { arquivo: string; clienteNome: string }) => `"${j.arquivo}" já está no cliente ${j.clienteNome}`)
-            .join("; ");
-          partes.push(lista);
-        }
-        if (partes.length > 0) {
-          setSincronizarInfo(`${partes.join(" • ")}.`);
-        } else {
-          setSincronizarInfo("Nenhum documento novo. Confira pasta por pasta abaixo se é onde você esperava:");
-        }
-        if (json.clienteFolderId) setSincronizarFolderId(json.clienteFolderId);
-        if (Array.isArray(json.resumoPastas)) setSincronizarResumoPastas(json.resumoPastas);
-        if (json.escopoConectado) setSincronizarEscopo(json.escopoConectado);
-      }
-    } catch {
-      setSincronizarErro("Não foi possível sincronizar com o Drive.");
-    } finally {
-      setSincronizandoDrive(false);
-    }
-  }
-
-  function abrirUploadPasta(pasta: PastaDrive) {
-    setUploadCategoria(CATEGORIA_POR_PASTA[pasta]);
-    setDocUploadOpen(true);
-  }
   function abrirUploadGeral() {
-    setUploadCategoria(undefined);
     setDocUploadOpen(true);
   }
 
@@ -746,116 +681,51 @@ export default function ClientProfilePage() {
         <TabsContent value="documentos" className="space-y-4">
           <TiposDocumentoRecorrenteCard clienteId={client.id} />
           <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between gap-2">
-                {client.dados.linkDrive ? (
-                  <a
-                    href={client.dados.linkDrive}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs font-medium text-wine-700 hover:underline"
-                  >
-                    <FolderOpen className="size-3.5" /> Abrir pasta no Drive
-                  </a>
-                ) : (
-                  <p className="text-[11px] text-sand-400">
-                    Nenhuma pasta do Drive vinculada — adicione o link em Dados cadastrais.
-                  </p>
-                )}
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" onClick={sincronizarDrive} disabled={sincronizandoDrive}>
-                    <RefreshCw className={cn("size-3.5", sincronizandoDrive && "animate-spin")} />
-                    {sincronizandoDrive ? "Sincronizando..." : "Sincronizar com Drive"}
-                  </Button>
-                  <Button size="sm" onClick={abrirUploadGeral}>
-                    <Upload className="size-3.5" /> Anexar documento
-                  </Button>
-                </div>
-              </div>
-              {sincronizarErro && <p className="mt-3 text-[11px] text-status-danger">{sincronizarErro}</p>}
-              {sincronizarInfo && (
-                <p className="mt-3 text-[11px] text-sand-400">
-                  {sincronizarInfo}
-                  {sincronizarFolderId && (
-                    <>
-                      {" "}
-                      <a
-                        href={`https://drive.google.com/drive/folders/${sincronizarFolderId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-wine-700 hover:underline"
-                      >
-                        Abrir a pasta que o sistema está usando
-                      </a>{" "}
-                      — confira se é a mesma pasta onde você colocou o arquivo.
-                    </>
-                  )}
+            <CardContent className="flex items-center justify-between gap-2 p-5">
+              {client.dados.linkDrive ? (
+                <a
+                  href={client.dados.linkDrive}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-medium text-wine-700 hover:underline"
+                >
+                  <FolderOpen className="size-3.5" /> Abrir pasta no Drive
+                </a>
+              ) : (
+                <p className="text-[11px] text-sand-400">
+                  Nenhuma pasta do Drive vinculada — adicione o link em Dados cadastrais.
                 </p>
               )}
-              {sincronizarResumoPastas && sincronizarResumoPastas.length > 0 && (
-                <ul className="mt-2 space-y-0.5 text-[11px] text-sand-400">
-                  {sincronizarResumoPastas.map((p) => (
-                    <li key={p.folderId}>
-                      <a
-                        href={`https://drive.google.com/drive/folders/${p.folderId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-wine-700 hover:underline"
-                      >
-                        {p.nome}
-                      </a>{" "}
-                      — {p.totalArquivos} arquivo{p.totalArquivos === 1 ? "" : "s"} encontrado{p.totalArquivos === 1 ? "" : "s"}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {sincronizarEscopo && (
-                <p className="mt-2 text-[11px] text-sand-400">Permissão atual concedida pelo Google: {sincronizarEscopo}</p>
-              )}
+              <Button size="sm" onClick={abrirUploadGeral}>
+                <Upload className="size-3.5" /> Anexar documento
+              </Button>
             </CardContent>
           </Card>
 
-          {PASTAS_DRIVE.map((pasta) => {
-            const docsDaPasta = myDocs.filter((d) => PASTA_POR_CATEGORIA[d.categoria] === pasta);
-            return (
-              <Card key={pasta}>
-                <CardContent className="p-5">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-sand-800">
-                      <Folder className="size-4 text-wine-500" /> {pasta}
-                      <span className="font-normal text-sand-400">({docsDaPasta.length})</span>
+          <Card>
+            <CardContent className="p-5">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-sand-800">
+                Documentos <span className="font-normal text-sand-400">({myDocs.length})</span>
+              </div>
+              <div className="space-y-2">
+                {[...myDocs].sort((a, b) => b.dataArquivo.localeCompare(a.dataArquivo)).map((d) => (
+                  <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-sand-800">{d.nome}</span>
+                      <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="text-sand-400">{formatDate(d.dataArquivo)}</span>
+                      <DocumentActions documento={d} />
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => abrirUploadPasta(pasta)}>
-                      <Plus className="size-3.5" /> Adicionar
-                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    {docsDaPasta.map((d) => (
-                      <div key={d.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2.5 text-xs">
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium text-sand-800">{d.nome}</span>
-                          <span className="text-sand-400">{d.categoria} • {d.tamanho}</span>
-                        </span>
-                        <div className="flex shrink-0 items-center gap-3">
-                          <span className="text-sand-400">{formatDate(d.dataArquivo)}</span>
-                          <DocumentActions documento={d} />
-                        </div>
-                      </div>
-                    ))}
-                    {docsDaPasta.length === 0 && <p className="text-xs text-sand-400">Nenhum documento nessa pasta.</p>}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                ))}
+                {myDocs.length === 0 && <p className="text-xs text-sand-400">Nenhum documento anexado ainda.</p>}
+              </div>
+            </CardContent>
+          </Card>
 
-          <DocumentUploadDialog
-            key={uploadCategoria ?? "geral"}
-            open={docUploadOpen}
-            onOpenChange={setDocUploadOpen}
-            fixedClienteId={client.id}
-            fixedCategoria={uploadCategoria}
-          />
+          <DocumentUploadDialog open={docUploadOpen} onOpenChange={setDocUploadOpen} fixedClienteId={client.id} />
         </TabsContent>
 
         <TabsContent value="pendencias">
