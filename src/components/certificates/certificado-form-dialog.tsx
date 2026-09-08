@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { uploadDocumento } from "@/lib/upload-documento";
-import { CERTIFICADO_STATUS, type Certificado, type CertificadoStatus } from "@/lib/types";
+import { statusAutomaticoCertificado, type Certificado } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractDocumentDates } from "@/lib/document-date-extract";
 import { extractPfxDates } from "@/lib/pfx-dates";
@@ -50,7 +50,6 @@ export function CertificadoFormDialog({
   const [dataEmissao, setDataEmissao] = useState(certificado?.dataEmissao ?? "");
   const [dataVencimento, setDataVencimento] = useState(certificado?.dataVencimento ?? "");
   const [valor, setValor] = useState(String(certificado?.valor ?? 220));
-  const [status, setStatus] = useState<CertificadoStatus>(certificado?.status ?? "Aguardando Renovação");
   const [senha, setSenha] = useState(certificado?.senha ?? "");
   const [showSenha, setShowSenha] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -117,7 +116,7 @@ export function CertificadoFormDialog({
         tipo,
         dataEmissao: dataEmissao || undefined,
         dataVencimento,
-        status,
+        status: statusAutomaticoCertificado(dataVencimento),
         valor: Number(valor) || 0,
         senha: senha || undefined,
         documentoId,
@@ -221,15 +220,6 @@ export function CertificadoFormDialog({
               <Label className="mb-1 block">Valor (R$)</Label>
               <Input type="number" value={valor} onChange={(e) => setValor(e.target.value)} />
             </div>
-            <div>
-              <Label className="mb-1 block">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as CertificadoStatus)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {CERTIFICADO_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Senha do certificado (A1)</Label>
               <div className="relative">
@@ -252,7 +242,8 @@ export function CertificadoFormDialog({
             </div>
           </div>
           <p className="text-[11px] text-sand-400">
-            Você recebe um alerta na Central de Alertas quando faltar 1 mês para o vencimento.
+            O status (Válido / Aguardando Renovação / Vencido) é calculado sozinho a partir do vencimento — Aguardando
+            Renovação a partir de 15 dias antes. Você também recebe um alerta na Central de Alertas quando faltar 1 mês.
           </p>
           {erro && <p className="text-xs text-status-danger">{erro}</p>}
           <DialogFooter>

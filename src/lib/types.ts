@@ -735,6 +735,21 @@ export interface RecebimentoParceiroMensal {
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;
 export type CertificadoStatus = (typeof CERTIFICADO_STATUS)[number];
 
+const DIAS_AGUARDANDO_RENOVACAO_CERTIFICADO = 15;
+
+/** Status do certificado calculado na hora a partir do vencimento — não é
+ * mais um campo escolhido à mão: vencido (já passou), aguardando renovação
+ * (faltam 15 dias ou menos) ou válido (fora dessas duas janelas). */
+export function statusAutomaticoCertificado(dataVencimento: string): CertificadoStatus {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const vencimento = new Date(`${dataVencimento}T00:00:00`);
+  const dias = Math.round((vencimento.getTime() - hoje.getTime()) / 86_400_000);
+  if (dias < 0) return "Vencido";
+  if (dias <= DIAS_AGUARDANDO_RENOVACAO_CERTIFICADO) return "Aguardando Renovação";
+  return "Válido";
+}
+
 export interface Certificado {
   id: string;
   clienteId: string;

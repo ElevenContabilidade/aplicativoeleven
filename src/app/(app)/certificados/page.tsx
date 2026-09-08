@@ -14,7 +14,7 @@ import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Do
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { Certificado } from "@/lib/types";
+import { statusAutomaticoCertificado, type Certificado } from "@/lib/types";
 
 function daysUntil(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -130,7 +130,7 @@ export default function CertificadosPage() {
           formatDate(c.dataVencimento),
           days < 0 ? "vencido" : `vence em ${days}d`,
           formatCurrency(c.valor),
-          c.status,
+          statusAutomaticoCertificado(c.dataVencimento),
         ]
           .filter(Boolean)
           .join(" ")
@@ -148,7 +148,9 @@ export default function CertificadosPage() {
         } else if (sort.column === "vencimento" || sort.column === "alerta") {
           cmp = a.dataVencimento.localeCompare(b.dataVencimento);
         } else if (sort.column === "status") {
-          cmp = (STATUS_URGENCY[a.status] ?? 99) - (STATUS_URGENCY[b.status] ?? 99);
+          cmp =
+            (STATUS_URGENCY[statusAutomaticoCertificado(a.dataVencimento)] ?? 99) -
+            (STATUS_URGENCY[statusAutomaticoCertificado(b.dataVencimento)] ?? 99);
         }
         return sort.direction === "asc" ? cmp : -cmp;
       });
@@ -224,7 +226,7 @@ export default function CertificadosPage() {
                   <TableCell>{formatDate(c.dataVencimento)}</TableCell>
                   <TableCell>{expiryBadge(days)}</TableCell>
                   <TableCell>{formatCurrency(c.valor)}</TableCell>
-                  <TableCell><StatusBadge status={c.status} /></TableCell>
+                  <TableCell><StatusBadge status={statusAutomaticoCertificado(c.dataVencimento)} /></TableCell>
                   <TableCell>
                     {c.senha ? (
                       <div className="flex items-center gap-1.5">
