@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, UploadCloud } from "lucide-react";
+import { Plus, Search, UploadCloud, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { CLIENT_STATUS, type Client, type ClientStatus } from "@/lib/types";
 import { formatCurrency, initials, cn } from "@/lib/utils";
 
 type ViewMode = "quadro" | "nicho" | "cidade" | "estado" | "regime" | "honorario";
+type SortField = "cliente" | "segmento" | "regime" | "responsavel" | "mensalidade" | "status";
 
 const VIEWS: { value: ViewMode; label: string }[] = [
   { value: "quadro", label: "Quadro geral" },
@@ -116,6 +117,49 @@ export default function ClientesPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filtered, view]);
 
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleSort(field: SortField) {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortField(null);
+    }
+  }
+
+  const sorted = useMemo(() => {
+    if (!sortField) return filtered;
+    function valorDe(c: Client): string | number {
+      switch (sortField) {
+        case "cliente":
+          return (c.dados.nomeFantasia ?? c.dados.razaoSocial).toLowerCase();
+        case "segmento":
+          return c.segmento.toLowerCase();
+        case "regime":
+          return c.dados.regimeTributario.toLowerCase();
+        case "responsavel":
+          return (c.responsaveis.relacionamento ? teamName(c.responsaveis.relacionamento) : "").toLowerCase();
+        case "mensalidade":
+          return c.financeiro.valorMensal;
+        case "status":
+          return c.status.toLowerCase();
+        default:
+          return "";
+      }
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const va = valorDe(a);
+      const vb = valorDe(b);
+      if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+      return String(va).localeCompare(String(vb)) * dir;
+    });
+  }, [filtered, sortField, sortDir]);
+
   return (
     <div>
       <PageHeader
@@ -157,16 +201,16 @@ export default function ClientesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Segmento</TableHead>
-              <TableHead>Regime</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead>Mensalidade</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableHead field="cliente" label="Cliente" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="segmento" label="Segmento" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="regime" label="Regime" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="responsavel" label="Responsável" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="mensalidade" label="Mensalidade" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="status" label="Status" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((c) => (
+            {sorted.map((c) => (
               <TableRow key={c.id}>
                 <TableCell>
                   <Link href={`/clientes/${c.id}`} className="flex items-center gap-2.5 hover:underline">
@@ -188,7 +232,7 @@ export default function ClientesPage() {
                 </TableCell>
               </TableRow>
             ))}
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="py-10 text-center text-sand-400">
                   Nenhum cliente encontrado.
@@ -235,6 +279,38 @@ export default function ClientesPage() {
       <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <ImportarClientesDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
+  );
+}
+
+function SortableHead({
+  field,
+  label,
+  sortField,
+  sortDir,
+  onClick,
+}: {
+  field: SortField;
+  label: string;
+  sortField: SortField | null;
+  sortDir: "asc" | "desc";
+  onClick: (field: SortField) => void;
+}) {
+  const active = sortField === field;
+  const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onClick(field)}
+        className={cn(
+          "flex items-center gap-1 text-left font-medium hover:text-sand-900",
+          active ? "text-sand-900" : "text-sand-500"
+        )}
+      >
+        {label}
+        <Icon className={cn("size-3", active ? "text-wine-600" : "text-sand-300")} />
+      </button>
+    </TableHead>
   );
 }
 
