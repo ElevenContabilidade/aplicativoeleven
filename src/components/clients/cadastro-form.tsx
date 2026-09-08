@@ -21,8 +21,7 @@ const SETORES: { value: DepartamentoChave; label: string }[] = [
 ];
 
 export function CadastroForm({ client }: { client: Client }) {
-  const updateClientDados = useAppStore((s) => s.updateClientDados);
-  const updateClienteSegmento = useAppStore((s) => s.updateClienteSegmento);
+  const salvarCadastroCliente = useAppStore((s) => s.salvarCadastroCliente);
   const [form, setForm] = useState<DadosCadastrais>(client.dados);
   const [segmento, setSegmento] = useState(client.segmento);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -77,8 +76,7 @@ export function CadastroForm({ client }: { client: Client }) {
     // Salvar o cadastro aqui é o sinal de que o cliente criado via fluxo
     // rápido do Societário foi completado de verdade — passa a aparecer
     // normalmente na tela de Clientes.
-    updateClientDados(client.id, { ...form, criadoViaSocietario: false });
-    updateClienteSegmento(client.id, segmento);
+    salvarCadastroCliente(client.id, { ...form, criadoViaSocietario: false }, segmento);
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
   }

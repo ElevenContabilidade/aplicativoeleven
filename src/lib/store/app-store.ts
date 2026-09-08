@@ -238,7 +238,7 @@ interface AppState {
   updateTeamMember: (memberId: string, patch: Partial<TeamMember>) => void;
   deleteTeamMember: (memberId: string) => void;
   updateClientDados: (clientId: string, patch: Partial<DadosCadastrais>) => void;
-  updateClienteSegmento: (clientId: string, segmento: string) => void;
+  salvarCadastroCliente: (clientId: string, patch: Partial<DadosCadastrais>, segmento: string) => void;
   updateClientResponsaveis: (clientId: string, patch: Partial<Responsaveis>) => void;
   addSocio: (clientId: string, socio: Socio) => void;
   updateSocio: (clientId: string, socioId: string, patch: Partial<Socio>) => void;
@@ -862,9 +862,16 @@ export const useAppStore = create<AppState>()(
         }));
         pushCliente(clientId);
       },
-      updateClienteSegmento: (clientId, segmento) => {
+      // Atualiza dados cadastrais + segmento numa única `set()`/`pushCliente()` —
+      // fazer em duas actions separadas (dois `set()` + dois pushes independentes
+      // pro mesmo registro) cria uma corrida: o primeiro push ainda carrega o
+      // segmento antigo, e se a resposta dele chegar depois do segundo (que já
+      // tem o valor novo), ele sobrescreve o save de volta pro valor antigo.
+      salvarCadastroCliente: (clientId, patch, segmento) => {
         set((s) => ({
-          clients: s.clients.map((c) => (c.id === clientId ? { ...c, segmento } : c)),
+          clients: s.clients.map((c) =>
+            c.id === clientId ? { ...c, dados: { ...c.dados, ...patch }, segmento } : c
+          ),
         }));
         pushCliente(clientId);
       },
