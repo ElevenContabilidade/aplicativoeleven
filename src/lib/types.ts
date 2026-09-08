@@ -942,7 +942,6 @@ export const ROTINAS_FISCAIS_MENSAIS = [
   "Classificação de documentos fiscais",
   "Fechamento do PGDAS",
   "Envio da guia do DAS",
-  "Gerar DAS MEI",
   "Emissão de livros fiscais",
   "Emissão guia DAE",
   "DeSTDA",
@@ -986,14 +985,16 @@ const ROTINAS_EXCLUSIVAS_REGIME_NORMAL = [
 ] as const;
 
 /** Rotinas fiscais mensais aplicáveis ao cliente, seguindo o regime tributário
- * cadastrado em Clientes: "Gerar DAS MEI" só entra para quem está no MEI;
- * as rotinas do regime normal (PGDAS, DAS, EFDs etc.) só entram para o MEI
- * se o cadastro marcar "contabilidade regular" — sem isso, ficam travadas. */
+ * cadastrado em Clientes: as rotinas do regime normal (PGDAS, DAS, EFDs etc.)
+ * só entram para o MEI se o cadastro marcar "contabilidade regular" — sem
+ * isso, ficam travadas. A emissão do DAS MEI em si tem módulo próprio (MEI),
+ * não entra nesse checklist. */
 export function rotinasFiscaisMensaisFor(client: Pick<Client, "dados">): string[] {
   const isMei = client.dados.regimeTributario === "MEI";
-  if (!isMei) return ROTINAS_FISCAIS_MENSAIS.filter((r) => r !== "Gerar DAS MEI");
-  if (client.dados.contabilidadeRegular) return [...ROTINAS_FISCAIS_MENSAIS];
-  return ROTINAS_FISCAIS_MENSAIS.filter((r) => !(ROTINAS_EXCLUSIVAS_REGIME_NORMAL as readonly string[]).includes(r));
+  if (isMei && !client.dados.contabilidadeRegular) {
+    return ROTINAS_FISCAIS_MENSAIS.filter((r) => !(ROTINAS_EXCLUSIVAS_REGIME_NORMAL as readonly string[]).includes(r));
+  }
+  return [...ROTINAS_FISCAIS_MENSAIS];
 }
 
 /** Rotinas contábeis (mensais ou anuais) aplicáveis ao cliente — um MEI só
