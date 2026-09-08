@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCcw, LogOut } from "lucide-react";
+import { RotateCcw, LogOut, KeyRound, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamMember } from "@/lib/team-lookup";
 import { initials } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -24,6 +25,38 @@ export default function ConfiguracoesPage() {
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifPush, setNotifPush] = useState(true);
   const [digestSemanal, setDigestSemanal] = useState(false);
+
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [salvandoSenha, setSalvandoSenha] = useState(false);
+  const [erroSenha, setErroSenha] = useState<string | null>(null);
+  const [senhaSalva, setSenhaSalva] = useState(false);
+
+  async function handleAlterarSenha(e: React.FormEvent) {
+    e.preventDefault();
+    setErroSenha(null);
+    setSenhaSalva(false);
+    if (novaSenha.length < 6) {
+      setErroSenha("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (novaSenha !== confirmarSenha) {
+      setErroSenha("As senhas não coincidem.");
+      return;
+    }
+    setSalvandoSenha(true);
+    try {
+      const { error } = await createClient().auth.updateUser({ password: novaSenha });
+      if (error) throw error;
+      setNovaSenha("");
+      setConfirmarSenha("");
+      setSenhaSalva(true);
+    } catch (err) {
+      setErroSenha(err instanceof Error ? err.message : "Não foi possível alterar a senha.");
+    } finally {
+      setSalvandoSenha(false);
+    }
+  }
 
   return (
     <div className="max-w-3xl">
@@ -60,6 +93,44 @@ export default function ConfiguracoesPage() {
                 <Input defaultValue={me?.departamentos.join(", ")} disabled />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><KeyRound className="size-4 text-wine-700" /> Alterar senha</CardTitle>
+            <CardDescription>Troque a senha padrão recebida no convite por uma de sua escolha.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <form onSubmit={handleAlterarSenha} className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="mb-1 block">Nova senha</Label>
+                <Input
+                  type="password"
+                  value={novaSenha}
+                  onChange={(e) => setNovaSenha(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block">Confirmar nova senha</Label>
+                <Input
+                  type="password"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="col-span-2 flex items-center gap-3">
+                <Button type="submit" size="sm" disabled={salvandoSenha}>
+                  {salvandoSenha && <Loader2 className="size-3.5 animate-spin" />}
+                  {salvandoSenha ? "Salvando..." : "Salvar nova senha"}
+                </Button>
+                {senhaSalva && <span className="text-xs text-status-success">Senha alterada com sucesso.</span>}
+                {erroSenha && <span className="text-xs text-status-danger">{erroSenha}</span>}
+              </div>
+            </form>
           </CardContent>
         </Card>
 

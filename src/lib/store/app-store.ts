@@ -196,6 +196,12 @@ interface AppState {
   /** Matriz de permissões por colaborador, chave `${memberId}-${modulo}-${acao}`
    * (mesmo formato usado na tela de Equipe). Ausência de chave = liberado. */
   permissoes: Record<string, boolean>;
+  /** Fica `false` até a primeira carga de `permissoes` vinda do Supabase.
+   * Enquanto isso, uma tela que decide o que mostrar com base em permissão
+   * (ex: cards financeiros no Início) deve tratar como "sem acesso ainda"
+   * em vez do padrão "liberado" de `temPermissao` — senão um colaborador
+   * restrito vê o dado sensível piscar na tela antes da restrição chegar. */
+  permissoesCarregadas: boolean;
   /** Log de auditoria (tela "Auditoria") — quem fez o quê, cobrindo as ações
    * de maior risco: exclusões, ciclo de vida de cliente/colaborador,
    * honorário e permissões. */
@@ -426,6 +432,7 @@ const initial = {
   checklistPessoal: [],
   checklistMei: [],
   permissoes: {},
+  permissoesCarregadas: false,
   auditLog: [] as AuditLogEntry[],
   dadosEscritorio: {
     razaoSocial: "Eleven Contabilidade & Consultoria",
@@ -706,7 +713,7 @@ export const useAppStore = create<AppState>()(
         }
       },
       setTeamFromSupabase: (team) => set({ team }),
-      setPermissoesFromSupabase: (permissoes) => set({ permissoes }),
+      setPermissoesFromSupabase: (permissoes) => set({ permissoes, permissoesCarregadas: true }),
       setAuditLogFromSupabase: (auditLog) => set({ auditLog }),
       updateDadosEscritorio: (patch) => {
         set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } }));
@@ -1508,6 +1515,7 @@ export const useAppStore = create<AppState>()(
         const {
           team,
           permissoes,
+          permissoesCarregadas,
           auditLog,
           documentos,
           pendencias,

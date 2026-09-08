@@ -75,12 +75,16 @@ export default function DashboardPage() {
   const { userId } = useAuthStore();
   const me = teamMember(userId ?? "");
   const permissoes = useAppStore((s) => s.permissoes);
+  const permissoesCarregadas = useAppStore((s) => s.permissoesCarregadas);
   // O Início não é um módulo gerenciável na matriz de permissões (fica
   // sempre acessível), mas os cards de Financeiro que aparecem aqui
   // mostram dado sensível de verdade — então checam a permissão do
   // módulo Financeiro mesmo assim, senão alguém sem acesso à página
-  // Financeiro via a mesma informação aqui.
-  const podeVerFinanceiro = !userId || temPermissao(permissoes, userId, "Financeiro", "Visualizar");
+  // Financeiro via a mesma informação aqui. Só decide depois que as
+  // permissões chegarem do Supabase: antes disso `temPermissao` cai no
+  // padrão "liberado" e o card chegaria a piscar pra quem é restrito.
+  const podeVerFinanceiro =
+    permissoesCarregadas && (!userId || temPermissao(permissoes, userId, "Financeiro", "Visualizar"));
 
   const windowDays = PERIOD_DAYS[period];
 
