@@ -98,6 +98,7 @@ const EMISSAO_KEYWORDS = [
   "emitido em",
   "expedida em",
   "expedido em",
+  "gerado em",
   "emissão",
 ];
 const VENCIMENTO_KEYWORDS = [
@@ -115,6 +116,41 @@ const VENCIMENTO_KEYWORDS = [
 export interface ExtractedDocumentDates {
   dataEmissao?: string;
   dataVencimento?: string;
+}
+
+/** Tipo de documento (o que ele é), reconhecido pelo título/termo técnico
+ * mais comum em cada um — testado em ordem, o primeiro que bater vence. */
+const TIPOS_DOCUMENTO: { padrao: RegExp; nome: string }[] = [
+  { padrao: /certificado de conformidade/i, nome: "Certificado de Conformidade" },
+  { padrao: /auto de vistoria do corpo de bombeiros|\bavcb\b/i, nome: "AVCB" },
+  { padrao: /certificado de licenciamento do corpo de bombeiros|\bclcb\b/i, nome: "CLCB" },
+  { padrao: /alvará de funcionamento/i, nome: "Alvará de Funcionamento" },
+  { padrao: /alvará de localização/i, nome: "Alvará de Localização" },
+  { padrao: /licença sanitária/i, nome: "Licença Sanitária" },
+  { padrao: /licença ambiental/i, nome: "Licença Ambiental" },
+  { padrao: /licença de funcionamento/i, nome: "Licença de Funcionamento" },
+];
+
+/** Órgão emissor — junta com o tipo do documento quando os dois aparecem
+ * (ex: "Certificado de Conformidade" + "Corpo de Bombeiros Militar" vira
+ * "Certificado de Conformidade - Bombeiros"). */
+const ORGAOS_EMISSORES: { padrao: RegExp; nome: string }[] = [
+  { padrao: /corpo de bombeiros/i, nome: "Bombeiros" },
+  { padrao: /vigilância sanitária/i, nome: "Vigilância Sanitária" },
+  { padrao: /secretaria (do |de )?meio ambiente|licenciamento ambiental/i, nome: "Meio Ambiente" },
+  { padrao: /prefeitura|secretaria municipal/i, nome: "Prefeitura" },
+];
+
+/** Best-effort: reconhece o tipo do documento (e o órgão emissor, quando dá
+ * pra identificar) a partir do texto do PDF, pra preencher o campo "Nome"
+ * sozinho — ex: um certificado do Corpo de Bombeiros vira "Certificado de
+ * Conformidade - Bombeiros" em vez do usuário digitar na mão. */
+export function extractDocumentNome(rawText: string): string | undefined {
+  const text = stripWatermarkNoise(rawText);
+  const tipo = TIPOS_DOCUMENTO.find((t) => t.padrao.test(text));
+  if (!tipo) return undefined;
+  const orgao = ORGAOS_EMISSORES.find((o) => o.padrao.test(text));
+  return orgao ? `${tipo.nome} - ${orgao.nome}` : tipo.nome;
 }
 
 /** Best-effort extraction of emissão/vencimento dates from a document's raw text. */

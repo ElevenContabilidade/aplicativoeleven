@@ -13,7 +13,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { uploadDocumento } from "@/lib/upload-documento";
 import { LICENCA_STATUS, type Licenca, type LicencaStatus } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
-import { extractDocumentDates } from "@/lib/document-date-extract";
+import { extractDocumentDates, extractDocumentNome } from "@/lib/document-date-extract";
 import { formatBytes } from "@/lib/utils";
 
 type ExtractState = "idle" | "extracting" | "found" | "not-found" | "unsupported" | "error";
@@ -61,9 +61,11 @@ export function LicencaFormDialog({
     try {
       const text = await extractPdfText(selected);
       const { dataEmissao: emissao, dataVencimento: vencimento } = extractDocumentDates(text);
+      const nomeDetectado = extractDocumentNome(text);
       if (emissao) setDataEmissao(emissao);
       if (vencimento) setDataVencimento(vencimento);
-      setExtractState(emissao || vencimento ? "found" : "not-found");
+      if (nomeDetectado) setNome((atual) => atual || nomeDetectado);
+      setExtractState(emissao || vencimento || nomeDetectado ? "found" : "not-found");
     } catch {
       setExtractState("error");
     }
@@ -139,12 +141,12 @@ export function LicencaFormDialog({
             )}
             {extractState === "found" && (
               <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-status-success">
-                <Sparkles className="size-3" /> Datas preenchidas automaticamente — confira antes de salvar.
+                <Sparkles className="size-3" /> Nome e datas preenchidos automaticamente — confira antes de salvar.
               </p>
             )}
             {extractState === "not-found" && (
               <p className="mt-1.5 text-[11px] text-sand-500">
-                Não encontramos as datas no texto do PDF. Preencha manualmente.
+                Não encontramos os dados no texto do PDF. Preencha manualmente.
               </p>
             )}
             {extractState === "unsupported" && (
