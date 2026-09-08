@@ -23,7 +23,10 @@ export function MetaMensalCard({ year, mes }: { year: string; mes: string }) {
   const hoje = new Date();
   const mesIndex = mes === "anual" ? hoje.getMonth() : Number(mes) - 1;
   const competencia = mes === "anual" ? hoje.toISOString().slice(0, 7) : `${year}-${mes}`;
-  const clientesNoMes = clients.filter((c) => c.criadoEm.startsWith(competencia)).length;
+  // Só conta cliente que veio de um lead fechado no pipeline (tem
+  // `leadOrigemId`) — cliente antigo cadastrado direto em Clientes não é
+  // "novo cliente" conquistado pelo comercial neste mês.
+  const clientesNoMes = clients.filter((c) => c.criadoEm.startsWith(competencia) && c.leadOrigemId).length;
   const meta = Math.max(metaMensalClientes, 1);
   const percentual = Math.round((clientesNoMes / meta) * 100);
   const atingiu = clientesNoMes >= meta;

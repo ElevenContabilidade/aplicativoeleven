@@ -2,25 +2,6 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import {
-  TEAM,
-  LEADS,
-  CLIENTS,
-  TASKS,
-  OBLIGATIONS,
-  PROCESSOS_SOCIETARIOS,
-  CERTIFICADOS,
-  DOCUMENTOS,
-  ANOTACOES,
-  TIMELINE,
-  NOTIFICATIONS,
-  SERVICOS_EXTRAS,
-  LICENCAS,
-  INDICACOES,
-  SERVICOS_PORTFOLIO,
-  PARCELAMENTOS,
-  ENVIOS_PARCELAMENTO,
-} from "@/lib/data/seed";
 import { syncLicencaAlerts } from "@/lib/licenca-alerts";
 import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
@@ -375,7 +356,6 @@ interface AppState {
   setChecklistPessoal: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   setChecklistMei: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   resyncAlerts: () => void;
-  resetData: () => void;
 }
 
 function syncAllAlerts(
@@ -400,28 +380,35 @@ function syncAllAlerts(
   );
 }
 
+// Todos os arrays abaixo começam vazios de propósito, mesmo os que já
+// tiveram dados de demonstração (seed) embutidos aqui antes: essa store é
+// sempre substituída pelos dados reais do Supabase logo depois do primeiro
+// load (useSupabaseTeamSync/useSupabaseFinanceiroSync/etc.), mas nesse
+// intervalo — todo F5 — o que estiver aqui aparece na tela antes. Deixar
+// dado de demonstração aqui fazia telas como o Início "piscarem" números
+// fictícios por uma fração de segundo antes dos reais chegarem.
 const initial = {
-  team: TEAM,
-  leads: LEADS,
-  clients: CLIENTS,
-  tasks: TASKS,
-  obligations: OBLIGATIONS,
-  processosSocietarios: PROCESSOS_SOCIETARIOS,
-  certificados: CERTIFICADOS,
-  documentos: DOCUMENTOS,
+  team: [] as TeamMember[],
+  leads: [] as Lead[],
+  clients: [] as Client[],
+  tasks: [] as Task[],
+  obligations: [] as Obligation[],
+  processosSocietarios: [] as ProcessoSocietario[],
+  certificados: [] as Certificado[],
+  documentos: [] as Documento[],
   pendencias: [] as Pendencia[],
   tiposDocumentoRecorrente: [] as TipoDocumentoRecorrente[],
   enviosMensaisDocumento: [] as EnvioMensalDocumento[],
-  anotacoes: ANOTACOES,
-  timeline: TIMELINE,
-  notifications: syncAllAlerts(NOTIFICATIONS, LICENCAS, CERTIFICADOS, CLIENTS, [], DOCUMENTOS),
-  servicosExtras: SERVICOS_EXTRAS,
-  licencas: LICENCAS,
-  indicacoes: INDICACOES,
-  servicosPortfolio: SERVICOS_PORTFOLIO,
+  anotacoes: [] as Anotacao[],
+  timeline: [] as TimelineEvent[],
+  notifications: [] as AppNotification[],
+  servicosExtras: [] as ServicoExtra[],
+  licencas: [] as Licenca[],
+  indicacoes: [] as Indicacao[],
+  servicosPortfolio: [] as ServicoPortfolio[],
   recebimentos: [] as Recebimento[],
-  parcelamentos: PARCELAMENTOS,
-  enviosParcelamento: ENVIOS_PARCELAMENTO,
+  parcelamentos: [] as Parcelamento[],
+  enviosParcelamento: [] as EnvioParcelamento[],
   boletosMensais: [] as BoletoMensal[],
   notasFiscaisMensais: [] as NotaFiscalMensal[],
   faturamentoMensal: [] as FaturamentoMensal[],
@@ -1498,8 +1485,6 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal, s.documentos),
         })),
-
-      resetData: () => set(initial),
     }),
     {
       name: "eleven-hub-store",

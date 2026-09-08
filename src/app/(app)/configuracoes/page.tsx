@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCcw, LogOut, KeyRound, Loader2 } from "lucide-react";
+import { LogOut, KeyRound, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { EleveMark } from "@/components/brand/logo";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { useAppStore } from "@/lib/store/app-store";
 import { teamMember } from "@/lib/team-lookup";
 import { initials } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -20,7 +19,6 @@ import { createClient } from "@/lib/supabase/client";
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const { userId, logout } = useAuthStore();
-  const resetData = useAppStore((s) => s.resetData);
   const me = teamMember(userId ?? "");
   const [notifEmail, setNotifEmail] = useState(true);
   const [notifPush, setNotifPush] = useState(true);
@@ -155,22 +153,16 @@ export default function ConfiguracoesPage() {
             <CardDescription>Eleven Hub — CRM e gestão operacional da Eleven Contabilidade &amp; Consultoria</CardDescription>
           </CardHeader>
           <CardContent className="pt-4 text-xs text-sand-500">
-            <p>Versão 1.0 — ambiente de demonstração com dados fictícios.</p>
+            <p>Versão 1.0</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Dados de demonstração</CardTitle></CardHeader>
+          <CardHeader><CardTitle>Conta</CardTitle></CardHeader>
           <CardContent className="pt-4">
-            <p className="mb-3 text-xs text-sand-500">Restaure a base de dados fictícia para o estado inicial (desfaz alterações feitas nesta sessão).</p>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={resetData}>
-                <RotateCcw className="size-3.5" /> Restaurar dados de demonstração
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => { logout(); router.push("/login"); }}>
-                <LogOut className="size-3.5" /> Sair da conta
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => { logout(); router.push("/login"); }}>
+              <LogOut className="size-3.5" /> Sair da conta
+            </Button>
           </CardContent>
         </Card>
       </div>
