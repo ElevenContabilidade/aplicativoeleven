@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, UploadCloud, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Plus, Search, UploadCloud, Handshake, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ImportarClientesDialog } from "@/components/clients/importar-clientes-dialog";
+import { MarcarParceiroDialog } from "@/components/clients/marcar-parceiro-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
@@ -83,6 +84,7 @@ export default function ClientesPage() {
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
   const [importOpen, setImportOpen] = useState(false);
+  const [parceiroOpen, setParceiroOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("novo") === "1") router.replace("/clientes");
@@ -167,6 +169,9 @@ export default function ClientesPage() {
         description={`${clients.length} clientes cadastrados na carteira da Eleven.`}
         actions={
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setParceiroOpen(true)}>
+              <Handshake className="size-3.5" /> Marcar parceiro
+            </Button>
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <UploadCloud className="size-3.5" /> Importar planilha
             </Button>
@@ -278,6 +283,7 @@ export default function ClientesPage() {
 
       <ClientFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <ImportarClientesDialog open={importOpen} onOpenChange={setImportOpen} />
+      <MarcarParceiroDialog open={parceiroOpen} onOpenChange={setParceiroOpen} />
     </div>
   );
 }
