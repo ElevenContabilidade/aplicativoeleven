@@ -22,7 +22,7 @@ import { CLIENT_STATUS, type Client, type ClientStatus } from "@/lib/types";
 import { formatCurrency, initials, cn } from "@/lib/utils";
 
 type ViewMode = "quadro" | "nicho" | "cidade" | "estado" | "regime" | "honorario";
-type SortField = "cliente" | "segmento" | "regime" | "responsavel" | "mensalidade" | "status";
+type SortField = "cliente" | "segmento" | "regime" | "parceiro" | "responsavel" | "mensalidade" | "status";
 
 const VIEWS: { value: ViewMode; label: string }[] = [
   { value: "quadro", label: "Quadro geral" },
@@ -143,6 +143,8 @@ export default function ClientesPage() {
           return c.segmento.toLowerCase();
         case "regime":
           return c.dados.regimeTributario.toLowerCase();
+        case "parceiro":
+          return (c.dados.nomeParceiro ?? "").toLowerCase();
         case "responsavel":
           return (c.responsaveis.relacionamento ? teamName(c.responsaveis.relacionamento) : "").toLowerCase();
         case "mensalidade":
@@ -209,6 +211,7 @@ export default function ClientesPage() {
               <SortableHead field="cliente" label="Cliente" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
               <SortableHead field="segmento" label="Segmento" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
               <SortableHead field="regime" label="Regime" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+              <SortableHead field="parceiro" label="Parceiro" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
               <SortableHead field="responsavel" label="Responsável" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
               <SortableHead field="mensalidade" label="Mensalidade" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
               <SortableHead field="status" label="Status" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
@@ -230,6 +233,7 @@ export default function ClientesPage() {
                 </TableCell>
                 <TableCell>{c.segmento}</TableCell>
                 <TableCell>{c.dados.regimeTributario}</TableCell>
+                <TableCell>{c.dados.nomeParceiro ?? "—"}</TableCell>
                 <TableCell>{c.responsaveis.relacionamento ? teamName(c.responsaveis.relacionamento) : "—"}</TableCell>
                 <TableCell>{formatCurrency(c.financeiro.valorMensal)}</TableCell>
                 <TableCell>
@@ -239,7 +243,7 @@ export default function ClientesPage() {
             ))}
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-sand-400">
+                <TableCell colSpan={7} className="py-10 text-center text-sand-400">
                   Nenhum cliente encontrado.
                 </TableCell>
               </TableRow>
