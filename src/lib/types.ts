@@ -69,6 +69,10 @@ export interface CrcRegistroInfo {
   dataRegistro?: string;
   codigoAcesso?: string;
   linkDrive?: string;
+  /** Site do CRC de origem usado pra comunicar exercício profissional em
+   * outra UF — só faz sentido no registro pessoal (é o "portal do CRC de
+   * origem do registro" citado no passo a passo da tela de UFs). */
+  linkPortalUf?: string;
 }
 
 /** Comunicação de exercício profissional numa UF diferente da sede — o

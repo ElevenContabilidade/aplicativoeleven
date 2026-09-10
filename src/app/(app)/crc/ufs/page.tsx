@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, MapPin } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, MapPin, ExternalLink, Check, Eye, EyeOff } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,25 @@ export default function CrcUfsPage() {
   const addCrcUf = useAppStore((s) => s.addCrcUf);
   const updateCrcUf = useAppStore((s) => s.updateCrcUf);
   const deleteCrcUf = useAppStore((s) => s.deleteCrcUf);
+  const linkPortalUf = useAppStore((s) => s.crcRegistroPessoal.linkPortalUf);
+  const codigoAcesso = useAppStore((s) => s.crcRegistroPessoal.codigoAcesso);
+  const updateCrcRegistro = useAppStore((s) => s.updateCrcRegistro);
 
   const [novoEstado, setNovoEstado] = useState("");
+  const [siteForm, setSiteForm] = useState(linkPortalUf ?? "");
+  const [senhaForm, setSenhaForm] = useState(codigoAcesso ?? "");
+  const [showSenha, setShowSenha] = useState(false);
+  const [siteSavedAt, setSiteSavedAt] = useState<number | null>(null);
+  const siteDirtyRef = useRef(false);
+
+  // No F5 a store começa vazia e só recebe o valor de verdade do Supabase
+  // um instante depois — resincroniza enquanto o usuário não começou a editar.
+  useEffect(() => {
+    if (!siteDirtyRef.current) {
+      setSiteForm(linkPortalUf ?? "");
+      setSenhaForm(codigoAcesso ?? "");
+    }
+  }, [linkPortalUf, codigoAcesso]);
 
   const disponiveis = ESTADOS_BRASIL.filter((e) => !ufs.some((u) => u.estado === e.sigla));
 
@@ -28,12 +45,75 @@ export default function CrcUfsPage() {
     setNovoEstado("");
   }
 
+  function handleSalvarSite(e: React.FormEvent) {
+    e.preventDefault();
+    // Um único updateCrcRegistro pros dois campos — dois saves separados
+    // (um só pra site, outro só pra senha) fariam dois pushes concorrentes
+    // pro mesmo registro, com risco de um sobrescrever o outro se as
+    // respostas chegarem fora de ordem.
+    updateCrcRegistro("pessoal", {
+      linkPortalUf: siteForm.trim() || undefined,
+      codigoAcesso: senhaForm.trim() || undefined,
+    });
+    setSiteSavedAt(Date.now());
+    setTimeout(() => setSiteSavedAt(null), 2500);
+  }
+
   return (
     <div>
       <Link href="/crc" className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-sand-500 hover:text-wine-700">
         <ArrowLeft className="size-3.5" /> Voltar para Gestão do CRC
       </Link>
       <PageHeader title="Comunicação de atuação em outra UF" description="Estados onde já comunicamos o exercício profissional, separado por CRC pessoal e empresa." />
+
+      <Card className="mb-4">
+        <CardContent className="p-4">
+          <form onSubmit={handleSalvarSite} className="flex flex-wrap items-end gap-2">
+            <div>
+              <Label className="mb-1 block text-xs">Site onde fazemos essa comunicação</Label>
+              <Input
+                type="url"
+                value={siteForm}
+                onChange={(e) => { siteDirtyRef.current = true; setSiteForm(e.target.value); }}
+                placeholder="https://... (portal do CRC de origem)"
+                className="w-72"
+              />
+            </div>
+            <div>
+              <Label className="mb-1 block text-xs">Senha</Label>
+              <div className="relative w-40">
+                <Input
+                  type={showSenha ? "text" : "password"}
+                  value={senhaForm}
+                  onChange={(e) => { siteDirtyRef.current = true; setSenhaForm(e.target.value); }}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSenha((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
+                  tabIndex={-1}
+                >
+                  {showSenha ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+              </div>
+            </div>
+            <Button type="submit" size="sm" variant="outline">Salvar</Button>
+            {linkPortalUf && (
+              <a href={linkPortalUf} target="_blank" rel="noopener noreferrer">
+                <Button type="button" size="sm" variant="outline">
+                  <ExternalLink className="size-3.5" /> Abrir site
+                </Button>
+              </a>
+            )}
+            {siteSavedAt && (
+              <span className="flex items-center gap-1 text-[11px] font-medium text-status-success">
+                <Check className="size-3.5" /> Salvo
+              </span>
+            )}
+          </form>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {ufs.map((uf) => {
