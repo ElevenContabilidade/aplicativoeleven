@@ -135,6 +135,8 @@ import type {
   CrcAnuidade,
   CrcEleicao,
   CrcDeclaracaoCoaf,
+  ScriptDepartamento,
+  Script,
   FeriasRegistro,
   RescisaoChecklistItem,
   AuditLogEntry,
@@ -157,6 +159,8 @@ interface AppState {
   crcAnuidades: CrcAnuidade[];
   crcEleicoes: CrcEleicao[];
   crcDeclaracoesCoaf: CrcDeclaracaoCoaf[];
+  scriptsDepartamentos: ScriptDepartamento[];
+  scripts: Script[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -234,6 +238,12 @@ interface AppState {
   addCrcDeclaracaoCoaf: (declaracao: CrcDeclaracaoCoaf) => void;
   updateCrcDeclaracaoCoaf: (id: string, patch: Partial<CrcDeclaracaoCoaf>) => void;
   deleteCrcDeclaracaoCoaf: (id: string) => void;
+  addScriptDepartamento: (departamento: ScriptDepartamento) => void;
+  updateScriptDepartamento: (id: string, patch: Partial<ScriptDepartamento>) => void;
+  deleteScriptDepartamento: (id: string) => void;
+  addScript: (script: Script) => void;
+  updateScript: (id: string, patch: Partial<Script>) => void;
+  deleteScript: (id: string) => void;
   confirmarPeriodoFerias: (funcionarioId: string) => void;
   updateDecimo13: (funcionarioId: string, ano: string, patch: Partial<{ primeiraParcelaPaga: boolean; segundaParcelaPaga: boolean }>) => void;
   iniciarRescisao: (funcionarioId: string, dataDesligamento: string, motivo?: string) => void;
@@ -369,6 +379,8 @@ interface AppState {
   setCrcAnuidadesFromSupabase: (anuidades: CrcAnuidade[]) => void;
   setCrcEleicoesFromSupabase: (eleicoes: CrcEleicao[]) => void;
   setCrcDeclaracoesCoafFromSupabase: (declaracoes: CrcDeclaracaoCoaf[]) => void;
+  setScriptsDepartamentosFromSupabase: (departamentos: ScriptDepartamento[]) => void;
+  setScriptsFromSupabase: (scripts: Script[]) => void;
   /** Aplica quais alertas já foram lidos (o resto do conteúdo do alerta é
    * recalculado localmente a partir de licenças/certificados/clientes/
    * checklist fiscal, que já vêm do Supabase — só o "lida" precisa vir de
@@ -480,6 +492,8 @@ const initial = {
   crcAnuidades: [] as CrcAnuidade[],
   crcEleicoes: [] as CrcEleicao[],
   crcDeclaracoesCoaf: [] as CrcDeclaracaoCoaf[],
+  scriptsDepartamentos: [] as ScriptDepartamento[],
+  scripts: [] as Script[],
 };
 
 export const useAppStore = create<AppState>()(
@@ -880,6 +894,39 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ crcDeclaracoesCoaf: s.crcDeclaracoesCoaf.filter((d) => d.id !== id) }));
         deleteFinanceiro("crcDeclaracoesCoaf", id);
       },
+      addScriptDepartamento: (departamento) => {
+        set((s) => ({ scriptsDepartamentos: [...s.scriptsDepartamentos, departamento] }));
+        pushFinanceiro("scriptsDepartamentos", departamento.id, null, departamento);
+      },
+      updateScriptDepartamento: (id, patch) => {
+        set((s) => ({
+          scriptsDepartamentos: s.scriptsDepartamentos.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+        }));
+        const departamento = useAppStore.getState().scriptsDepartamentos.find((d) => d.id === id);
+        if (departamento) pushFinanceiro("scriptsDepartamentos", id, null, departamento);
+      },
+      deleteScriptDepartamento: (id) => {
+        const scriptsDoDepartamento = useAppStore.getState().scripts.filter((sc) => sc.departamentoId === id);
+        set((s) => ({
+          scriptsDepartamentos: s.scriptsDepartamentos.filter((d) => d.id !== id),
+          scripts: s.scripts.filter((sc) => sc.departamentoId !== id),
+        }));
+        deleteFinanceiro("scriptsDepartamentos", id);
+        for (const sc of scriptsDoDepartamento) deleteFinanceiro("scripts", sc.id);
+      },
+      addScript: (script) => {
+        set((s) => ({ scripts: [...s.scripts, script] }));
+        pushFinanceiro("scripts", script.id, null, script);
+      },
+      updateScript: (id, patch) => {
+        set((s) => ({ scripts: s.scripts.map((sc) => (sc.id === id ? { ...sc, ...patch } : sc)) }));
+        const script = useAppStore.getState().scripts.find((sc) => sc.id === id);
+        if (script) pushFinanceiro("scripts", id, null, script);
+      },
+      deleteScript: (id) => {
+        set((s) => ({ scripts: s.scripts.filter((sc) => sc.id !== id) }));
+        deleteFinanceiro("scripts", id);
+      },
       confirmarPeriodoFerias: (funcionarioId) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) => {
@@ -1234,6 +1281,8 @@ export const useAppStore = create<AppState>()(
       setCrcAnuidadesFromSupabase: (crcAnuidades) => set({ crcAnuidades }),
       setCrcEleicoesFromSupabase: (crcEleicoes) => set({ crcEleicoes }),
       setCrcDeclaracoesCoafFromSupabase: (crcDeclaracoesCoaf) => set({ crcDeclaracoesCoaf }),
+      setScriptsDepartamentosFromSupabase: (scriptsDepartamentos) => set({ scriptsDepartamentos }),
+      setScriptsFromSupabase: (scripts) => set({ scripts }),
       applyNotificationsLidas: (idsLidos) =>
         set((s) => {
           const lidos = new Set(idsLidos);
@@ -1666,6 +1715,8 @@ export const useAppStore = create<AppState>()(
           crcAnuidades,
           crcEleicoes,
           crcDeclaracoesCoaf,
+          scriptsDepartamentos,
+          scripts,
           ...rest
         } = state;
         /* eslint-enable @typescript-eslint/no-unused-vars */

@@ -106,6 +106,23 @@ export interface CrcDeclaracaoCoaf {
   dataEnvio?: string;
 }
 
+// ---------- Scripts (mensagens prontas por departamento) ----------
+
+/** Departamento é livre (a Kauane cria/renomeia os próprios), não usa o
+ * enum fixo `DepartamentoChave` — cada escritório organiza do seu jeito. */
+export interface ScriptDepartamento {
+  id: string;
+  nome: string;
+}
+
+export interface Script {
+  id: string;
+  departamentoId: string;
+  titulo: string;
+  /** Vazio = "sem mensagem ainda" na listagem. */
+  mensagem?: string;
+}
+
 /** Setor interno do escritório que usa um sistema/ferramenta — eixo
  * diferente do `DepartamentoChave` (que descreve setor de atendimento ao
  * CLIENTE); aqui é só pra organizar a tela "Sistemas e ferramentas" por

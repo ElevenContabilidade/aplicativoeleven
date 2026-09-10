@@ -37,6 +37,8 @@ import type {
   CrcAnuidade,
   CrcEleicao,
   CrcDeclaracaoCoaf,
+  ScriptDepartamento,
+  Script,
 } from "@/lib/types";
 
 interface DadosFinanceirosRow {
@@ -89,6 +91,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setCrcAnuidadesFromSupabase = useAppStore((s) => s.setCrcAnuidadesFromSupabase);
   const setCrcEleicoesFromSupabase = useAppStore((s) => s.setCrcEleicoesFromSupabase);
   const setCrcDeclaracoesCoafFromSupabase = useAppStore((s) => s.setCrcDeclaracoesCoafFromSupabase);
+  const setScriptsDepartamentosFromSupabase = useAppStore((s) => s.setScriptsDepartamentosFromSupabase);
+  const setScriptsFromSupabase = useAppStore((s) => s.setScriptsFromSupabase);
   const applyNotificationsLidas = useAppStore((s) => s.applyNotificationsLidas);
 
   useEffect(() => {
@@ -145,6 +149,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setCrcAnuidadesFromSupabase(porTipo<CrcAnuidade>("crcAnuidades"));
       setCrcEleicoesFromSupabase(porTipo<CrcEleicao>("crcEleicoes"));
       setCrcDeclaracoesCoafFromSupabase(porTipo<CrcDeclaracaoCoaf>("crcDeclaracoesCoaf"));
+      setScriptsDepartamentosFromSupabase(porTipo<ScriptDepartamento>("scriptsDepartamentos"));
+      setScriptsFromSupabase(porTipo<Script>("scripts"));
 
       const crcRegistroPessoal = itemUnico<CrcRegistroInfo>("crcRegistroPessoal");
       if (crcRegistroPessoal) setCrcRegistroPessoalFromSupabase(crcRegistroPessoal);
@@ -211,6 +217,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setCrcAnuidadesFromSupabase,
     setCrcEleicoesFromSupabase,
     setCrcDeclaracoesCoafFromSupabase,
+    setScriptsDepartamentosFromSupabase,
+    setScriptsFromSupabase,
     applyNotificationsLidas,
   ]);
 }
