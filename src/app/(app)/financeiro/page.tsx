@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const TODOS = "todos";
+
+type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -146,7 +148,52 @@ export default function FinanceiroPage() {
       (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
   );
 
-  const ledger = [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
+  const [sortField, setSortField] = useState<LedgerSortField | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleSort(field: LedgerSortField) {
+    if (sortField !== field) {
+      setSortField(field);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortField(null);
+    }
+  }
+
+  function valorOrdenavel(h: (typeof ledgerFiltrado)[number], field: LedgerSortField): string | number {
+    switch (field) {
+      case "cliente":
+        return h.nome.toLowerCase();
+      case "competencia":
+        return h.competencia;
+      case "servico":
+        return (h.servico ?? "").toLowerCase();
+      case "banco":
+        return (h.banco ?? "").toLowerCase();
+      case "tipo":
+        return h.tipoPessoa ?? "";
+      case "valor":
+        return h.valor;
+      case "vencimento":
+        return h.vencimento;
+      case "status":
+        return h.status;
+    }
+  }
+
+  const ledger = sortField
+    ? [...ledgerFiltrado]
+        .sort((a, b) => {
+          const va = valorOrdenavel(a, sortField);
+          const vb = valorOrdenavel(b, sortField);
+          const dir = sortDir === "asc" ? 1 : -1;
+          if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+          return String(va).localeCompare(String(vb)) * dir;
+        })
+        .slice(0, 30)
+    : [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
 
   const recebido = ledgerFiltrado.filter((h) => h.status === "Pago").reduce((a, h) => a + h.valor, 0);
   const emAberto = ledgerFiltrado.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
@@ -252,14 +299,14 @@ export default function FinanceiroPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Competência</TableHead>
-                  <TableHead>Serviço</TableHead>
-                  <TableHead>Banco</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableHead field="cliente" label="Cliente" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="competencia" label="Competência" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="servico" label="Serviço" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="banco" label="Banco" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="tipo" label="Tipo" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="valor" label="Valor" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="vencimento" label="Vencimento" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  <SortableHead field="status" label="Status" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -459,5 +506,37 @@ function PeriodChip({ label, active, onClick }: { label: string; active: boolean
     >
       {label}
     </button>
+  );
+}
+
+function SortableHead({
+  field,
+  label,
+  sortField,
+  sortDir,
+  onClick,
+}: {
+  field: LedgerSortField;
+  label: string;
+  sortField: LedgerSortField | null;
+  sortDir: "asc" | "desc";
+  onClick: (field: LedgerSortField) => void;
+}) {
+  const active = sortField === field;
+  const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onClick(field)}
+        className={cn(
+          "flex items-center gap-1 text-left font-medium hover:text-sand-900",
+          active ? "text-sand-900" : "text-sand-500"
+        )}
+      >
+        {label}
+        <Icon className={cn("size-3", active ? "text-wine-600" : "text-sand-300")} />
+      </button>
+    </TableHead>
   );
 }
