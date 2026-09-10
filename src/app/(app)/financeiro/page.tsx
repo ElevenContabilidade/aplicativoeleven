@@ -20,7 +20,7 @@ import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
+import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
 
@@ -78,8 +78,13 @@ export default function FinanceiroPage() {
    * cadastrada (valorMensal > 0) — tanto os que aparecem em Boletos quanto
    * os clientes de parceiro (pagam via PIX, controlados em Parceiros) — um
    * cliente cadastrado com assessoria mensal já entra automaticamente no
-   * MRR, mesmo antes de virar "Ativo". */
-  const clientesAssessoriaMensal = clients.filter((c) => c.financeiro.valorMensal > 0);
+   * MRR, mesmo antes de virar "Ativo" (onboarding/implantação já pagando).
+   * Mas cliente que já saiu (suspenso, cancelando ou encerrado) não conta
+   * mais — senão o MRR fica inflado com quem não paga mais. */
+  const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
+  const clientesAssessoriaMensal = clients.filter(
+    (c) => c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
+  );
   const mrr = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const ticketMedio = clientesAssessoriaMensal.length ? mrr / clientesAssessoriaMensal.length : 0;
 
