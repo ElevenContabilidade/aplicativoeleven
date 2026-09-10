@@ -18,8 +18,8 @@ export default function CrcUfsPage() {
   const updateCrcUf = useAppStore((s) => s.updateCrcUf);
   const deleteCrcUf = useAppStore((s) => s.deleteCrcUf);
   const linkPortalUf = useAppStore((s) => s.crcRegistroPessoal.linkPortalUf);
-  const senhaPessoal = useAppStore((s) => s.crcRegistroPessoal.codigoAcesso);
-  const senhaEmpresa = useAppStore((s) => s.crcRegistroEmpresa.codigoAcesso);
+  const senhaPessoal = useAppStore((s) => s.crcRegistroPessoal.senhaComunicacaoUf);
+  const senhaEmpresa = useAppStore((s) => s.crcRegistroEmpresa.senhaComunicacaoUf);
   const updateCrcRegistro = useAppStore((s) => s.updateCrcRegistro);
 
   const [novoEstado, setNovoEstado] = useState("");
@@ -58,9 +58,9 @@ export default function CrcUfsPage() {
     // chamada à parte, sem risco de corrida com a de cima.
     updateCrcRegistro("pessoal", {
       linkPortalUf: siteForm.trim() || undefined,
-      codigoAcesso: senhaPfForm.trim() || undefined,
+      senhaComunicacaoUf: senhaPfForm.trim() || undefined,
     });
-    updateCrcRegistro("empresa", { codigoAcesso: senhaPjForm.trim() || undefined });
+    updateCrcRegistro("empresa", { senhaComunicacaoUf: senhaPjForm.trim() || undefined });
     setSiteSavedAt(Date.now());
     setTimeout(() => setSiteSavedAt(null), 2500);
   }

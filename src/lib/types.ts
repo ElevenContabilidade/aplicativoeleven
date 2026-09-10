@@ -73,6 +73,10 @@ export interface CrcRegistroInfo {
    * outra UF — só faz sentido no registro pessoal (é o "portal do CRC de
    * origem do registro" citado no passo a passo da tela de UFs). */
   linkPortalUf?: string;
+  /** Senha usada especificamente nesse site de comunicação de UF — separada
+   * de `codigoAcesso` de propósito: são logins diferentes (o código de
+   * acesso é do registro em si, essa é do portal de comunicação). */
+  senhaComunicacaoUf?: string;
 }
 
 /** Comunicação de exercício profissional numa UF diferente da sede — o
