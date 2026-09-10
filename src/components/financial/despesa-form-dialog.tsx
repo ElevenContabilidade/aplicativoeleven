@@ -8,44 +8,47 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DespesaAvulsa } from "@/lib/types";
 
-export function DespesaFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function DespesaFormDialog({
+  open,
+  onOpenChange,
+  despesa,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  /** Quando presente, o dialog edita essa despesa em vez de criar uma nova.
+   * O pai remonta esse componente (via `key`) a cada abertura. */
+  despesa?: DespesaAvulsa | null;
+}) {
   const addDespesaAvulsa = useAppStore((s) => s.addDespesaAvulsa);
+  const updateDespesaAvulsa = useAppStore((s) => s.updateDespesaAvulsa);
 
-  const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState("");
-  const [valor, setValor] = useState("");
-  const [vencimento, setVencimento] = useState(new Date().toISOString().slice(0, 10));
-
-  function reset() {
-    setDescricao(""); setCategoria(""); setValor(""); setVencimento(new Date().toISOString().slice(0, 10));
-  }
-
-  function handleClose(v: boolean) {
-    if (!v) reset();
-    onOpenChange(v);
-  }
+  const [descricao, setDescricao] = useState(despesa?.descricao ?? "");
+  const [categoria, setCategoria] = useState(despesa?.categoria ?? "");
+  const [valor, setValor] = useState(despesa?.valor.toString() ?? "");
+  const [vencimento, setVencimento] = useState(despesa?.vencimento ?? new Date().toISOString().slice(0, 10));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao.trim() || !valor) return;
-    const despesa: DespesaAvulsa = {
-      id: `desp-${Date.now()}`,
+    const patch = {
       descricao: descricao.trim(),
       categoria: categoria.trim() || undefined,
       valor: Number(valor),
       vencimento,
-      status: "Em aberto",
     };
-    addDespesaAvulsa(despesa);
-    reset();
+    if (despesa) {
+      updateDespesaAvulsa(despesa.id, patch);
+    } else {
+      addDespesaAvulsa({ id: `desp-${Date.now()}`, status: "Em aberto", ...patch });
+    }
     onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Nova despesa</DialogTitle>
+          <DialogTitle>{despesa ? "Editar despesa" : "Nova despesa"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
@@ -67,8 +70,8 @@ export function DespesaFormDialog({ open, onOpenChange }: { open: boolean; onOpe
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleClose(false)}>Cancelar</Button>
-            <Button type="submit">Lançar despesa</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit">{despesa ? "Salvar alterações" : "Lançar despesa"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

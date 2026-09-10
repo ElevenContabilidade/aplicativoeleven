@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { DespesaFormDialog } from "@/components/financial/despesa-form-dialog";
+import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import type { DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
 
@@ -54,6 +56,11 @@ export default function FinanceiroPage() {
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
   const [despesaFormOpen, setDespesaFormOpen] = useState(false);
+  const [editingDespesa, setEditingDespesa] = useState<DespesaAvulsa | null>(null);
+  const [despesaFormOpenKey, setDespesaFormOpenKey] = useState(0);
+  const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
+  const [sistemaFormOpen, setSistemaFormOpen] = useState(false);
+  const [sistemaFormOpenKey, setSistemaFormOpenKey] = useState(0);
   const [filtroBanco, setFiltroBanco] = useState(TODOS);
   const [filtroTipo, setFiltroTipo] = useState(TODOS);
   const [year, setYear] = useState(() => {
@@ -275,6 +282,22 @@ export default function FinanceiroPage() {
     if (confirm(`Excluir a despesa "${descricao}"?`)) deleteDespesaAvulsa(id);
   }
 
+  function handleEditLinha(linha: ReturnType<typeof contasAPagarDoPeriodo>[number]) {
+    if (linha.origem === "avulsa") {
+      const despesa = despesasAvulsas.find((d) => d.id === linha.refId);
+      if (!despesa) return;
+      setEditingDespesa(despesa);
+      setDespesaFormOpenKey((k) => k + 1);
+      setDespesaFormOpen(true);
+    } else {
+      const sistema = sistemasEscritorio.find((s) => s.id === linha.refId);
+      if (!sistema) return;
+      setEditingSistema(sistema);
+      setSistemaFormOpenKey((k) => k + 1);
+      setSistemaFormOpen(true);
+    }
+  }
+
   return (
     <div>
       <PageHeader
@@ -418,7 +441,15 @@ export default function FinanceiroPage() {
       <Card className="mt-4">
         <CardHeader className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2"><TrendingDown className="size-4 text-status-danger" /> Contas a pagar — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
-          <Button size="sm" variant="outline" onClick={() => setDespesaFormOpen(true)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setEditingDespesa(null);
+              setDespesaFormOpenKey((k) => k + 1);
+              setDespesaFormOpen(true);
+            }}
+          >
             <Plus className="size-3.5" /> Nova despesa
           </Button>
         </CardHeader>
@@ -436,7 +467,7 @@ export default function FinanceiroPage() {
                 <SortableHead field="vencimento" label="Vencimento" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
                 <SortableHead field="valor" label="Valor" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
                 <SortableHead field="status" label="Status" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
-                <TableHead className="w-20" />
+                <TableHead className="w-28" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -468,6 +499,14 @@ export default function FinanceiroPage() {
                           <Check className="size-4" />
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleEditLinha(linha)}
+                        title="Editar lançamento"
+                        className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-sand-100 hover:text-sand-700"
+                      >
+                        <Pencil className="size-4" />
+                      </button>
                       {linha.origem === "avulsa" && (
                         <button
                           type="button"
@@ -529,7 +568,8 @@ export default function FinanceiroPage() {
       </Card>
 
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
-      <DespesaFormDialog open={despesaFormOpen} onOpenChange={setDespesaFormOpen} />
+      <DespesaFormDialog key={despesaFormOpenKey} open={despesaFormOpen} onOpenChange={setDespesaFormOpen} despesa={editingDespesa} />
+      <SistemaFormDialog key={sistemaFormOpenKey} open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
     </div>
   );
 }
