@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Search, Settings2, X, MessagesSquare, Boxes, FileCheck2 } from "lucide-react";
+import { Plus, Search, Settings2, X, MessagesSquare, Boxes, FileCheck2, Copy, Check } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ export default function ScriptsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [departamentosOpen, setDepartamentosOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const comMensagem = scripts.filter((s) => s.mensagem && s.mensagem.trim().length > 0).length;
   const pctComMensagem = scripts.length > 0 ? Math.round((comMensagem / scripts.length) * 100) : 0;
@@ -52,6 +53,16 @@ export default function ScriptsPage() {
   function handleDelete(script: Script) {
     if (!confirm(`Excluir o script "${script.titulo}"?`)) return;
     deleteScript(script.id);
+  }
+  async function handleCopy(script: Script) {
+    if (!script.mensagem) return;
+    try {
+      await navigator.clipboard.writeText(script.mensagem);
+      setCopiedId(script.id);
+      setTimeout(() => setCopiedId((cur) => (cur === script.id ? null : cur)), 2000);
+    } catch {
+      // clipboard indisponível
+    }
   }
 
   return (
@@ -103,12 +114,27 @@ export default function ScriptsPage() {
             >
               <X className="size-3.5" />
             </button>
-            <CardContent className="cursor-pointer p-4" onClick={() => openEdit(s)}>
-              <span className="mb-2 inline-block rounded-full bg-wine-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-wine-700">
-                {nomeDepartamento(s.departamentoId)}
-              </span>
-              <p className="pr-4 text-sm font-medium text-sand-900">{s.titulo}</p>
-              <p className="mt-1 line-clamp-2 text-[11px] text-sand-400">{s.mensagem || "Sem mensagem ainda"}</p>
+            <CardContent className="p-4">
+              <div className="cursor-pointer" onClick={() => openEdit(s)}>
+                <span className="mb-2 inline-block rounded-full bg-wine-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-wine-700">
+                  {nomeDepartamento(s.departamentoId)}
+                </span>
+                <p className="pr-4 text-sm font-medium text-sand-900">{s.titulo}</p>
+                <p className="mt-1 line-clamp-2 text-[11px] text-sand-400">{s.mensagem || "Sem mensagem ainda"}</p>
+              </div>
+              {s.mensagem && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); handleCopy(s); }}
+                  className={cn(
+                    "mt-2 flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium",
+                    copiedId === s.id ? "text-status-success" : "text-wine-700 hover:bg-wine-50"
+                  )}
+                >
+                  {copiedId === s.id ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {copiedId === s.id ? "Copiado!" : "Copiar mensagem"}
+                </button>
+              )}
             </CardContent>
           </Card>
         ))}
