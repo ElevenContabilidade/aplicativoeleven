@@ -23,6 +23,7 @@ import { cn, formatCurrency, formatDate } from "@/lib/utils";
 const TODOS = "todos";
 
 type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
+type ContaPagarSortField = "descricao" | "competencia" | "vencimento" | "valor" | "status";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -205,6 +206,45 @@ export default function FinanceiroPage() {
   );
   const totalPago = contasAPagar.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0);
   const totalAPagarEmAberto = contasAPagar.filter((c) => c.status === "Em aberto").reduce((a, c) => a + c.valor, 0);
+
+  const [sortFieldContas, setSortFieldContas] = useState<ContaPagarSortField | null>(null);
+  const [sortDirContas, setSortDirContas] = useState<"asc" | "desc">("asc");
+
+  function toggleSortContas(field: ContaPagarSortField) {
+    if (sortFieldContas !== field) {
+      setSortFieldContas(field);
+      setSortDirContas("asc");
+    } else if (sortDirContas === "asc") {
+      setSortDirContas("desc");
+    } else {
+      setSortFieldContas(null);
+    }
+  }
+
+  function valorOrdenavelContas(c: (typeof contasAPagar)[number], field: ContaPagarSortField): string | number {
+    switch (field) {
+      case "descricao":
+        return c.descricao.toLowerCase();
+      case "competencia":
+        return c.competencia;
+      case "vencimento":
+        return c.vencimento;
+      case "valor":
+        return c.valor;
+      case "status":
+        return c.status;
+    }
+  }
+
+  const contasAPagarOrdenadas = sortFieldContas
+    ? [...contasAPagar].sort((a, b) => {
+        const va = valorOrdenavelContas(a, sortFieldContas);
+        const vb = valorOrdenavelContas(b, sortFieldContas);
+        const dir = sortDirContas === "asc" ? 1 : -1;
+        if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+        return String(va).localeCompare(String(vb)) * dir;
+      })
+    : contasAPagar;
 
   function handleDeleteRecebimento(id: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
@@ -391,16 +431,16 @@ export default function FinanceiroPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Competência</TableHead>
-                <TableHead>Vencimento</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
+                <SortableHead field="descricao" label="Descrição" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
+                <SortableHead field="competencia" label="Competência" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
+                <SortableHead field="vencimento" label="Vencimento" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
+                <SortableHead field="valor" label="Valor" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
+                <SortableHead field="status" label="Status" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contasAPagar.map((linha) => (
+              {contasAPagarOrdenadas.map((linha) => (
                 <TableRow key={linha.key}>
                   <TableCell className="font-medium text-sand-800">{linha.descricao}</TableCell>
                   <TableCell className="text-sand-500">{linha.competencia}</TableCell>
@@ -509,18 +549,18 @@ function PeriodChip({ label, active, onClick }: { label: string; active: boolean
   );
 }
 
-function SortableHead({
+function SortableHead<F extends string>({
   field,
   label,
   sortField,
   sortDir,
   onClick,
 }: {
-  field: LedgerSortField;
+  field: F;
   label: string;
-  sortField: LedgerSortField | null;
+  sortField: F | null;
   sortDir: "asc" | "desc";
-  onClick: (field: LedgerSortField) => void;
+  onClick: (field: F) => void;
 }) {
   const active = sortField === field;
   const Icon = active ? (sortDir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
