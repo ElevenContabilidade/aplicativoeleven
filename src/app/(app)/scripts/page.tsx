@@ -118,6 +118,7 @@ export default function ScriptsPage() {
       </div>
 
       <ScriptFormDialog
+        key={editingScript?.id ?? "new"}
         open={formOpen}
         onOpenChange={setFormOpen}
         script={editingScript}
