@@ -33,6 +33,8 @@ import {
   PiggyBank,
   Gauge,
   ShieldAlert,
+  BadgeCheck,
+  MessageSquareText,
 } from "lucide-react";
 
 export interface NavItem {
@@ -84,5 +86,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Relatórios", href: "/relatorios", icon: BarChart3, section: "gestao" },
   { label: "Equipe", href: "/equipe", icon: Users, section: "gestao" },
   { label: "Auditoria", href: "/auditoria", icon: ShieldAlert, section: "gestao" },
+  { label: "Gestão do CRC", href: "/crc", icon: BadgeCheck, section: "gestao" },
+  { label: "Scripts", href: "/scripts", icon: MessageSquareText, section: "gestao" },
   { label: "Configurações", href: "/configuracoes", icon: Settings, section: "gestao" },
 ];

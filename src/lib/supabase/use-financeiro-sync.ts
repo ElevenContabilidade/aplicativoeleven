@@ -32,6 +32,11 @@ import type {
   ContratoAssinatura,
   Funcionario,
   AuditLogEntry,
+  CrcRegistroInfo,
+  CrcUfComunicada,
+  CrcAnuidade,
+  CrcEleicao,
+  CrcDeclaracaoCoaf,
 } from "@/lib/types";
 
 interface DadosFinanceirosRow {
@@ -78,6 +83,12 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setContratosAssinaturaFromSupabase = useAppStore((s) => s.setContratosAssinaturaFromSupabase);
   const setFuncionariosFromSupabase = useAppStore((s) => s.setFuncionariosFromSupabase);
   const setAuditLogFromSupabase = useAppStore((s) => s.setAuditLogFromSupabase);
+  const setCrcRegistroPessoalFromSupabase = useAppStore((s) => s.setCrcRegistroPessoalFromSupabase);
+  const setCrcRegistroEmpresaFromSupabase = useAppStore((s) => s.setCrcRegistroEmpresaFromSupabase);
+  const setCrcUfsFromSupabase = useAppStore((s) => s.setCrcUfsFromSupabase);
+  const setCrcAnuidadesFromSupabase = useAppStore((s) => s.setCrcAnuidadesFromSupabase);
+  const setCrcEleicoesFromSupabase = useAppStore((s) => s.setCrcEleicoesFromSupabase);
+  const setCrcDeclaracoesCoafFromSupabase = useAppStore((s) => s.setCrcDeclaracoesCoafFromSupabase);
   const applyNotificationsLidas = useAppStore((s) => s.applyNotificationsLidas);
 
   useEffect(() => {
@@ -130,6 +141,15 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setContratosAssinaturaFromSupabase(porTipo<ContratoAssinatura>("contratosAssinatura"));
       setFuncionariosFromSupabase(porTipo<Funcionario>("funcionarios"));
       setAuditLogFromSupabase(porTipo<AuditLogEntry>("auditLog"));
+      setCrcUfsFromSupabase(porTipo<CrcUfComunicada>("crcUfs"));
+      setCrcAnuidadesFromSupabase(porTipo<CrcAnuidade>("crcAnuidades"));
+      setCrcEleicoesFromSupabase(porTipo<CrcEleicao>("crcEleicoes"));
+      setCrcDeclaracoesCoafFromSupabase(porTipo<CrcDeclaracaoCoaf>("crcDeclaracoesCoaf"));
+
+      const crcRegistroPessoal = itemUnico<CrcRegistroInfo>("crcRegistroPessoal");
+      if (crcRegistroPessoal) setCrcRegistroPessoalFromSupabase(crcRegistroPessoal);
+      const crcRegistroEmpresa = itemUnico<CrcRegistroInfo>("crcRegistroEmpresa");
+      if (crcRegistroEmpresa) setCrcRegistroEmpresaFromSupabase(crcRegistroEmpresa);
 
       const dadosEscritorio = itemUnico<DadosEscritorio>("dadosEscritorio");
       if (dadosEscritorio) setDadosEscritorioFromSupabase(dadosEscritorio);
@@ -185,6 +205,12 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setContratosAssinaturaFromSupabase,
     setFuncionariosFromSupabase,
     setAuditLogFromSupabase,
+    setCrcRegistroPessoalFromSupabase,
+    setCrcRegistroEmpresaFromSupabase,
+    setCrcUfsFromSupabase,
+    setCrcAnuidadesFromSupabase,
+    setCrcEleicoesFromSupabase,
+    setCrcDeclaracoesCoafFromSupabase,
     applyNotificationsLidas,
   ]);
 }

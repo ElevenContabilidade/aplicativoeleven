@@ -129,6 +129,12 @@ import type {
   PagamentoSistemaMensal,
   ContratoAssinatura,
   Funcionario,
+  CrcRegistroInfo,
+  CrcTipoRegistro,
+  CrcUfComunicada,
+  CrcAnuidade,
+  CrcEleicao,
+  CrcDeclaracaoCoaf,
   FeriasRegistro,
   RescisaoChecklistItem,
   AuditLogEntry,
@@ -145,6 +151,12 @@ interface AppState {
   pagamentosSistemas: PagamentoSistemaMensal[];
   contratosAssinatura: ContratoAssinatura[];
   funcionarios: Funcionario[];
+  crcRegistroPessoal: CrcRegistroInfo;
+  crcRegistroEmpresa: CrcRegistroInfo;
+  crcUfs: CrcUfComunicada[];
+  crcAnuidades: CrcAnuidade[];
+  crcEleicoes: CrcEleicao[];
+  crcDeclaracoesCoaf: CrcDeclaracaoCoaf[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -210,6 +222,18 @@ interface AppState {
   addFuncionario: (funcionario: Funcionario) => void;
   updateFuncionario: (id: string, patch: Partial<Funcionario>) => void;
   deleteFuncionario: (id: string) => void;
+  updateCrcRegistro: (tipo: CrcTipoRegistro, patch: Partial<CrcRegistroInfo>) => void;
+  addCrcUf: (uf: CrcUfComunicada) => void;
+  updateCrcUf: (id: string, patch: Partial<CrcUfComunicada>) => void;
+  deleteCrcUf: (id: string) => void;
+  addCrcAnuidade: (anuidade: CrcAnuidade) => void;
+  updateCrcAnuidade: (id: string, patch: Partial<CrcAnuidade>) => void;
+  deleteCrcAnuidade: (id: string) => void;
+  addCrcEleicao: (eleicao: CrcEleicao) => void;
+  deleteCrcEleicao: (id: string) => void;
+  addCrcDeclaracaoCoaf: (declaracao: CrcDeclaracaoCoaf) => void;
+  updateCrcDeclaracaoCoaf: (id: string, patch: Partial<CrcDeclaracaoCoaf>) => void;
+  deleteCrcDeclaracaoCoaf: (id: string) => void;
   confirmarPeriodoFerias: (funcionarioId: string) => void;
   updateDecimo13: (funcionarioId: string, ano: string, patch: Partial<{ primeiraParcelaPaga: boolean; segundaParcelaPaga: boolean }>) => void;
   iniciarRescisao: (funcionarioId: string, dataDesligamento: string, motivo?: string) => void;
@@ -339,6 +363,12 @@ interface AppState {
   setMetaMensalClientesFromSupabase: (valor: number) => void;
   setContratosAssinaturaFromSupabase: (contratos: ContratoAssinatura[]) => void;
   setFuncionariosFromSupabase: (funcionarios: Funcionario[]) => void;
+  setCrcRegistroPessoalFromSupabase: (registro: CrcRegistroInfo) => void;
+  setCrcRegistroEmpresaFromSupabase: (registro: CrcRegistroInfo) => void;
+  setCrcUfsFromSupabase: (ufs: CrcUfComunicada[]) => void;
+  setCrcAnuidadesFromSupabase: (anuidades: CrcAnuidade[]) => void;
+  setCrcEleicoesFromSupabase: (eleicoes: CrcEleicao[]) => void;
+  setCrcDeclaracoesCoafFromSupabase: (declaracoes: CrcDeclaracaoCoaf[]) => void;
   /** Aplica quais alertas já foram lidos (o resto do conteúdo do alerta é
    * recalculado localmente a partir de licenças/certificados/clientes/
    * checklist fiscal, que já vêm do Supabase — só o "lida" precisa vir de
@@ -444,6 +474,12 @@ const initial = {
   pagamentosSistemas: [],
   contratosAssinatura: [],
   funcionarios: [],
+  crcRegistroPessoal: {} as CrcRegistroInfo,
+  crcRegistroEmpresa: {} as CrcRegistroInfo,
+  crcUfs: [] as CrcUfComunicada[],
+  crcAnuidades: [] as CrcAnuidade[],
+  crcEleicoes: [] as CrcEleicao[],
+  crcDeclaracoesCoaf: [] as CrcDeclaracaoCoaf[],
 };
 
 export const useAppStore = create<AppState>()(
@@ -787,6 +823,62 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ funcionarios: s.funcionarios.filter((f) => f.id !== id) }));
         deleteFinanceiro("funcionarios", id);
         if (funcionario) logAuditoria("Funcionário excluído", "Departamento Pessoal", funcionario.nome);
+      },
+      updateCrcRegistro: (tipo, patch) => {
+        if (tipo === "pessoal") {
+          set((s) => ({ crcRegistroPessoal: { ...s.crcRegistroPessoal, ...patch } }));
+          pushFinanceiro("crcRegistroPessoal", "default", null, useAppStore.getState().crcRegistroPessoal);
+        } else {
+          set((s) => ({ crcRegistroEmpresa: { ...s.crcRegistroEmpresa, ...patch } }));
+          pushFinanceiro("crcRegistroEmpresa", "default", null, useAppStore.getState().crcRegistroEmpresa);
+        }
+      },
+      addCrcUf: (uf) => {
+        set((s) => ({ crcUfs: [...s.crcUfs, uf] }));
+        pushFinanceiro("crcUfs", uf.id, null, uf);
+      },
+      updateCrcUf: (id, patch) => {
+        set((s) => ({ crcUfs: s.crcUfs.map((u) => (u.id === id ? { ...u, ...patch } : u)) }));
+        const uf = useAppStore.getState().crcUfs.find((u) => u.id === id);
+        if (uf) pushFinanceiro("crcUfs", id, null, uf);
+      },
+      deleteCrcUf: (id) => {
+        set((s) => ({ crcUfs: s.crcUfs.filter((u) => u.id !== id) }));
+        deleteFinanceiro("crcUfs", id);
+      },
+      addCrcAnuidade: (anuidade) => {
+        set((s) => ({ crcAnuidades: [...s.crcAnuidades, anuidade] }));
+        pushFinanceiro("crcAnuidades", anuidade.id, null, anuidade);
+      },
+      updateCrcAnuidade: (id, patch) => {
+        set((s) => ({ crcAnuidades: s.crcAnuidades.map((a) => (a.id === id ? { ...a, ...patch } : a)) }));
+        const anuidade = useAppStore.getState().crcAnuidades.find((a) => a.id === id);
+        if (anuidade) pushFinanceiro("crcAnuidades", id, null, anuidade);
+      },
+      deleteCrcAnuidade: (id) => {
+        set((s) => ({ crcAnuidades: s.crcAnuidades.filter((a) => a.id !== id) }));
+        deleteFinanceiro("crcAnuidades", id);
+      },
+      addCrcEleicao: (eleicao) => {
+        set((s) => ({ crcEleicoes: [...s.crcEleicoes, eleicao] }));
+        pushFinanceiro("crcEleicoes", eleicao.id, null, eleicao);
+      },
+      deleteCrcEleicao: (id) => {
+        set((s) => ({ crcEleicoes: s.crcEleicoes.filter((e) => e.id !== id) }));
+        deleteFinanceiro("crcEleicoes", id);
+      },
+      addCrcDeclaracaoCoaf: (declaracao) => {
+        set((s) => ({ crcDeclaracoesCoaf: [...s.crcDeclaracoesCoaf, declaracao] }));
+        pushFinanceiro("crcDeclaracoesCoaf", declaracao.id, null, declaracao);
+      },
+      updateCrcDeclaracaoCoaf: (id, patch) => {
+        set((s) => ({ crcDeclaracoesCoaf: s.crcDeclaracoesCoaf.map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+        const declaracao = useAppStore.getState().crcDeclaracoesCoaf.find((d) => d.id === id);
+        if (declaracao) pushFinanceiro("crcDeclaracoesCoaf", id, null, declaracao);
+      },
+      deleteCrcDeclaracaoCoaf: (id) => {
+        set((s) => ({ crcDeclaracoesCoaf: s.crcDeclaracoesCoaf.filter((d) => d.id !== id) }));
+        deleteFinanceiro("crcDeclaracoesCoaf", id);
       },
       confirmarPeriodoFerias: (funcionarioId) => {
         set((s) => ({
@@ -1136,6 +1228,12 @@ export const useAppStore = create<AppState>()(
       setMetaMensalClientesFromSupabase: (metaMensalClientes) => set({ metaMensalClientes }),
       setContratosAssinaturaFromSupabase: (contratosAssinatura) => set({ contratosAssinatura }),
       setFuncionariosFromSupabase: (funcionarios) => set({ funcionarios }),
+      setCrcRegistroPessoalFromSupabase: (crcRegistroPessoal) => set({ crcRegistroPessoal }),
+      setCrcRegistroEmpresaFromSupabase: (crcRegistroEmpresa) => set({ crcRegistroEmpresa }),
+      setCrcUfsFromSupabase: (crcUfs) => set({ crcUfs }),
+      setCrcAnuidadesFromSupabase: (crcAnuidades) => set({ crcAnuidades }),
+      setCrcEleicoesFromSupabase: (crcEleicoes) => set({ crcEleicoes }),
+      setCrcDeclaracoesCoafFromSupabase: (crcDeclaracoesCoaf) => set({ crcDeclaracoesCoaf }),
       applyNotificationsLidas: (idsLidos) =>
         set((s) => {
           const lidos = new Set(idsLidos);
@@ -1562,6 +1660,12 @@ export const useAppStore = create<AppState>()(
           metaMensalClientes,
           contratosAssinatura,
           funcionarios,
+          crcRegistroPessoal,
+          crcRegistroEmpresa,
+          crcUfs,
+          crcAnuidades,
+          crcEleicoes,
+          crcDeclaracoesCoaf,
           ...rest
         } = state;
         /* eslint-enable @typescript-eslint/no-unused-vars */

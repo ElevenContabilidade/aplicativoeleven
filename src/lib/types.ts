@@ -60,6 +60,52 @@ export interface DadosEscritorio {
   horarioAtendimento?: string;
 }
 
+// ---------- Gestão do CRC (Conselho Regional de Contabilidade) ----------
+
+/** Um dos dois registros no CRC que o escritório mantém: o profissional
+ * (pessoa física, o(a) contador(a) responsável) e o da empresa contábil. */
+export interface CrcRegistroInfo {
+  numero?: string;
+  dataRegistro?: string;
+  codigoAcesso?: string;
+  linkDrive?: string;
+}
+
+/** Comunicação de exercício profissional numa UF diferente da sede — o
+ * CRC exige isso quando o escritório presta serviço em outro estado.
+ * `pessoalData`/`empresaData` ficam vazios até serem comunicados. */
+export interface CrcUfComunicada {
+  id: string;
+  estado: string;
+  pessoalData?: string;
+  empresaData?: string;
+}
+
+export type CrcTipoRegistro = "pessoal" | "empresa";
+
+export interface CrcAnuidade {
+  id: string;
+  tipo: CrcTipoRegistro;
+  ano: string;
+  valor: number;
+  status: StatusContaPagar;
+  dataPagamento?: string;
+}
+
+export interface CrcEleicao {
+  id: string;
+  ano: string;
+  descricao?: string;
+  data?: string;
+}
+
+export interface CrcDeclaracaoCoaf {
+  id: string;
+  ano: string;
+  status: "Enviada" | "Pendente";
+  dataEnvio?: string;
+}
+
 /** Setor interno do escritório que usa um sistema/ferramenta — eixo
  * diferente do `DepartamentoChave` (que descreve setor de atendimento ao
  * CLIENTE); aqui é só pra organizar a tela "Sistemas e ferramentas" por
