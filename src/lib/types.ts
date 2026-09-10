@@ -97,6 +97,7 @@ export interface CrcEleicao {
   ano: string;
   descricao?: string;
   data?: string;
+  link?: string;
 }
 
 export interface CrcDeclaracaoCoaf {
@@ -104,6 +105,7 @@ export interface CrcDeclaracaoCoaf {
   ano: string;
   status: "Enviada" | "Pendente";
   dataEnvio?: string;
+  link?: string;
 }
 
 // ---------- Scripts (mensagens prontas por departamento) ----------

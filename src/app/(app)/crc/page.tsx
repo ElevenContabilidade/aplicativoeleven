@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Check, Plus, Trash2, Vote, ShieldQuestion, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Check, Plus, Trash2, Vote, ShieldQuestion, ArrowRight, ExternalLink } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -213,15 +213,23 @@ function EleicoesCard() {
   const [ano, setAno] = useState(String(new Date().getFullYear()));
   const [descricao, setDescricao] = useState("");
   const [data, setData] = useState("");
+  const [link, setLink] = useState("");
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!ano.trim()) return;
-    const eleicao: CrcEleicao = { id: `crc-elei-${Date.now()}`, ano: ano.trim(), descricao: descricao.trim() || undefined, data: data || undefined };
+    const eleicao: CrcEleicao = {
+      id: `crc-elei-${Date.now()}`,
+      ano: ano.trim(),
+      descricao: descricao.trim() || undefined,
+      data: data || undefined,
+      link: link.trim() || undefined,
+    };
     addCrcEleicao(eleicao);
     setAno(String(new Date().getFullYear()));
     setDescricao("");
     setData("");
+    setLink("");
   }
 
   return (
@@ -236,6 +244,11 @@ function EleicoesCard() {
               <span className="font-medium text-sand-800">{e.ano}</span>
               <span className="flex-1 truncate text-sand-600">{e.descricao || "—"}</span>
               <span className="text-sand-400">{e.data ? formatDate(e.data) : "—"}</span>
+              {e.link && (
+                <a href={e.link} target="_blank" rel="noopener noreferrer" className="text-sand-400 hover:text-wine-700" title="Abrir site">
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
               <button type="button" onClick={() => deleteCrcEleicao(e.id)} className="text-sand-400 hover:text-status-danger">
                 <Trash2 className="size-3.5" />
               </button>
@@ -243,20 +256,28 @@ function EleicoesCard() {
           ))}
           {eleicoes.length === 0 && <p className="py-4 text-center text-xs text-sand-400">Nenhum registro de votação ainda.</p>}
         </div>
-        <form onSubmit={handleAdd} className="mt-3 flex items-end gap-2 border-t border-sand-100 pt-3">
-          <div className="w-20">
-            <Label className="mb-1 block text-[11px]">Ano</Label>
-            <Input value={ano} onChange={(e) => setAno(e.target.value)} className="h-8" />
+        <form onSubmit={handleAdd} className="mt-3 space-y-2 border-t border-sand-100 pt-3">
+          <div className="flex items-end gap-2">
+            <div className="w-20">
+              <Label className="mb-1 block text-[11px]">Ano</Label>
+              <Input value={ano} onChange={(e) => setAno(e.target.value)} className="h-8" />
+            </div>
+            <div className="flex-1">
+              <Label className="mb-1 block text-[11px]">Descrição</Label>
+              <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-8" placeholder="Ex: Eleição da diretoria" />
+            </div>
+            <div className="w-36">
+              <Label className="mb-1 block text-[11px]">Data</Label>
+              <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="h-8" />
+            </div>
           </div>
-          <div className="flex-1">
-            <Label className="mb-1 block text-[11px]">Descrição</Label>
-            <Input value={descricao} onChange={(e) => setDescricao(e.target.value)} className="h-8" placeholder="Ex: Eleição da diretoria" />
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Label className="mb-1 block text-[11px]">Link do site</Label>
+              <Input type="url" value={link} onChange={(e) => setLink(e.target.value)} className="h-8" placeholder="https://" />
+            </div>
+            <Button type="submit" size="sm" variant="outline"><Plus className="size-3.5" /> Adicionar</Button>
           </div>
-          <div className="w-36">
-            <Label className="mb-1 block text-[11px]">Data</Label>
-            <Input type="date" value={data} onChange={(e) => setData(e.target.value)} className="h-8" />
-          </div>
-          <Button type="submit" size="sm" variant="outline"><Plus className="size-3.5" /></Button>
         </form>
       </CardContent>
     </Card>
@@ -270,13 +291,20 @@ function CoafCard() {
   const deleteCrcDeclaracaoCoaf = useAppStore((s) => s.deleteCrcDeclaracaoCoaf);
 
   const [ano, setAno] = useState(String(new Date().getFullYear()));
+  const [link, setLink] = useState("");
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!ano.trim()) return;
-    const declaracao: CrcDeclaracaoCoaf = { id: `crc-coaf-${Date.now()}`, ano: ano.trim(), status: "Pendente" };
+    const declaracao: CrcDeclaracaoCoaf = {
+      id: `crc-coaf-${Date.now()}`,
+      ano: ano.trim(),
+      status: "Pendente",
+      link: link.trim() || undefined,
+    };
     addCrcDeclaracaoCoaf(declaracao);
     setAno(String(new Date().getFullYear() + 1));
+    setLink("");
   }
 
   return (
@@ -297,6 +325,11 @@ function CoafCard() {
                 </SelectContent>
               </Select>
               <StatusBadge status={d.status} />
+              {d.link && (
+                <a href={d.link} target="_blank" rel="noopener noreferrer" className="text-sand-400 hover:text-wine-700" title="Abrir site">
+                  <ExternalLink className="size-3.5" />
+                </a>
+              )}
               <button type="button" onClick={() => deleteCrcDeclaracaoCoaf(d.id)} className="text-sand-400 hover:text-status-danger">
                 <Trash2 className="size-3.5" />
               </button>
@@ -305,9 +338,13 @@ function CoafCard() {
           {declaracoes.length === 0 && <p className="py-4 text-center text-xs text-sand-400">Nenhuma declaração cadastrada.</p>}
         </div>
         <form onSubmit={handleAdd} className="mt-3 flex items-end gap-2 border-t border-sand-100 pt-3">
-          <div className="flex-1">
+          <div className="w-20">
             <Label className="mb-1 block text-[11px]">Ano</Label>
             <Input value={ano} onChange={(e) => setAno(e.target.value)} className="h-8" />
+          </div>
+          <div className="flex-1">
+            <Label className="mb-1 block text-[11px]">Link do site</Label>
+            <Input type="url" value={link} onChange={(e) => setLink(e.target.value)} className="h-8" placeholder="https://" />
           </div>
           <Button type="submit" size="sm" variant="outline"><Plus className="size-3.5" /> Adicionar</Button>
         </form>
