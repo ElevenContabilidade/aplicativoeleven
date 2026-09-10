@@ -133,6 +133,42 @@ export interface Script {
   mensagem?: string;
 }
 
+/** Módulo "Controle de conteúdo" — calendário/Kanban de posts de redes
+ * sociais (substitui a planilha de Reels/Carrossel que a Kauane já usava). */
+export const CONTEUDO_FORMATOS = ["Reels", "Carrossel", "Story", "Post estático", "Vídeo longo"] as const;
+export type ConteudoFormato = (typeof CONTEUDO_FORMATOS)[number];
+
+export const CONTEUDO_STATUS = ["A fazer", "Em andamento", "Concluído"] as const;
+export type ConteudoStatus = (typeof CONTEUDO_STATUS)[number];
+
+export interface ConteudoImagem {
+  id: string;
+  nome: string;
+  /** Guardada como data URL direto no registro (sem bucket de storage
+   * configurado ainda) — ok pro volume de imagens de referência de um
+   * calendário de conteúdo, mas não é o lugar pra vídeos/arquivos grandes. */
+  dataUrl: string;
+}
+
+export interface ConteudoPost {
+  id: string;
+  data: string;
+  formato: ConteudoFormato;
+  tema: string;
+  status: ConteudoStatus;
+  /** Como o conteúdo vai ser organizado/roteirizado. */
+  organizacao?: string;
+  /** Link de onde está o material de apoio (doc, conversa do Claude, etc.). */
+  linkDocumento?: string;
+  imagens: ConteudoImagem[];
+  visualizacoes?: number;
+  salvamentos?: number;
+  compartilhamentos?: number;
+  comentarios?: number;
+  observacoes?: string;
+  responsavelId?: string;
+}
+
 /** Setor interno do escritório que usa um sistema/ferramenta — eixo
  * diferente do `DepartamentoChave` (que descreve setor de atendimento ao
  * CLIENTE); aqui é só pra organizar a tela "Sistemas e ferramentas" por

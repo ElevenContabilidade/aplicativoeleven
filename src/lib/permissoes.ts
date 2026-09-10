@@ -33,6 +33,7 @@ export const MODULO_POR_ROTA: Record<string, string> = {
   "/auditoria": "Auditoria",
   "/crc": "Gestão do CRC",
   "/scripts": "Scripts",
+  "/conteudo": "Controle de Conteúdo",
   "/eleven-ia": "Eleven IA",
   "/configuracoes": "Configurações",
 };
@@ -46,7 +47,7 @@ export const MODULOS_OPERACAO = [
   "Dados do Escritório", "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Obrigações", "Fiscal", "Faturamento", "Guias Fiscais", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
 ];
 export const MODULOS_GESTAO = [
-  "Senhas", "Financeiro", "Boletos", "NFSe", "Rentabilidade", "Produtividade", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Auditoria", "Gestão do CRC", "Scripts", "Eleven IA", "Configurações",
+  "Senhas", "Financeiro", "Boletos", "NFSe", "Rentabilidade", "Produtividade", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Auditoria", "Gestão do CRC", "Scripts", "Controle de Conteúdo", "Eleven IA", "Configurações",
 ];
 export const ACOES = ["Visualizar", "Criar", "Editar", "Excluir", "Exportar"];
 

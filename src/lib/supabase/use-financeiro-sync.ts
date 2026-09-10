@@ -39,6 +39,7 @@ import type {
   CrcDeclaracaoCoaf,
   ScriptDepartamento,
   Script,
+  ConteudoPost,
 } from "@/lib/types";
 
 interface DadosFinanceirosRow {
@@ -93,6 +94,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setCrcDeclaracoesCoafFromSupabase = useAppStore((s) => s.setCrcDeclaracoesCoafFromSupabase);
   const setScriptsDepartamentosFromSupabase = useAppStore((s) => s.setScriptsDepartamentosFromSupabase);
   const setScriptsFromSupabase = useAppStore((s) => s.setScriptsFromSupabase);
+  const setConteudoPostsFromSupabase = useAppStore((s) => s.setConteudoPostsFromSupabase);
   const applyNotificationsLidas = useAppStore((s) => s.applyNotificationsLidas);
   const setFinanceiroCarregado = useAppStore((s) => s.setFinanceiroCarregado);
 
@@ -153,6 +155,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setCrcDeclaracoesCoafFromSupabase(porTipo<CrcDeclaracaoCoaf>("crcDeclaracoesCoaf"));
       setScriptsDepartamentosFromSupabase(porTipo<ScriptDepartamento>("scriptsDepartamentos"));
       setScriptsFromSupabase(porTipo<Script>("scripts"));
+      setConteudoPostsFromSupabase(porTipo<ConteudoPost>("conteudoPosts"));
 
       const crcRegistroPessoal = itemUnico<CrcRegistroInfo>("crcRegistroPessoal");
       if (crcRegistroPessoal) setCrcRegistroPessoalFromSupabase(crcRegistroPessoal);
@@ -223,6 +226,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setCrcDeclaracoesCoafFromSupabase,
     setScriptsDepartamentosFromSupabase,
     setScriptsFromSupabase,
+    setConteudoPostsFromSupabase,
     applyNotificationsLidas,
     setFinanceiroCarregado,
   ]);

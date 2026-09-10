@@ -35,6 +35,7 @@ import {
   ShieldAlert,
   BadgeCheck,
   MessageSquareText,
+  Clapperboard,
 } from "lucide-react";
 
 export interface NavItem {
@@ -88,5 +89,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Auditoria", href: "/auditoria", icon: ShieldAlert, section: "gestao" },
   { label: "Gestão do CRC", href: "/crc", icon: BadgeCheck, section: "gestao" },
   { label: "Scripts", href: "/scripts", icon: MessageSquareText, section: "gestao" },
+  { label: "Controle de Conteúdo", href: "/conteudo", icon: Clapperboard, section: "gestao" },
   { label: "Configurações", href: "/configuracoes", icon: Settings, section: "gestao" },
 ];

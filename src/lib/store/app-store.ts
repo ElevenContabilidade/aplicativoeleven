@@ -137,6 +137,7 @@ import type {
   CrcDeclaracaoCoaf,
   ScriptDepartamento,
   Script,
+  ConteudoPost,
   FeriasRegistro,
   RescisaoChecklistItem,
   AuditLogEntry,
@@ -161,6 +162,7 @@ interface AppState {
   crcDeclaracoesCoaf: CrcDeclaracaoCoaf[];
   scriptsDepartamentos: ScriptDepartamento[];
   scripts: Script[];
+  conteudoPosts: ConteudoPost[];
   leads: Lead[];
   clients: Client[];
   tasks: Task[];
@@ -252,6 +254,9 @@ interface AppState {
   addScript: (script: Script) => void;
   updateScript: (id: string, patch: Partial<Script>) => void;
   deleteScript: (id: string) => void;
+  addConteudoPost: (post: ConteudoPost) => void;
+  updateConteudoPost: (id: string, patch: Partial<ConteudoPost>) => void;
+  deleteConteudoPost: (id: string) => void;
   confirmarPeriodoFerias: (funcionarioId: string) => void;
   updateDecimo13: (funcionarioId: string, ano: string, patch: Partial<{ primeiraParcelaPaga: boolean; segundaParcelaPaga: boolean }>) => void;
   iniciarRescisao: (funcionarioId: string, dataDesligamento: string, motivo?: string) => void;
@@ -389,6 +394,7 @@ interface AppState {
   setCrcDeclaracoesCoafFromSupabase: (declaracoes: CrcDeclaracaoCoaf[]) => void;
   setScriptsDepartamentosFromSupabase: (departamentos: ScriptDepartamento[]) => void;
   setScriptsFromSupabase: (scripts: Script[]) => void;
+  setConteudoPostsFromSupabase: (posts: ConteudoPost[]) => void;
   /** Aplica quais alertas já foram lidos (o resto do conteúdo do alerta é
    * recalculado localmente a partir de licenças/certificados/clientes/
    * checklist fiscal, que já vêm do Supabase — só o "lida" precisa vir de
@@ -503,6 +509,7 @@ const initial = {
   crcDeclaracoesCoaf: [] as CrcDeclaracaoCoaf[],
   scriptsDepartamentos: [] as ScriptDepartamento[],
   scripts: [] as Script[],
+  conteudoPosts: [] as ConteudoPost[],
 };
 
 export const useAppStore = create<AppState>()(
@@ -937,6 +944,19 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ scripts: s.scripts.filter((sc) => sc.id !== id) }));
         deleteFinanceiro("scripts", id);
       },
+      addConteudoPost: (post) => {
+        set((s) => ({ conteudoPosts: [...s.conteudoPosts, post] }));
+        pushFinanceiro("conteudoPosts", post.id, null, post);
+      },
+      updateConteudoPost: (id, patch) => {
+        set((s) => ({ conteudoPosts: s.conteudoPosts.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
+        const post = useAppStore.getState().conteudoPosts.find((p) => p.id === id);
+        if (post) pushFinanceiro("conteudoPosts", id, null, post);
+      },
+      deleteConteudoPost: (id) => {
+        set((s) => ({ conteudoPosts: s.conteudoPosts.filter((p) => p.id !== id) }));
+        deleteFinanceiro("conteudoPosts", id);
+      },
       confirmarPeriodoFerias: (funcionarioId) => {
         set((s) => ({
           funcionarios: s.funcionarios.map((f) => {
@@ -1293,6 +1313,7 @@ export const useAppStore = create<AppState>()(
       setCrcDeclaracoesCoafFromSupabase: (crcDeclaracoesCoaf) => set({ crcDeclaracoesCoaf }),
       setScriptsDepartamentosFromSupabase: (scriptsDepartamentos) => set({ scriptsDepartamentos }),
       setScriptsFromSupabase: (scripts) => set({ scripts }),
+      setConteudoPostsFromSupabase: (conteudoPosts) => set({ conteudoPosts }),
       applyNotificationsLidas: (idsLidos) =>
         set((s) => {
           const lidos = new Set(idsLidos);
@@ -1728,6 +1749,7 @@ export const useAppStore = create<AppState>()(
           crcDeclaracoesCoaf,
           scriptsDepartamentos,
           scripts,
+          conteudoPosts,
           ...rest
         } = state;
         /* eslint-enable @typescript-eslint/no-unused-vars */
