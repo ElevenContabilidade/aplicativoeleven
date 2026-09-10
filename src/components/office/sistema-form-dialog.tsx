@@ -7,8 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import type { SistemaEscritorio } from "@/lib/types";
+import { SETORES_SISTEMA, type SetorSistema, type SistemaEscritorio, type SituacaoSistema } from "@/lib/types";
+
+const SITUACOES: SituacaoSistema[] = ["Ativo", "Cancelado"];
 
 export function SistemaFormDialog({
   open,
@@ -23,17 +27,24 @@ export function SistemaFormDialog({
   const updateSistemaEscritorio = useAppStore((s) => s.updateSistemaEscritorio);
 
   const [nome, setNome] = useState(sistema?.nome ?? "");
+  const [setores, setSetores] = useState<SetorSistema[]>(sistema?.setores ?? []);
+  const [situacao, setSituacao] = useState<SituacaoSistema>(sistema?.situacao ?? "Ativo");
   const [login, setLogin] = useState(sistema?.login ?? "");
   const [senha, setSenha] = useState(sistema?.senha ?? "");
   const [showSenha, setShowSenha] = useState(false);
   const [link, setLink] = useState(sistema?.link ?? "");
   const [valorMensal, setValorMensal] = useState(sistema?.valorMensal?.toString() ?? "");
   const [diaVencimento, setDiaVencimento] = useState(sistema?.diaVencimento?.toString() ?? "");
+  const [valorImplementacao, setValorImplementacao] = useState(sistema?.valorImplementacao?.toString() ?? "");
+  const [formaCobranca, setFormaCobranca] = useState(sistema?.formaCobranca ?? "");
+  const [telefoneSuporte, setTelefoneSuporte] = useState(sistema?.telefoneSuporte ?? "");
+  const [emailSuporte, setEmailSuporte] = useState(sistema?.emailSuporte ?? "");
   const [observacoes, setObservacoes] = useState(sistema?.observacoes ?? "");
 
   function reset() {
-    setNome(""); setLogin(""); setSenha(""); setShowSenha(false); setLink("");
-    setValorMensal(""); setDiaVencimento(""); setObservacoes("");
+    setNome(""); setSetores([]); setSituacao("Ativo"); setLogin(""); setSenha(""); setShowSenha(false); setLink("");
+    setValorMensal(""); setDiaVencimento(""); setValorImplementacao(""); setFormaCobranca("");
+    setTelefoneSuporte(""); setEmailSuporte(""); setObservacoes("");
   }
 
   function handleClose(v: boolean) {
@@ -41,16 +52,26 @@ export function SistemaFormDialog({
     onOpenChange(v);
   }
 
+  function toggleSetor(setor: SetorSistema) {
+    setSetores((prev) => (prev.includes(setor) ? prev.filter((s) => s !== setor) : [...prev, setor]));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
     const patch = {
       nome: nome.trim(),
+      setores,
+      situacao,
       login: login.trim() || undefined,
       senha: senha.trim() || undefined,
       link: link.trim() || undefined,
       valorMensal: valorMensal ? Number(valorMensal) : undefined,
       diaVencimento: diaVencimento ? Number(diaVencimento) : undefined,
+      valorImplementacao: valorImplementacao ? Number(valorImplementacao) : undefined,
+      formaCobranca: formaCobranca.trim() || undefined,
+      telefoneSuporte: telefoneSuporte.trim() || undefined,
+      emailSuporte: emailSuporte.trim() || undefined,
       observacoes: observacoes.trim() || undefined,
     };
     if (sistema) {
@@ -64,7 +85,7 @@ export function SistemaFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{sistema ? "Editar sistema" : "Novo sistema"}</DialogTitle>
         </DialogHeader>
@@ -72,6 +93,17 @@ export function SistemaFormDialog({
           <div>
             <Label className="mb-1 block">Nome do sistema *</Label>
             <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Domínio Sistemas" required />
+          </div>
+          <div>
+            <Label className="mb-1 block">Setor</Label>
+            <div className="flex flex-wrap gap-3">
+              {SETORES_SISTEMA.map((s) => (
+                <label key={s} className="flex items-center gap-1.5 text-xs text-sand-700">
+                  <Checkbox checked={setores.includes(s)} onCheckedChange={() => toggleSetor(s)} />
+                  {s}
+                </label>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -93,16 +125,41 @@ export function SistemaFormDialog({
               </div>
             </div>
             <div className="col-span-2">
-              <Label className="mb-1 block">Site</Label>
+              <Label className="mb-1 block">Link de acesso</Label>
               <Input type="url" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" />
             </div>
             <div>
-              <Label className="mb-1 block">Valor mensal (R$)</Label>
+              <Label className="mb-1 block">Preço mensal (R$)</Label>
               <Input type="number" step="0.01" min="0" value={valorMensal} onChange={(e) => setValorMensal(e.target.value)} placeholder="0,00" />
+            </div>
+            <div>
+              <Label className="mb-1 block">Situação</Label>
+              <Select value={situacao} onValueChange={(v) => setSituacao(v as SituacaoSistema)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {SITUACOES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="mb-1 block">Dia de vencimento</Label>
               <Input type="number" min="1" max="31" value={diaVencimento} onChange={(e) => setDiaVencimento(e.target.value)} placeholder="Ex: 10" />
+            </div>
+            <div>
+              <Label className="mb-1 block">Valor de implementação (R$)</Label>
+              <Input type="number" step="0.01" min="0" value={valorImplementacao} onChange={(e) => setValorImplementacao(e.target.value)} placeholder="0,00" />
+            </div>
+            <div className="col-span-2">
+              <Label className="mb-1 block">Forma de cobrança</Label>
+              <Input value={formaCobranca} onChange={(e) => setFormaCobranca(e.target.value)} placeholder="Ex: Cartão, Boleto, Pix" />
+            </div>
+            <div>
+              <Label className="mb-1 block">Telefone de suporte</Label>
+              <Input value={telefoneSuporte} onChange={(e) => setTelefoneSuporte(e.target.value)} placeholder="(00) 00000-0000" />
+            </div>
+            <div>
+              <Label className="mb-1 block">E-mail de suporte</Label>
+              <Input type="email" value={emailSuporte} onChange={(e) => setEmailSuporte(e.target.value)} />
             </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Observações</Label>

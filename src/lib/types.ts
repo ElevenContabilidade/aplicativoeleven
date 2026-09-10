@@ -60,6 +60,15 @@ export interface DadosEscritorio {
   horarioAtendimento?: string;
 }
 
+/** Setor interno do escritório que usa um sistema/ferramenta — eixo
+ * diferente do `DepartamentoChave` (que descreve setor de atendimento ao
+ * CLIENTE); aqui é só pra organizar a tela "Sistemas e ferramentas" por
+ * quem usa cada ferramenta dentro da Eleven. */
+export const SETORES_SISTEMA = ["Comercial", "Administrativo", "Contábil", "Fiscal", "Financeiro", "Parceria"] as const;
+export type SetorSistema = (typeof SETORES_SISTEMA)[number];
+
+export type SituacaoSistema = "Ativo" | "Cancelado";
+
 /** Sistema/ferramenta pago pelo escritório (ex: Domínio Sistemas, Nibo,
  * Certificado A1, portal de algum órgão) — acessos, senha e cobrança
  * mensal, geridos na tela "Dados do escritório". */
@@ -72,6 +81,14 @@ export interface SistemaEscritorio {
   valorMensal?: number;
   diaVencimento?: number;
   observacoes?: string;
+  setores?: SetorSistema[];
+  /** Ausente = Ativo (registros antigos, de antes desse campo existir,
+   * continuam contando como ativos). */
+  situacao?: SituacaoSistema;
+  valorImplementacao?: number;
+  formaCobranca?: string;
+  telefoneSuporte?: string;
+  emailSuporte?: string;
 }
 
 // ---------- Contas a pagar ----------
