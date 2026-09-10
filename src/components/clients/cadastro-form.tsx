@@ -120,6 +120,7 @@ export function CadastroForm({ client }: { client: Client }) {
                 value={form.senhaPrefeituraPortalNacional ?? ""}
                 onChange={(e) => set("senhaPrefeituraPortalNacional", e.target.value)}
                 className="pr-9"
+                autoComplete="new-password"
               />
               <button
                 type="button"

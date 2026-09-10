@@ -229,6 +229,7 @@ export function CertificadoFormDialog({
                   onChange={(e) => setSenha(e.target.value)}
                   placeholder="Opcional — fica disponível para consulta na listagem"
                   className="pr-9"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

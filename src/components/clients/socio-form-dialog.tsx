@@ -111,6 +111,7 @@ export function SocioFormDialog({
                   onChange={(e) => setSenhaGovBr(e.target.value)}
                   placeholder="Opcional — fica disponível para consulta no cadastro"
                   className="pr-9"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"

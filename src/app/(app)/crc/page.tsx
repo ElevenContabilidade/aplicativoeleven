@@ -95,6 +95,7 @@ function RegistroCard({ tipo, titulo, revelado }: { tipo: CrcTipoRegistro; titul
               type={revelado ? "text" : "password"}
               value={form.numero ?? ""}
               onChange={(e) => set("numero", e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div>
@@ -103,6 +104,7 @@ function RegistroCard({ tipo, titulo, revelado }: { tipo: CrcTipoRegistro; titul
               type={revelado ? "text" : "password"}
               value={form.codigoAcesso ?? ""}
               onChange={(e) => set("codigoAcesso", e.target.value)}
+              autoComplete="new-password"
             />
           </div>
           <div>

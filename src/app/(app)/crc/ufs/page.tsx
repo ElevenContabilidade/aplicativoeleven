@@ -18,13 +18,16 @@ export default function CrcUfsPage() {
   const updateCrcUf = useAppStore((s) => s.updateCrcUf);
   const deleteCrcUf = useAppStore((s) => s.deleteCrcUf);
   const linkPortalUf = useAppStore((s) => s.crcRegistroPessoal.linkPortalUf);
-  const codigoAcesso = useAppStore((s) => s.crcRegistroPessoal.codigoAcesso);
+  const senhaPessoal = useAppStore((s) => s.crcRegistroPessoal.codigoAcesso);
+  const senhaEmpresa = useAppStore((s) => s.crcRegistroEmpresa.codigoAcesso);
   const updateCrcRegistro = useAppStore((s) => s.updateCrcRegistro);
 
   const [novoEstado, setNovoEstado] = useState("");
   const [siteForm, setSiteForm] = useState(linkPortalUf ?? "");
-  const [senhaForm, setSenhaForm] = useState(codigoAcesso ?? "");
-  const [showSenha, setShowSenha] = useState(false);
+  const [senhaPfForm, setSenhaPfForm] = useState(senhaPessoal ?? "");
+  const [senhaPjForm, setSenhaPjForm] = useState(senhaEmpresa ?? "");
+  const [showSenhaPf, setShowSenhaPf] = useState(false);
+  const [showSenhaPj, setShowSenhaPj] = useState(false);
   const [siteSavedAt, setSiteSavedAt] = useState<number | null>(null);
   const siteDirtyRef = useRef(false);
 
@@ -33,9 +36,10 @@ export default function CrcUfsPage() {
   useEffect(() => {
     if (!siteDirtyRef.current) {
       setSiteForm(linkPortalUf ?? "");
-      setSenhaForm(codigoAcesso ?? "");
+      setSenhaPfForm(senhaPessoal ?? "");
+      setSenhaPjForm(senhaEmpresa ?? "");
     }
-  }, [linkPortalUf, codigoAcesso]);
+  }, [linkPortalUf, senhaPessoal, senhaEmpresa]);
 
   const disponiveis = ESTADOS_BRASIL.filter((e) => !ufs.some((u) => u.estado === e.sigla));
 
@@ -47,14 +51,16 @@ export default function CrcUfsPage() {
 
   function handleSalvarSite(e: React.FormEvent) {
     e.preventDefault();
-    // Um único updateCrcRegistro pros dois campos — dois saves separados
-    // (um só pra site, outro só pra senha) fariam dois pushes concorrentes
-    // pro mesmo registro, com risco de um sobrescrever o outro se as
-    // respostas chegarem fora de ordem.
+    // Site + senha PF vão juntos no mesmo registro (crcRegistroPessoal) —
+    // uma única chamada pros dois campos evita dois pushes concorrentes
+    // pro mesmo registro (um poderia sobrescrever o outro fora de ordem).
+    // A senha PJ é outro registro (crcRegistroEmpresa), então é uma
+    // chamada à parte, sem risco de corrida com a de cima.
     updateCrcRegistro("pessoal", {
       linkPortalUf: siteForm.trim() || undefined,
-      codigoAcesso: senhaForm.trim() || undefined,
+      codigoAcesso: senhaPfForm.trim() || undefined,
     });
+    updateCrcRegistro("empresa", { codigoAcesso: senhaPjForm.trim() || undefined });
     setSiteSavedAt(Date.now());
     setTimeout(() => setSiteSavedAt(null), 2500);
   }
@@ -77,24 +83,46 @@ export default function CrcUfsPage() {
                 onChange={(e) => { siteDirtyRef.current = true; setSiteForm(e.target.value); }}
                 placeholder="https://... (portal do CRC de origem)"
                 className="w-72"
+                autoComplete="off"
               />
             </div>
             <div>
-              <Label className="mb-1 block text-xs">Senha</Label>
+              <Label className="mb-1 block text-xs">Senha PF</Label>
               <div className="relative w-40">
                 <Input
-                  type={showSenha ? "text" : "password"}
-                  value={senhaForm}
-                  onChange={(e) => { siteDirtyRef.current = true; setSenhaForm(e.target.value); }}
+                  type={showSenhaPf ? "text" : "password"}
+                  value={senhaPfForm}
+                  onChange={(e) => { siteDirtyRef.current = true; setSenhaPfForm(e.target.value); }}
                   className="pr-9"
+                  autoComplete="new-password"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowSenha((v) => !v)}
+                  onClick={() => setShowSenhaPf((v) => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
                   tabIndex={-1}
                 >
-                  {showSenha ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                  {showSenhaPf ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1 block text-xs">Senha PJ</Label>
+              <div className="relative w-40">
+                <Input
+                  type={showSenhaPj ? "text" : "password"}
+                  value={senhaPjForm}
+                  onChange={(e) => { siteDirtyRef.current = true; setSenhaPjForm(e.target.value); }}
+                  className="pr-9"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSenhaPj((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
+                  tabIndex={-1}
+                >
+                  {showSenhaPj ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 </button>
               </div>
             </div>

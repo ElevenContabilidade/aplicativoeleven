@@ -108,6 +108,7 @@ export default function ConfiguracoesPage() {
                   value={novaSenha}
                   onChange={(e) => setNovaSenha(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
+                  autoComplete="new-password"
                   required
                 />
               </div>
@@ -117,6 +118,7 @@ export default function ConfiguracoesPage() {
                   type="password"
                   value={confirmarSenha}
                   onChange={(e) => setConfirmarSenha(e.target.value)}
+                  autoComplete="new-password"
                   required
                 />
               </div>

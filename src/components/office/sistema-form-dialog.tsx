@@ -108,12 +108,18 @@ export function SistemaFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="mb-1 block">Login / usuário</Label>
-              <Input value={login} onChange={(e) => setLogin(e.target.value)} />
+              <Input value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="off" />
             </div>
             <div>
               <Label className="mb-1 block">Senha</Label>
               <div className="relative">
-                <Input type={showSenha ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)} className="pr-9" />
+                <Input
+                  type={showSenha ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="pr-9"
+                  autoComplete="new-password"
+                />
                 <button
                   type="button"
                   onClick={() => setShowSenha((v) => !v)}
