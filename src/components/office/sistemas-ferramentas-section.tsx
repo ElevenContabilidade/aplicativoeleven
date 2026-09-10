@@ -26,6 +26,11 @@ export function SistemasFerramentasSection() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sistemaFormOpen, setSistemaFormOpen] = useState(false);
   const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
+  // Contador que muda a cada abertura, forçando o SistemaFormDialog a
+  // remontar (senão reabrir o MESMO sistema logo após editá-lo reaproveita a
+  // instância que o próprio dialog já tinha zerado ao fechar — mesmo bug já
+  // corrigido no Scripts/Certificados).
+  const [formOpenKey, setFormOpenKey] = useState(0);
 
   const totalMensalAtivos = sistemas.filter(isAtivo).reduce((acc, s) => acc + (s.valorMensal ?? 0), 0);
   const ativos = sistemas.filter(isAtivo).length;
@@ -60,10 +65,12 @@ export function SistemasFerramentasSection() {
 
   function openNovoSistema() {
     setEditingSistema(null);
+    setFormOpenKey((k) => k + 1);
     setSistemaFormOpen(true);
   }
   function openEditSistema(sis: SistemaEscritorio) {
     setEditingSistema(sis);
+    setFormOpenKey((k) => k + 1);
     setSistemaFormOpen(true);
   }
   function handleDeleteSistema(sis: SistemaEscritorio) {
@@ -215,7 +222,7 @@ export function SistemasFerramentasSection() {
         )}
       </CardContent>
 
-      <SistemaFormDialog open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
+      <SistemaFormDialog key={formOpenKey} open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
     </Card>
   );
 }
