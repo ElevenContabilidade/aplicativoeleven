@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -61,6 +62,7 @@ export default function FinanceiroPage() {
   const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
   const [sistemaFormOpen, setSistemaFormOpen] = useState(false);
   const [sistemaFormOpenKey, setSistemaFormOpenKey] = useState(0);
+  const [mrrDetalheOpen, setMrrDetalheOpen] = useState(false);
   const [filtroBanco, setFiltroBanco] = useState(TODOS);
   const [filtroTipo, setFiltroTipo] = useState(TODOS);
   const [year, setYear] = useState(() => {
@@ -334,7 +336,14 @@ export default function FinanceiroPage() {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
-        <MetricCard label="MRR" value={formatCurrency(mrr)} icon={Repeat} tone="wine" />
+        <MetricCard
+          label="MRR"
+          value={formatCurrency(mrr)}
+          icon={Repeat}
+          tone="wine"
+          hint="Clique para ver quem compõe o valor"
+          onClick={() => setMrrDetalheOpen(true)}
+        />
         <MetricCard label={`Recebido — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`} value={formatCurrency(recebido)} icon={CircleDollarSign} tone="success" />
         <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Wallet} tone="warning" />
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
@@ -575,6 +584,43 @@ export default function FinanceiroPage() {
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <DespesaFormDialog key={despesaFormOpenKey} open={despesaFormOpen} onOpenChange={setDespesaFormOpen} despesa={editingDespesa} />
       <SistemaFormDialog key={sistemaFormOpenKey} open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
+
+      <Dialog open={mrrDetalheOpen} onOpenChange={setMrrDetalheOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Clientes que compõem o MRR</DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Mensalidade</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[...clientesAssessoriaMensal]
+                .sort((a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial))
+                .map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell className="font-medium text-sand-800">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</TableCell>
+                    <TableCell className="text-sand-500">{c.dados.cnpj || "—"}</TableCell>
+                    <TableCell><StatusBadge status={c.status} /></TableCell>
+                    <TableCell>{formatCurrency(c.financeiro.valorMensal)}</TableCell>
+                  </TableRow>
+                ))}
+              {clientesAssessoriaMensal.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="py-8 text-center text-sand-400">Nenhum cliente com mensalidade cadastrada.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
+            <span>Total ({clientesAssessoriaMensal.length} clientes)</span>
+            <span>{formatCurrency(mrr)}</span>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

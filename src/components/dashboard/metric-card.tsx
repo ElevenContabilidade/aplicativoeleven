@@ -8,12 +8,16 @@ export function MetricCard({
   icon: Icon,
   tone = "neutral",
   hint,
+  onClick,
 }: {
   label: string;
   value: string | number;
   icon?: LucideIcon;
   tone?: "neutral" | "success" | "warning" | "danger" | "wine";
   hint?: string;
+  /** Quando presente, o card vira clicável (ex: abrir o detalhamento de
+   * quem compõe o valor mostrado). */
+  onClick?: () => void;
 }) {
   const toneClasses: Record<string, string> = {
     neutral: "bg-sand-100 text-sand-600",
@@ -24,7 +28,10 @@ export function MetricCard({
   };
 
   return (
-    <Card>
+    <Card
+      className={cn(onClick && "cursor-pointer transition-shadow hover:shadow-md")}
+      onClick={onClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
           <p className="text-[11px] font-medium leading-tight text-sand-500">{label}</p>
