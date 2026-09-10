@@ -21,6 +21,7 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
   const { isAuthenticated, kind, userId, hasHydrated, logout } = useAuthStore();
   const permissoes = useAppStore((s) => s.permissoes);
   const team = useAppStore((s) => s.team);
+  const financeiroCarregado = useAppStore((s) => s.financeiroCarregado);
 
   useSupabaseTeamSync(hasHydrated && isAuthenticated && kind === "equipe");
   useSupabaseDocumentosSync(hasHydrated && isAuthenticated && kind === "equipe");
@@ -48,7 +49,11 @@ export default function AppGroupLayout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasHydrated, isAuthenticated, kind]);
 
-  if (!hasHydrated || !isAuthenticated || kind !== "equipe") {
+  // Só libera a renderização das páginas depois que os dados de verdade do
+  // Supabase chegaram — sem isso, o app monta com a store ainda vazia e
+  // campos como os do CRC aparecem em branco por um instante antes de
+  // preencher, dando a impressão de que os dados sumiram.
+  if (!hasHydrated || !isAuthenticated || kind !== "equipe" || !financeiroCarregado) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-wine-950">
         <EleveMark className="size-10 animate-pulse text-cream-200" />

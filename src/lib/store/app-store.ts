@@ -199,6 +199,13 @@ interface AppState {
    * em vez do padrão "liberado" de `temPermissao` — senão um colaborador
    * restrito vê o dado sensível piscar na tela antes da restrição chegar. */
   permissoesCarregadas: boolean;
+  /** Fica `true` só depois que a primeira carga de `dados_financeiros` (via
+   * useSupabaseFinanceiroSync) termina — o layout usa isso pra segurar a
+   * tela de carregamento em vez de renderizar as páginas com a store ainda
+   * vazia (mesmo problema do `permissoesCarregadas`, mas pra todos os
+   * módulos: sem isso, campos como o do CRC aparecem em branco e só
+   * preenchem um instante depois). */
+  financeiroCarregado: boolean;
   /** Log de auditoria (tela "Auditoria") — quem fez o quê, cobrindo as ações
    * de maior risco: exclusões, ciclo de vida de cliente/colaborador,
    * honorário e permissões. */
@@ -211,6 +218,7 @@ interface AppState {
   setTeamFromSupabase: (team: TeamMember[]) => void;
   setPermissoesFromSupabase: (permissoes: Record<string, boolean>) => void;
   setAuditLogFromSupabase: (auditLog: AuditLogEntry[]) => void;
+  setFinanceiroCarregado: () => void;
   updateDadosEscritorio: (patch: Partial<DadosEscritorio>) => void;
   addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
   updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
@@ -464,6 +472,7 @@ const initial = {
   checklistMei: [],
   permissoes: {},
   permissoesCarregadas: false,
+  financeiroCarregado: false,
   auditLog: [] as AuditLogEntry[],
   dadosEscritorio: {
     razaoSocial: "Eleven Contabilidade & Consultoria",
@@ -754,6 +763,7 @@ export const useAppStore = create<AppState>()(
       setTeamFromSupabase: (team) => set({ team }),
       setPermissoesFromSupabase: (permissoes) => set({ permissoes, permissoesCarregadas: true }),
       setAuditLogFromSupabase: (auditLog) => set({ auditLog }),
+      setFinanceiroCarregado: () => set({ financeiroCarregado: true }),
       updateDadosEscritorio: (patch) => {
         set((s) => ({ dadosEscritorio: { ...s.dadosEscritorio, ...patch } }));
         pushFinanceiro("dadosEscritorio", "default", null, useAppStore.getState().dadosEscritorio);
@@ -1673,6 +1683,7 @@ export const useAppStore = create<AppState>()(
           team,
           permissoes,
           permissoesCarregadas,
+          financeiroCarregado,
           auditLog,
           documentos,
           pendencias,

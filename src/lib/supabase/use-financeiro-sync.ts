@@ -94,6 +94,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setScriptsDepartamentosFromSupabase = useAppStore((s) => s.setScriptsDepartamentosFromSupabase);
   const setScriptsFromSupabase = useAppStore((s) => s.setScriptsFromSupabase);
   const applyNotificationsLidas = useAppStore((s) => s.applyNotificationsLidas);
+  const setFinanceiroCarregado = useAppStore((s) => s.setFinanceiroCarregado);
 
   useEffect(() => {
     if (!active) return;
@@ -105,6 +106,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       if (cancelled) return;
       if (error) {
         console.error("Erro ao carregar dados do Eleven Hub:", error.message);
+        setFinanceiroCarregado();
         return;
       }
       const rows = (data ?? []) as DadosFinanceirosRow[];
@@ -164,6 +166,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
 
       const idsLidos = porTipo<{ id: string }>("notificacoesLidas").map((n) => n.id);
       if (idsLidos.length > 0) applyNotificationsLidas(idsLidos);
+
+      setFinanceiroCarregado();
     }
 
     void loadAll();
@@ -220,5 +224,6 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setScriptsDepartamentosFromSupabase,
     setScriptsFromSupabase,
     applyNotificationsLidas,
+    setFinanceiroCarregado,
   ]);
 }
