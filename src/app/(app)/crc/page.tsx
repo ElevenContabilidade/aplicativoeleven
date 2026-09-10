@@ -112,12 +112,12 @@ function RegistroCard({ tipo, titulo, revelado }: { tipo: CrcTipoRegistro; titul
             <Input type="date" value={form.dataRegistro ?? ""} onChange={(e) => set("dataRegistro", e.target.value)} />
           </div>
           <div>
-            <Label className="mb-1 block">Link do Drive</Label>
+            <Label className="mb-1 block">Link do site</Label>
             <Input
               type="url"
               value={form.linkDrive ?? ""}
               onChange={(e) => set("linkDrive", e.target.value)}
-              placeholder="https://drive.google.com/..."
+              placeholder="https://..."
             />
           </div>
           <div className="col-span-2 flex items-center gap-3 pt-1">
