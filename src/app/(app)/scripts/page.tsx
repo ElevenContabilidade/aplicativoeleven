@@ -24,6 +24,11 @@ export default function ScriptsPage() {
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [departamentosOpen, setDepartamentosOpen] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Muda a cada abertura (não só quando troca de script) pra forçar o
+  // ScriptFormDialog a remontar sempre — reabrir o MESMO script logo depois
+  // de editar e salvar reusava a instância antiga, que o próprio dialog
+  // tinha zerado (reset()) ao fechar, e ficava em branco até um F5.
+  const [formOpenKey, setFormOpenKey] = useState(0);
 
   const comMensagem = scripts.filter((s) => s.mensagem && s.mensagem.trim().length > 0).length;
   const pctComMensagem = scripts.length > 0 ? Math.round((comMensagem / scripts.length) * 100) : 0;
@@ -44,10 +49,12 @@ export default function ScriptsPage() {
 
   function openNovo() {
     setEditingScript(null);
+    setFormOpenKey((k) => k + 1);
     setFormOpen(true);
   }
   function openEdit(script: Script) {
     setEditingScript(script);
+    setFormOpenKey((k) => k + 1);
     setFormOpen(true);
   }
   function handleDelete(script: Script) {
@@ -144,7 +151,7 @@ export default function ScriptsPage() {
       </div>
 
       <ScriptFormDialog
-        key={editingScript?.id ?? "new"}
+        key={formOpenKey}
         open={formOpen}
         onOpenChange={setFormOpen}
         script={editingScript}

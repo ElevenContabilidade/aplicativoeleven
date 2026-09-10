@@ -26,10 +26,12 @@ export function ScriptFormDialog({
   const addScript = useAppStore((s) => s.addScript);
   const updateScript = useAppStore((s) => s.updateScript);
 
-  // O pai precisa remontar este componente (via `key` ligada ao id do script,
-  // ou "new" pra criar) toda vez que for editar um registro diferente —
-  // sem isso, os useState abaixo só leem `script` na primeira montagem e
-  // ficam presos nesses valores (em branco) mesmo ao abrir outro script.
+  // O pai precisa remontar este componente (via uma `key` que muda a CADA
+  // abertura, não só quando troca de registro) toda vez que o diálogo for
+  // aberto — sem isso, os useState abaixo só leem `script` na primeira
+  // montagem: reabrir o MESMO script logo depois de salvar reusaria a
+  // instância antiga (já zerada pelo reset() do fechamento anterior) em
+  // vez de reler o valor atual.
   const [departamentoId, setDepartamentoId] = useState(script?.departamentoId ?? departamentoIdPadrao ?? "");
   const [titulo, setTitulo] = useState(script?.titulo ?? "");
   const [mensagem, setMensagem] = useState(script?.mensagem ?? "");
