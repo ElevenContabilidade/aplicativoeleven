@@ -43,6 +43,7 @@ export default function FinanceiroPage() {
   const recebimentos = useAppStore((s) => s.recebimentos);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
@@ -104,9 +105,15 @@ export default function FinanceiroPage() {
         banco: undefined as string | undefined,
         tipoPessoa: undefined as "PF" | "PJ" | undefined,
         avulso: false as const,
+        clienteIdParceiro: undefined as string | undefined,
       }))
     );
-    const avulsos = recebimentos.map((r) => ({ ...r, key: `avulso-${r.id}`, avulso: true as const }));
+    const avulsos = recebimentos.map((r) => ({
+      ...r,
+      key: `avulso-${r.id}`,
+      avulso: true as const,
+      clienteIdParceiro: undefined as string | undefined,
+    }));
     const boletos = clients.flatMap((c) => {
       const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
       return emitidos.map((b) => {
@@ -125,6 +132,7 @@ export default function FinanceiroPage() {
           // Boleto de assessoria mensal é sempre recebimento de pessoa jurídica.
           tipoPessoa: "PJ" as const,
           avulso: false as const,
+          clienteIdParceiro: undefined as string | undefined,
         };
       });
     });
@@ -143,6 +151,10 @@ export default function FinanceiroPage() {
         banco: r.banco,
         tipoPessoa: r.tipoPessoa,
         avulso: false as const,
+        // Identifica a linha como um recebimento de parceiro editável (pra
+        // liberar o botão de excluir) e carrega o que updateRecebimentoParceiro
+        // precisa pra marcar remover (removido:true) sem outra tabela/id.
+        clienteIdParceiro: c.id as string | undefined,
       }));
     });
     return [...doClientes, ...avulsos, ...boletos, ...parceiros];
@@ -262,6 +274,12 @@ export default function FinanceiroPage() {
 
   function handleDeleteRecebimento(id: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
+  }
+
+  function handleDeleteRecebimentoParceiro(clienteId: string, competencia: string, nome: string) {
+    if (confirm(`Excluir o recebimento de "${nome}"?`)) {
+      updateRecebimentoParceiro(clienteId, competencia, { removido: true });
+    }
   }
 
   function marcarComoRecebido(id: string) {
@@ -420,6 +438,16 @@ export default function FinanceiroPage() {
                             <Trash2 className="size-4" />
                           </button>
                         </div>
+                      )}
+                      {h.clienteIdParceiro && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecebimentoParceiro(h.clienteIdParceiro!, h.competencia, h.nome)}
+                          title="Excluir lançamento"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
                       )}
                     </TableCell>
                   </TableRow>
