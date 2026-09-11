@@ -237,6 +237,16 @@ export function CadastroForm({ client }: { client: Client }) {
                     Esse cliente só aparece nos checklists dos setores marcados aqui.
                   </p>
                 </div>
+                <label className="flex items-center gap-2 text-xs text-sand-700">
+                  <Checkbox
+                    checked={form.naoUsaDespesasEscritorio ?? false}
+                    onCheckedChange={(v) => set("naoUsaDespesasEscritorio", v === true)}
+                  />
+                  Não usa nenhum sistema/ferramenta do escritório
+                </label>
+                <p className="ml-6 -mt-2 text-[11px] text-sand-400">
+                  Fica de fora do rateio de despesas em Rentabilidade — o custo desse cliente lá sempre aparece zerado.
+                </p>
               </div>
             )}
           </div>

@@ -383,6 +383,10 @@ export interface DadosCadastrais {
   clienteParceiro?: boolean;
   nomeParceiro?: string;
   setoresAtendidos?: DepartamentoChave[];
+  /** Cliente de parceiro que não usa nada da estrutura do escritório
+   * (sistemas, ferramentas) — fica de fora do rateio de despesas em
+   * Rentabilidade, então o custo dele ali é sempre zero. */
+  naoUsaDespesasEscritorio?: boolean;
   /** Marcado quando este cadastro nasceu do fluxo rápido "novo cliente" do
    * Societário (só nome, sem os demais dados) — fica de fora da tela de
    * Clientes até alguém completar o cadastro de verdade lá. */
