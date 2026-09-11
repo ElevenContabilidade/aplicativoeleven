@@ -20,6 +20,7 @@ import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
+import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
 
@@ -43,6 +44,7 @@ export default function FinanceiroPage() {
   const recebimentos = useAppStore((s) => s.recebimentos);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const extrasParceiro = useAppStore((s) => s.extrasParceiro);
   const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
@@ -78,18 +80,64 @@ export default function FinanceiroPage() {
   }, []);
 
   /** MRR = soma das assessorias mensais de todo cliente com mensalidade
-   * cadastrada (valorMensal > 0) — tanto os que aparecem em Boletos quanto
-   * os clientes de parceiro (pagam via PIX, controlados em Parceiros) — um
-   * cliente cadastrado com assessoria mensal já entra automaticamente no
-   * MRR, mesmo antes de virar "Ativo" (onboarding/implantação já pagando).
-   * Mas cliente que já saiu (suspenso, cancelando ou encerrado) não conta
-   * mais — senão o MRR fica inflado com quem não paga mais. */
+   * cadastrada (valorMensal > 0), separando dois grupos: clientes diretos
+   * (Boletos) somam o valorMensal do cadastro; clientes de parceiro (pagam
+   * via PIX, controlados em Parceiros) usam o valor ajustado do mês atual
+   * (ou o valorMensal quando não há ajuste) + os valores extras do
+   * parceiro — mesma lógica da tela de Parceiros, pra bater com o que
+   * aparece lá. Cliente que já saiu (suspenso, cancelando ou encerrado)
+   * não conta mais no lado direto — senão o MRR fica inflado com quem não
+   * paga mais (o lado parceiro segue a mesma regra da tela de Parceiros,
+   * que não filtra por status). */
   const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
   const clientesAssessoriaMensal = clients.filter(
-    (c) => c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
+    (c) => !c.dados.clienteParceiro && c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
   );
-  const mrr = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
-  const ticketMedio = clientesAssessoriaMensal.length ? mrr / clientesAssessoriaMensal.length : 0;
+  const mrrDiretos = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
+
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, [mesAtual]);
+
+  const clientesParceiroAtivosMes = clients.filter((c) => {
+    if (!c.dados.clienteParceiro) return false;
+    const inicio = c.financeiro.inicioContrato?.slice(0, 7);
+    if (inicio && inicio > mesAtual) return false;
+    const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
+    return !entry?.removido;
+  });
+
+  const mrr = mrrDiretos + mrrParceiros;
+  const totalClientesMrr = clientesAssessoriaMensal.length + clientesParceiroAtivosMes.length;
+  const ticketMedio = totalClientesMrr ? mrr / totalClientesMrr : 0;
+
+  const detalheMrr = [
+    ...clientesAssessoriaMensal.map((c) => ({
+      key: c.id,
+      nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+      cnpj: c.dados.cnpj || "—",
+      status: c.status as string,
+      valor: c.financeiro.valorMensal,
+    })),
+    ...clientesParceiroAtivosMes.map((c) => {
+      const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
+      return {
+        key: `parceiro-${c.id}`,
+        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+        cnpj: c.dados.cnpj || "—",
+        status: c.status as string,
+        valor: entry?.valor ?? c.financeiro.valorMensal,
+      };
+    }),
+    ...extrasParceiro
+      .filter((e) => e.competencia === mesAtual)
+      .map((e) => ({
+        key: `extra-${e.id}`,
+        nome: `${e.nomeParceiro} — ${e.descricao || "valor extra"}`,
+        cnpj: "—",
+        status: "Valor extra",
+        valor: e.valor,
+      })),
+  ];
 
   const competenciasPeriodo = useMemo(
     () => (mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`]),
@@ -628,23 +676,23 @@ export default function FinanceiroPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {[...clientesAssessoriaMensal]
-                .sort((a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial))
-                .map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium text-sand-800">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</TableCell>
-                    <TableCell className="text-sand-500">{c.dados.cnpj || "—"}</TableCell>
-                    <TableCell><StatusBadge status={c.status} /></TableCell>
-                    <TableCell>{formatCurrency(c.financeiro.valorMensal)}</TableCell>
+              {[...detalheMrr]
+                .sort((a, b) => a.nome.localeCompare(b.nome))
+                .map((l) => (
+                  <TableRow key={l.key}>
+                    <TableCell className="font-medium text-sand-800">{l.nome}</TableCell>
+                    <TableCell className="text-sand-500">{l.cnpj}</TableCell>
+                    <TableCell><StatusBadge status={l.status} /></TableCell>
+                    <TableCell>{formatCurrency(l.valor)}</TableCell>
                   </TableRow>
                 ))}
-              {clientesAssessoriaMensal.length === 0 && (
+              {detalheMrr.length === 0 && (
                 <TableRow><TableCell colSpan={4} className="py-8 text-center text-sand-400">Nenhum cliente com mensalidade cadastrada.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
           <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
-            <span>Total ({clientesAssessoriaMensal.length} clientes)</span>
+            <span>Total ({detalheMrr.length} lançamentos)</span>
             <span>{formatCurrency(mrr)}</span>
           </div>
         </DialogContent>
