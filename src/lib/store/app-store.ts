@@ -123,6 +123,7 @@ import type {
   FaturamentoMensal,
   GuiaFiscal,
   RecebimentoParceiroMensal,
+  ExtraParceiro,
   DadosEscritorio,
   SistemaEscritorio,
   DespesaAvulsa,
@@ -188,6 +189,7 @@ interface AppState {
   faturamentoMensal: FaturamentoMensal[];
   guiasFiscais: GuiaFiscal[];
   recebimentosParceiro: RecebimentoParceiroMensal[];
+  extrasParceiro: ExtraParceiro[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -347,6 +349,9 @@ interface AppState {
     competencia: string,
     patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
   ) => void;
+  addExtraParceiro: (extra: ExtraParceiro) => void;
+  updateExtraParceiro: (id: string, patch: Partial<ExtraParceiro>) => void;
+  deleteExtraParceiro: (id: string) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   // Etapa 3 da migração — Clientes e Financeiro vêm do Supabase agora
   // (tabela genérica `dados_financeiros`); essas setters só aplicam
@@ -360,6 +365,7 @@ interface AppState {
   setFaturamentoMensalFromSupabase: (faturamentoMensal: FaturamentoMensal[]) => void;
   setGuiasFiscaisFromSupabase: (guiasFiscais: GuiaFiscal[]) => void;
   setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
+  setExtrasParceiroFromSupabase: (extras: ExtraParceiro[]) => void;
   setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
   setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
   // Etapa 4 da migração — todo o resto que ainda só vivia no navegador
@@ -472,6 +478,7 @@ const initial = {
   faturamentoMensal: [] as FaturamentoMensal[],
   guiasFiscais: [] as GuiaFiscal[],
   recebimentosParceiro: [] as RecebimentoParceiroMensal[],
+  extrasParceiro: [] as ExtraParceiro[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -1296,6 +1303,7 @@ export const useAppStore = create<AppState>()(
       setFaturamentoMensalFromSupabase: (faturamentoMensal) => set({ faturamentoMensal }),
       setGuiasFiscaisFromSupabase: (guiasFiscais) => set({ guiasFiscais }),
       setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
+      setExtrasParceiroFromSupabase: (extrasParceiro) => set({ extrasParceiro }),
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
       setLeadsFromSupabase: (leads) => set({ leads }),
@@ -1537,6 +1545,19 @@ export const useAppStore = create<AppState>()(
         const item = useAppStore.getState().recebimentosParceiro.find((r) => r.id === id);
         if (item) pushFinanceiro("recebimentosParceiro", id, clienteId, item);
       },
+      addExtraParceiro: (extra) => {
+        set((s) => ({ extrasParceiro: [...s.extrasParceiro, extra] }));
+        pushFinanceiro("extrasParceiro", extra.id, null, extra);
+      },
+      updateExtraParceiro: (id, patch) => {
+        set((s) => ({ extrasParceiro: s.extrasParceiro.map((e) => (e.id === id ? { ...e, ...patch } : e)) }));
+        const item = useAppStore.getState().extrasParceiro.find((e) => e.id === id);
+        if (item) pushFinanceiro("extrasParceiro", id, null, item);
+      },
+      deleteExtraParceiro: (id) => {
+        set((s) => ({ extrasParceiro: s.extrasParceiro.filter((e) => e.id !== id) }));
+        deleteFinanceiro("extrasParceiro", id);
+      },
 
       updateNotaDepartamento: (clientId, depto, nota) => {
         set((s) => ({
@@ -1735,6 +1756,7 @@ export const useAppStore = create<AppState>()(
           faturamentoMensal,
           guiasFiscais,
           recebimentosParceiro,
+          extrasParceiro,
           despesasAvulsas,
           pagamentosSistemas,
           leads,

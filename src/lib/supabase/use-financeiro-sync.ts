@@ -13,6 +13,7 @@ import type {
   FaturamentoMensal,
   GuiaFiscal,
   RecebimentoParceiroMensal,
+  ExtraParceiro,
   DespesaAvulsa,
   PagamentoSistemaMensal,
   Lead,
@@ -63,6 +64,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setFaturamentoMensalFromSupabase = useAppStore((s) => s.setFaturamentoMensalFromSupabase);
   const setGuiasFiscaisFromSupabase = useAppStore((s) => s.setGuiasFiscaisFromSupabase);
   const setRecebimentosParceiroFromSupabase = useAppStore((s) => s.setRecebimentosParceiroFromSupabase);
+  const setExtrasParceiroFromSupabase = useAppStore((s) => s.setExtrasParceiroFromSupabase);
   const setDespesasAvulsasFromSupabase = useAppStore((s) => s.setDespesasAvulsasFromSupabase);
   const setPagamentosSistemasFromSupabase = useAppStore((s) => s.setPagamentosSistemasFromSupabase);
   const setLeadsFromSupabase = useAppStore((s) => s.setLeadsFromSupabase);
@@ -128,6 +130,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setFaturamentoMensalFromSupabase(porTipo<FaturamentoMensal>("faturamentoMensal"));
       setGuiasFiscaisFromSupabase(porTipo<GuiaFiscal>("guiasFiscais"));
       setRecebimentosParceiroFromSupabase(porTipo<RecebimentoParceiroMensal>("recebimentosParceiro"));
+      setExtrasParceiroFromSupabase(porTipo<ExtraParceiro>("extrasParceiro"));
       setDespesasAvulsasFromSupabase(porTipo<DespesaAvulsa>("despesasAvulsas"));
       setPagamentosSistemasFromSupabase(porTipo<PagamentoSistemaMensal>("pagamentosSistemas"));
       setLeadsFromSupabase(porTipo<Lead>("leads"));
@@ -195,6 +198,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setFaturamentoMensalFromSupabase,
     setGuiasFiscaisFromSupabase,
     setRecebimentosParceiroFromSupabase,
+    setExtrasParceiroFromSupabase,
     setDespesasAvulsasFromSupabase,
     setPagamentosSistemasFromSupabase,
     setLeadsFromSupabase,

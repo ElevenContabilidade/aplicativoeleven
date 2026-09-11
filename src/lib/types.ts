@@ -856,6 +856,20 @@ export interface RecebimentoParceiroMensal {
   tipoPessoa?: TipoPessoaRecebimento;
 }
 
+/** Valor extra que um parceiro (não um cliente específico) paga num mês —
+ * ex: cobrança à parte por um sistema usado só por aquele parceiro. Fica
+ * agrupado dentro do total do parceiro em Parceiros, mas fora do que vem
+ * do cadastro de cada cliente. */
+export interface ExtraParceiro {
+  id: string;
+  nomeParceiro: string;
+  competencia: string; // "YYYY-MM"
+  descricao: string;
+  valor: number;
+  status: StatusPagamentoParceiro;
+  dataPagamento?: string; // "YYYY-MM-DD"
+}
+
 // ---------- Certificados digitais ----------
 
 export const CERTIFICADO_STATUS = ["Válido", "Aguardando Renovação", "Vencido"] as const;

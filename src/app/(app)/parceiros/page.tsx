@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Repeat, CircleDollarSign, Wallet, Search, Plus } from "lucide-react";
+import { Repeat, CircleDollarSign, Wallet, Search, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NovoParceiroDialog } from "@/components/parceiros/novo-parceiro-dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import type { Client, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
+import type { Client, ExtraParceiro, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -42,9 +42,13 @@ function inicioContratoLabel(iso: string) {
 export default function ParceirosPage() {
   const clients = useAppStore((s) => s.clients);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const extrasParceiro = useAppStore((s) => s.extrasParceiro);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentos = useAppStore((s) => s.recebimentos);
   const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
+  const addExtraParceiro = useAppStore((s) => s.addExtraParceiro);
+  const updateExtraParceiro = useAppStore((s) => s.updateExtraParceiro);
+  const deleteExtraParceiro = useAppStore((s) => s.deleteExtraParceiro);
 
   const bancoOptions = useMemo(() => {
     const usados = [
@@ -112,14 +116,34 @@ export default function ParceirosPage() {
     );
   }, [linhas, busca]);
 
+  /** Valores extras que um parceiro cobra à parte (ex: um sistema usado só
+   * por ele), fora do que vem do cadastro de cada cliente. */
+  const extrasFiltradas = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return extrasParceiro.filter((e) => {
+      if (!competencias.includes(e.competencia)) return false;
+      if (!q) return true;
+      return e.nomeParceiro.toLowerCase().includes(q);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrasParceiro, year, mes, busca]);
+
   const grupos = useMemo(() => {
-    const porParceiro = new Map<string, Linha[]>();
+    const porParceiro = new Map<string, { linhas: Linha[]; extras: ExtraParceiro[] }>();
     for (const l of filtradas) {
       const nome = l.cliente.dados.nomeParceiro?.trim() || "Sem parceiro definido";
-      porParceiro.set(nome, [...(porParceiro.get(nome) ?? []), l]);
+      const grupo = porParceiro.get(nome) ?? { linhas: [], extras: [] };
+      grupo.linhas.push(l);
+      porParceiro.set(nome, grupo);
+    }
+    for (const ex of extrasFiltradas) {
+      const nome = ex.nomeParceiro.trim() || "Sem parceiro definido";
+      const grupo = porParceiro.get(nome) ?? { linhas: [], extras: [] };
+      grupo.extras.push(ex);
+      porParceiro.set(nome, grupo);
     }
     return [...porParceiro.entries()]
-      .map(([parceiro, linhas]) => ({
+      .map(([parceiro, { linhas, extras }]) => ({
         parceiro,
         linhas: linhas.sort((a, b) => {
           const nomeCompare = (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
@@ -128,17 +152,40 @@ export default function ParceirosPage() {
           );
           return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
         }),
-        total: linhas.reduce((sum, l) => sum + l.valor, 0),
+        extras: extras.sort((a, b) => a.competencia.localeCompare(b.competencia)),
+        total: linhas.reduce((sum, l) => sum + l.valor, 0) + extras.reduce((sum, e) => sum + e.valor, 0),
       }))
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
-  }, [filtradas]);
+  }, [filtradas, extrasFiltradas]);
 
   const mrr = clientesParceiro.reduce((a, c) => a + c.financeiro.valorMensal, 0);
-  const totalRecebido = filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0);
-  const totalEmAberto = filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0);
+  const totalRecebido =
+    filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0) +
+    extrasFiltradas.filter((e) => e.status === "Pago").reduce((a, e) => a + e.valor, 0);
+  const totalEmAberto =
+    filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0) +
+    extrasFiltradas.filter((e) => e.status === "Em aberto").reduce((a, e) => a + e.valor, 0);
 
   function toggleStatus(l: Linha) {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
+  }
+
+  function handleAddExtra(parceiro: string) {
+    return () => {
+      const id = `extra-${Date.now()}`;
+      addExtraParceiro({
+        id,
+        nomeParceiro: parceiro,
+        competencia: `${year}-${mes}`,
+        descricao: "",
+        valor: 0,
+        status: "Em aberto",
+      });
+    };
+  }
+
+  function handleDeleteExtra(extra: ExtraParceiro) {
+    if (confirm(`Excluir o valor extra "${extra.descricao || "sem descrição"}"?`)) deleteExtraParceiro(extra.id);
   }
 
   return (
@@ -247,6 +294,66 @@ export default function ParceirosPage() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {g.extras.map((ex) => (
+                  <TableRow key={ex.id} className="bg-sand-50/50">
+                    <TableCell>
+                      <Input
+                        value={ex.descricao}
+                        onChange={(e) => updateExtraParceiro(ex.id, { descricao: e.target.value })}
+                        placeholder="Descrição (ex: Sistema)"
+                        className="h-8 w-40 text-xs italic"
+                      />
+                    </TableCell>
+                    {mes === "anual" && (
+                      <TableCell className="text-sand-500">{inicioContratoLabel(ex.competencia)}</TableCell>
+                    )}
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={ex.valor}
+                        onChange={(e) => updateExtraParceiro(ex.id, { valor: Number(e.target.value) || 0 })}
+                        className="h-8 w-28 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell className="text-sand-400">—</TableCell>
+                    <TableCell className="text-sand-400">—</TableCell>
+                    <TableCell className="text-[11px] text-sand-400">Valor extra</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => updateExtraParceiro(ex.id, { status: ex.status === "Pago" ? "Em aberto" : "Pago" })}
+                          title="Alternar status de pagamento"
+                        >
+                          <StatusBadge status={ex.status} className="cursor-pointer" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExtra(ex)}
+                          title="Excluir valor extra"
+                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow>
+                  <TableCell colSpan={mes === "anual" ? 7 : 6} className="py-1">
+                    <button
+                      type="button"
+                      onClick={handleAddExtra(g.parceiro)}
+                      disabled={mes === "anual"}
+                      title={mes === "anual" ? "Selecione um mês específico pra adicionar um valor extra" : "Adicionar valor extra"}
+                      className="flex items-center gap-1 text-[11px] font-medium text-wine-700 hover:text-wine-800 disabled:cursor-not-allowed disabled:text-sand-300 disabled:hover:text-sand-300"
+                    >
+                      <Plus className="size-3" /> Adicionar valor extra
+                    </button>
+                  </TableCell>
+                </TableRow>
                 <TableRow className="bg-cream-100 hover:bg-cream-100">
                   <TableCell className="font-semibold text-wine-700">Total</TableCell>
                   {mes === "anual" && <TableCell />}
