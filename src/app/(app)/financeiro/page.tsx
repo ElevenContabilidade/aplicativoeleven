@@ -184,29 +184,60 @@ export default function FinanceiroPage() {
         };
       });
     });
+    // Cliente de parceiro não tem um "boleto emitido" pra marcar o mês —
+    // ele deve uma mensalidade todo mês desde o início do contrato, com ou
+    // sem ninguém ter mexido no valor/status daquele mês ainda. Por isso a
+    // linha é gerada pra TODA competência do período em vista (mesma lógica
+    // da tela de Parceiros), usando o registro salvo quando existe e caindo
+    // no valorMensal do cadastro quando não — só assim ele soma certinho no
+    // Recebido/Em aberto, e não só quando alguém já tocou naquele mês.
     const parceiros = clients.flatMap((c) => {
-      const entradas = recebimentosParceiro.filter((r) => r.clienteId === c.id && !r.removido);
-      return entradas.map((r) => ({
-        id: r.id,
-        key: `parceiro-${r.id}`,
-        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
-        competencia: r.competencia,
-        servico: "Recebimento parceiro (PIX)",
-        valor: r.valor ?? c.financeiro.valorMensal,
-        vencimento: "",
-        pagamento: r.dataPagamento,
-        status: r.status,
-        banco: r.banco,
-        tipoPessoa: r.tipoPessoa,
-        avulso: false as const,
-        // Identifica a linha como um recebimento de parceiro editável (pra
-        // liberar o botão de excluir) e carrega o que updateRecebimentoParceiro
-        // precisa pra marcar remover (removido:true) sem outra tabela/id.
-        clienteIdParceiro: c.id as string | undefined,
-      }));
+      if (!c.dados.clienteParceiro) return [];
+      const entryMap = new Map(recebimentosParceiro.filter((r) => r.clienteId === c.id).map((r) => [r.competencia, r]));
+      const inicio = c.financeiro.inicioContrato?.slice(0, 7);
+      return competenciasPeriodo.flatMap((comp) => {
+        if (inicio && comp < inicio) return [];
+        const entry = entryMap.get(comp);
+        if (entry?.removido) return [];
+        return [{
+          id: entry?.id ?? `${c.id}-${comp}`,
+          key: `parceiro-${c.id}-${comp}`,
+          nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+          competencia: comp,
+          servico: "Recebimento parceiro (PIX)",
+          valor: entry?.valor ?? c.financeiro.valorMensal,
+          vencimento: "",
+          pagamento: entry?.dataPagamento,
+          status: entry?.status ?? ("Em aberto" as const),
+          banco: entry?.banco,
+          tipoPessoa: entry?.tipoPessoa,
+          avulso: false as const,
+          // Identifica a linha como um recebimento de parceiro editável (pra
+          // liberar o botão de excluir) e carrega o que updateRecebimentoParceiro
+          // precisa pra marcar remover (removido:true) sem outra tabela/id.
+          clienteIdParceiro: c.id as string | undefined,
+        }];
+      });
     });
-    return [...doClientes, ...avulsos, ...boletos, ...parceiros];
-  }, [clients, recebimentos, boletosMensais, recebimentosParceiro]);
+    const extras = extrasParceiro
+      .filter((e) => competenciasPeriodo.includes(e.competencia))
+      .map((e) => ({
+        id: e.id,
+        key: `extra-${e.id}`,
+        nome: `${e.nomeParceiro} — ${e.descricao || "valor extra"}`,
+        competencia: e.competencia,
+        servico: "Valor extra (parceiro)",
+        valor: e.valor,
+        vencimento: "",
+        pagamento: e.dataPagamento,
+        status: e.status,
+        banco: e.banco,
+        tipoPessoa: e.tipoPessoa,
+        avulso: false as const,
+        clienteIdParceiro: undefined as string | undefined,
+      }));
+    return [...doClientes, ...avulsos, ...boletos, ...parceiros, ...extras];
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, competenciasPeriodo]);
 
   const bancosDisponiveis = useMemo(
     () =>
