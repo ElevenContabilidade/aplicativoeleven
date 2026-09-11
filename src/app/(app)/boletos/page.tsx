@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2, MessageCircle, Loader2 } from "lucide-react";
+import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2, MessageCircle, Loader2, Wallet, CircleAlert, Receipt } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { vencimentoDaCompetencia } from "@/lib/boleto";
 import { telefonePrincipalCliente } from "@/lib/contato-telefone";
-import type { Client, StatusEmissaoBoleto } from "@/lib/types";
+import type { Client, ClientStatus, StatusEmissaoBoleto } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -152,6 +152,25 @@ export default function BoletosPage() {
   const naoEmitidos = filtradas.filter((l) => l.status === "Não emitido").length;
   const recebidoTotal = filtradas.filter((l) => l.recebido).reduce((a, l) => a + l.valorRecebido, 0);
 
+  // Mesma regra do MRR Assessoria do Financeiro — cliente que já saiu
+  // (suspenso, cancelando ou encerrado) não conta mais.
+  const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
+  const clientesMensaisAtivos = clients.filter(
+    (c) => !c.dados.clienteParceiro && c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
+  );
+  const mrrAssessoria = clientesMensaisAtivos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
+  const ticketMedio = clientesMensaisAtivos.length ? mrrAssessoria / clientesMensaisAtivos.length : 0;
+
+  // Só boleto já emitido entra em Em aberto/Inadimplência — o que ainda não
+  // foi emitido já tem seu próprio card ("Não emitidos").
+  const hoje = new Date().toISOString().slice(0, 10);
+  const emAberto = filtradas
+    .filter((l) => l.status === "Emitido" && !l.recebido && l.vencimento >= hoje)
+    .reduce((a, l) => a + l.valor, 0);
+  const inadimplencia = filtradas
+    .filter((l) => l.status === "Emitido" && !l.recebido && l.vencimento < hoje)
+    .reduce((a, l) => a + l.valor, 0);
+
   function toggleStatus(l: Linha) {
     updateBoleto(l.cliente.id, l.competencia, { status: l.status === "Emitido" ? "Não emitido" : "Emitido" });
   }
@@ -198,11 +217,18 @@ export default function BoletosPage() {
         description="Emissão mensal de boletos de todos os clientes com mensalidade — valor e vencimento vêm direto do cadastro do cliente, mas podem ser ajustados por competência."
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+        <MetricCard label="MRR Assessoria" value={formatCurrency(mrrAssessoria)} icon={Wallet} tone="wine" />
+        <MetricCard label="Recebido" value={formatCurrency(recebidoTotal)} icon={CircleDollarSign} tone="success" />
+        <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Clock} tone="warning" />
+        <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
+        <MetricCard label="Ticket médio" value={formatCurrency(ticketMedio)} icon={Receipt} />
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <MetricCard label="Boletos no período" value={filtradas.length} icon={CreditCard} tone="wine" />
         <MetricCard label="Emitidos" value={emitidos} icon={Send} tone="success" />
         <MetricCard label="Não emitidos" value={naoEmitidos} icon={Clock} tone="warning" />
-        <MetricCard label="Recebido" value={formatCurrency(recebidoTotal)} icon={CircleDollarSign} tone="success" />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
