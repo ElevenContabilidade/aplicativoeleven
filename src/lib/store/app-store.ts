@@ -1040,7 +1040,19 @@ export const useAppStore = create<AppState>()(
       salvarCadastroCliente: (clientId, patch, segmento) => {
         set((s) => ({
           clients: s.clients.map((c) =>
-            c.id === clientId ? { ...c, dados: { ...c.dados, ...patch }, segmento } : c
+            c.id === clientId
+              ? {
+                  ...c,
+                  dados: { ...c.dados, ...patch },
+                  segmento,
+                  // Cliente de parceiro sempre paga via PIX (controlado em
+                  // Parceiros, fora do fluxo de boleto) — marcando aqui
+                  // evita cadastro desatualizado dizendo outra forma.
+                  financeiro: patch.clienteParceiro
+                    ? { ...c.financeiro, formaPagamento: "PIX" }
+                    : c.financeiro,
+                }
+              : c
           ),
         }));
         pushCliente(clientId);
@@ -1049,7 +1061,11 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           clients: s.clients.map((c) =>
             clientIds.includes(c.id)
-              ? { ...c, dados: { ...c.dados, clienteParceiro: true, nomeParceiro, setoresAtendidos } }
+              ? {
+                  ...c,
+                  dados: { ...c.dados, clienteParceiro: true, nomeParceiro, setoresAtendidos },
+                  financeiro: { ...c.financeiro, formaPagamento: "PIX" },
+                }
               : c
           ),
         }));
