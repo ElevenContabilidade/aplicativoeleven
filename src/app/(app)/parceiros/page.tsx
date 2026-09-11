@@ -60,10 +60,12 @@ export default function ParceirosPage() {
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  const clientesParceiro = useMemo(
-    () => clients.filter((c) => c.dados.clienteParceiro && c.financeiro.valorMensal > 0),
-    [clients]
-  );
+  // Antes só entravam clientes de parceiro que já tinham uma mensalidade
+  // cadastrada — um parceiro novo, sem valor definido ainda, simplesmente
+  // não aparecia aqui e não tinha como cadastrar o valor manualmente. Agora
+  // todo cliente marcado como parceiro aparece (com R$ 0,00 até alguém
+  // preencher o campo Valor da linha).
+  const clientesParceiro = useMemo(() => clients.filter((c) => c.dados.clienteParceiro), [clients]);
 
   const competencias = mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`];
 
