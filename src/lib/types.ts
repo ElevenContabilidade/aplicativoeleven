@@ -868,6 +868,9 @@ export interface ExtraParceiro {
   valor: number;
   status: StatusPagamentoParceiro;
   dataPagamento?: string; // "YYYY-MM-DD"
+  /** Banco em que o PIX caiu. */
+  banco?: string;
+  tipoPessoa?: TipoPessoaRecebimento;
 }
 
 // ---------- Certificados digitais ----------

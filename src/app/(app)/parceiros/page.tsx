@@ -170,6 +170,13 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
   }
 
+  function handleDeleteLinha(l: Linha) {
+    const nome = l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial;
+    if (confirm(`Excluir o lançamento de "${nome}" em ${inicioContratoLabel(l.competencia)}?`)) {
+      updateRecebimentoParceiro(l.cliente.id, l.competencia, { removido: true });
+    }
+  }
+
   function handleAddExtra(parceiro: string) {
     return () => {
       const id = `extra-${Date.now()}`;
@@ -288,9 +295,19 @@ export default function ParceirosPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de pagamento">
-                        <StatusBadge status={l.status} className="cursor-pointer" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de pagamento">
+                          <StatusBadge status={l.status} className="cursor-pointer" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteLinha(l)}
+                          title="Excluir lançamento"
+                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -318,8 +335,28 @@ export default function ParceirosPage() {
                       />
                     </TableCell>
                     <TableCell className="text-sand-400">—</TableCell>
-                    <TableCell className="text-sand-400">—</TableCell>
-                    <TableCell className="text-[11px] text-sand-400">Valor extra</TableCell>
+                    <TableCell>
+                      <Input
+                        value={ex.banco ?? ""}
+                        onChange={(e) => updateExtraParceiro(ex.id, { banco: e.target.value })}
+                        placeholder="Em qual banco"
+                        list="parceiros-bancos"
+                        className="h-8 w-32 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={ex.tipoPessoa || "—"}
+                        onValueChange={(v) => updateExtraParceiro(ex.id, { tipoPessoa: v === "—" ? undefined : (v as TipoPessoaRecebimento) })}
+                      >
+                        <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="—">—</SelectItem>
+                          <SelectItem value="PF">PF</SelectItem>
+                          <SelectItem value="PJ">PJ</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <button
