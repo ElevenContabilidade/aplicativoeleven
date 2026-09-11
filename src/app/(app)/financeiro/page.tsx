@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil } from "lucide-react";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil, Handshake } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -401,15 +401,20 @@ export default function FinanceiroPage() {
         </Select>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <MetricCard label="MRR Assessoria" value={formatCurrency(mrrDiretos)} icon={Wallet} tone="wine" hint="Clientes diretos (Boletos)" />
+        <MetricCard label="MRR Parceria" value={formatCurrency(mrrParceiros)} icon={Handshake} tone="wine" hint="Clientes de parceiro (PIX)" />
         <MetricCard
-          label="MRR"
+          label="MRR Total"
           value={formatCurrency(mrr)}
           icon={Repeat}
           tone="wine"
           hint="Clique para ver quem compõe o valor"
           onClick={() => setMrrDetalheOpen(true)}
         />
+      </div>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
         <MetricCard label={`Recebido — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`} value={formatCurrency(recebido)} icon={CircleDollarSign} tone="success" />
         <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Wallet} tone="warning" />
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
