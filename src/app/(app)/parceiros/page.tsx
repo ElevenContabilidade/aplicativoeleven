@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Repeat, CircleDollarSign, Wallet, Search } from "lucide-react";
+import { Repeat, CircleDollarSign, Wallet, Search, Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { NovoParceiroDialog } from "@/components/parceiros/novo-parceiro-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Client, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -54,6 +56,7 @@ export default function ParceirosPage() {
   }, [recebimentosParceiro, boletosMensais, recebimentos]);
 
   const [busca, setBusca] = useState("");
+  const [novoParceiroOpen, setNovoParceiroOpen] = useState(false);
   const [year, setYear] = useState(() => {
     const current = new Date().getFullYear().toString();
     return YEARS.includes(current) ? current : YEARS[0];
@@ -66,6 +69,11 @@ export default function ParceirosPage() {
   // todo cliente marcado como parceiro aparece (com R$ 0,00 até alguém
   // preencher o campo Valor da linha).
   const clientesParceiro = useMemo(() => clients.filter((c) => c.dados.clienteParceiro), [clients]);
+
+  const parceirosExistentes = useMemo(
+    () => [...new Set(clients.map((c) => c.dados.nomeParceiro).filter((n): n is string => !!n?.trim()))].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [clients]
+  );
 
   const competencias = mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`];
 
@@ -138,6 +146,7 @@ export default function ParceirosPage() {
       <PageHeader
         title="Parceiros"
         description="Recebimentos via PIX das empresas de parceiros que a Eleven atende — não entram na emissão de boletos."
+        actions={<Button onClick={() => setNovoParceiroOpen(true)}><Plus className="size-3.5" /> Novo parceiro</Button>}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -260,6 +269,8 @@ export default function ParceirosPage() {
           </datalist>
         </CardContent>
       </Card>
+
+      <NovoParceiroDialog open={novoParceiroOpen} onOpenChange={setNovoParceiroOpen} parceirosExistentes={parceirosExistentes} />
     </div>
   );
 }
