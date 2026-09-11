@@ -158,13 +158,16 @@ export default function ParceirosPage() {
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
   }, [filtradas, extrasFiltradas]);
 
-  const mrr = clientesParceiro.reduce((a, c) => a + c.financeiro.valorMensal, 0);
   const totalRecebido =
     filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0) +
     extrasFiltradas.filter((e) => e.status === "Pago").reduce((a, e) => a + e.valor, 0);
   const totalEmAberto =
     filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0) +
     extrasFiltradas.filter((e) => e.status === "Em aberto").reduce((a, e) => a + e.valor, 0);
+  // MRR = tudo que os parceiros pagam no período (Recebido + Em aberto) —
+  // reflete os valores de verdade (ajustados por competência + extras),
+  // não só o valorMensal fixo cadastrado no cliente.
+  const mrr = totalRecebido + totalEmAberto;
 
   function toggleStatus(l: Linha) {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
