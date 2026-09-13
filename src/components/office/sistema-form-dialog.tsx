@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+import { ClientesUsuariosField } from "@/components/shared/clientes-usuarios-field";
 import { SETORES_SISTEMA, type SetorSistema, type SistemaEscritorio, type SituacaoSistema } from "@/lib/types";
 
 const SITUACOES: SituacaoSistema[] = ["Ativo", "Cancelado"];
@@ -40,11 +41,12 @@ export function SistemaFormDialog({
   const [telefoneSuporte, setTelefoneSuporte] = useState(sistema?.telefoneSuporte ?? "");
   const [emailSuporte, setEmailSuporte] = useState(sistema?.emailSuporte ?? "");
   const [observacoes, setObservacoes] = useState(sistema?.observacoes ?? "");
+  const [clientesQueUsam, setClientesQueUsam] = useState<string[] | undefined>(sistema?.clientesQueUsam);
 
   function reset() {
     setNome(""); setSetores([]); setSituacao("Ativo"); setLogin(""); setSenha(""); setShowSenha(false); setLink("");
     setValorMensal(""); setDiaVencimento(""); setValorImplementacao(""); setFormaCobranca("");
-    setTelefoneSuporte(""); setEmailSuporte(""); setObservacoes("");
+    setTelefoneSuporte(""); setEmailSuporte(""); setObservacoes(""); setClientesQueUsam(undefined);
   }
 
   function handleClose(v: boolean) {
@@ -73,6 +75,7 @@ export function SistemaFormDialog({
       telefoneSuporte: telefoneSuporte.trim() || undefined,
       emailSuporte: emailSuporte.trim() || undefined,
       observacoes: observacoes.trim() || undefined,
+      clientesQueUsam,
     };
     if (sistema) {
       updateSistemaEscritorio(sistema.id, patch);
@@ -170,6 +173,13 @@ export function SistemaFormDialog({
             <div className="col-span-2">
               <Label className="mb-1 block">Observações</Label>
               <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} />
+            </div>
+            <div className="col-span-2">
+              <ClientesUsuariosField
+                value={clientesQueUsam}
+                onChange={setClientesQueUsam}
+                label="Quais clientes usam esse sistema? (define o rateio em Rentabilidade)"
+              />
             </div>
           </div>
           <DialogFooter>

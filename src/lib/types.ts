@@ -198,6 +198,11 @@ export interface SistemaEscritorio {
   formaCobranca?: string;
   telefoneSuporte?: string;
   emailSuporte?: string;
+  /** IDs dos clientes que usam esse sistema — ausente/undefined significa
+   * "todos os clientes" (comportamento padrão, mantém o rateio igual pra
+   * quem nunca mexeu nisso). Quando definido, só esses clientes dividem o
+   * custo desse sistema em Rentabilidade. */
+  clientesQueUsam?: string[];
 }
 
 // ---------- Contas a pagar ----------
@@ -214,6 +219,9 @@ export interface DespesaAvulsa {
   vencimento: string;
   status: StatusContaPagar;
   dataPagamento?: string;
+  /** Mesma regra do SistemaEscritorio.clientesQueUsam: ausente = rateia
+   * entre todos os clientes; definido = só entre esses. */
+  clientesQueUsam?: string[];
 }
 
 /** Status de pagamento mensal de um sistema/ferramenta (SistemaEscritorio)

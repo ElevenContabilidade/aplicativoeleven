@@ -110,9 +110,9 @@ export default function RentabilidadePage() {
         <CardHeader>
           <CardTitle>Clientes ({linhas.length}) — piores margens primeiro</CardTitle>
           <p className="mt-1 text-xs text-sand-500">
-            Custo estimado divide igualmente as despesas da empresa nessa competência (sistemas pagos + despesas
-            avulsas de Contas a Pagar) entre todos os clientes ativos — cada cliente pesa o mesmo na estrutura,
-            independente do honorário que paga.
+            Custo estimado divide cada sistema/despesa da competência entre os clientes que usam aquele item —
+            configurável em cada sistema (Dados do escritório) e despesa avulsa (Financeiro → Contas a pagar).
+            Sistema/despesa sem ninguém marcado ainda rateia entre todos os clientes ativos.
           </p>
         </CardHeader>
         <CardContent className="pt-4">

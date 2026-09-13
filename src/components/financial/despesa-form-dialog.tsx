@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ClientesUsuariosField } from "@/components/shared/clientes-usuarios-field";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DespesaAvulsa } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export function DespesaFormDialog({
   const [categoria, setCategoria] = useState(despesa?.categoria ?? "");
   const [valor, setValor] = useState(despesa?.valor.toString() ?? "");
   const [vencimento, setVencimento] = useState(despesa?.vencimento ?? new Date().toISOString().slice(0, 10));
+  const [clientesQueUsam, setClientesQueUsam] = useState<string[] | undefined>(despesa?.clientesQueUsam);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +37,7 @@ export function DespesaFormDialog({
       categoria: categoria.trim() || undefined,
       valor: Number(valor),
       vencimento,
+      clientesQueUsam,
     };
     if (despesa) {
       updateDespesaAvulsa(despesa.id, patch);
@@ -46,7 +49,7 @@ export function DespesaFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{despesa ? "Editar despesa" : "Nova despesa"}</DialogTitle>
         </DialogHeader>
@@ -69,6 +72,11 @@ export function DespesaFormDialog({
               <Input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} required />
             </div>
           </div>
+          <ClientesUsuariosField
+            value={clientesQueUsam}
+            onChange={setClientesQueUsam}
+            label="Quais clientes usam isso? (define o rateio em Rentabilidade)"
+          />
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button type="submit">{despesa ? "Salvar alterações" : "Lançar despesa"}</Button>
