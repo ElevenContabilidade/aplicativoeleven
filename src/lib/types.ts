@@ -868,18 +868,32 @@ export interface RecebimentoParceiroMensal {
   tipoPessoa?: TipoPessoaRecebimento;
 }
 
-/** Valor extra que um parceiro (não um cliente específico) paga num mês —
- * ex: cobrança à parte por um sistema usado só por aquele parceiro. Fica
- * agrupado dentro do total do parceiro em Parceiros, mas fora do que vem
- * do cadastro de cada cliente. */
+/** Valor extra recorrente que um parceiro (não um cliente específico) paga
+ * todo mês — ex: cobrança à parte por um sistema usado só por aquele
+ * parceiro. Fica agrupado dentro do total do parceiro em Parceiros, mas
+ * fora do que vem do cadastro de cada cliente. Mesmo padrão de
+ * SistemaEscritorio: o valor é único e recorrente (editar aqui muda em
+ * todos os meses); o que varia mês a mês (status/pagamento) fica em
+ * PagamentoExtraParceiroMensal. */
 export interface ExtraParceiro {
   id: string;
   nomeParceiro: string;
-  competencia: string; // "YYYY-MM"
   descricao: string;
-  valor: number;
+  valorMensal: number;
+  /** Competência (YYYY-MM) a partir da qual esse valor passa a valer —
+   * ausente = sempre valeu, igual FinanceiroCliente.inicioContrato. */
+  inicioCompetencia?: string;
+}
+
+/** Controle mensal (status/pagamento) de um ExtraParceiro — mesmo papel de
+ * PagamentoSistemaMensal pros sistemas do escritório. */
+export interface PagamentoExtraParceiroMensal {
+  id: string;
+  extraParceiroId: string;
+  competencia: string; // "YYYY-MM"
   status: StatusPagamentoParceiro;
   dataPagamento?: string; // "YYYY-MM-DD"
+  removido?: boolean;
   /** Banco em que o PIX caiu. */
   banco?: string;
   tipoPessoa?: TipoPessoaRecebimento;

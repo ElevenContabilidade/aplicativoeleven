@@ -45,7 +45,9 @@ export default function FinanceiroPage() {
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const extrasParceiro = useAppStore((s) => s.extrasParceiro);
+  const pagamentosExtrasParceiro = useAppStore((s) => s.pagamentosExtrasParceiro);
   const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
+  const updatePagamentoExtraParceiro = useAppStore((s) => s.updatePagamentoExtraParceiro);
   const updateRecebimento = useAppStore((s) => s.updateRecebimento);
   const deleteRecebimento = useAppStore((s) => s.deleteRecebimento);
   const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
@@ -96,7 +98,7 @@ export default function FinanceiroPage() {
   const mrrDiretos = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
 
   const mesAtual = new Date().toISOString().slice(0, 7);
-  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, [mesAtual]);
+  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [mesAtual]);
 
   const clientesParceiroAtivosMes = clients.filter((c) => {
     if (!c.dados.clienteParceiro) return false;
@@ -129,13 +131,17 @@ export default function FinanceiroPage() {
       };
     }),
     ...extrasParceiro
-      .filter((e) => e.competencia === mesAtual)
+      .filter((e) => {
+        if (e.inicioCompetencia && mesAtual < e.inicioCompetencia) return false;
+        const pagamento = pagamentosExtrasParceiro.find((p) => p.extraParceiroId === e.id && p.competencia === mesAtual);
+        return !pagamento?.removido;
+      })
       .map((e) => ({
         key: `extra-${e.id}`,
         nome: `${e.nomeParceiro} — ${e.descricao || "valor extra"}`,
         cnpj: "—",
         status: "Valor extra",
-        valor: e.valor,
+        valor: e.valorMensal,
       })),
   ];
 
@@ -154,6 +160,7 @@ export default function FinanceiroPage() {
         tipoPessoa: undefined as "PF" | "PJ" | undefined,
         avulso: false as const,
         clienteIdParceiro: undefined as string | undefined,
+        extraIdParceiro: undefined as string | undefined,
       }))
     );
     const avulsos = recebimentos.map((r) => ({
@@ -161,6 +168,7 @@ export default function FinanceiroPage() {
       key: `avulso-${r.id}`,
       avulso: true as const,
       clienteIdParceiro: undefined as string | undefined,
+      extraIdParceiro: undefined as string | undefined,
     }));
     const boletos = clients.flatMap((c) => {
       const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
@@ -181,6 +189,7 @@ export default function FinanceiroPage() {
           tipoPessoa: "PJ" as const,
           avulso: false as const,
           clienteIdParceiro: undefined as string | undefined,
+          extraIdParceiro: undefined as string | undefined,
         };
       });
     });
@@ -216,28 +225,41 @@ export default function FinanceiroPage() {
           // liberar o botão de excluir) e carrega o que updateRecebimentoParceiro
           // precisa pra marcar remover (removido:true) sem outra tabela/id.
           clienteIdParceiro: c.id as string | undefined,
+          extraIdParceiro: undefined as string | undefined,
         }];
       });
     });
-    const extras = extrasParceiro
-      .filter((e) => competenciasPeriodo.includes(e.competencia))
-      .map((e) => ({
-        id: e.id,
-        key: `extra-${e.id}`,
-        nome: `${e.nomeParceiro} — ${e.descricao || "valor extra"}`,
-        competencia: e.competencia,
-        servico: "Valor extra (parceiro)",
-        valor: e.valor,
-        vencimento: "",
-        pagamento: e.dataPagamento,
-        status: e.status,
-        banco: e.banco,
-        tipoPessoa: e.tipoPessoa,
-        avulso: false as const,
-        clienteIdParceiro: undefined as string | undefined,
-      }));
+    // Mesmo raciocínio dos clientes de parceiro: o valor extra é recorrente
+    // (igual um sistema do escritório), então gera uma linha por competência
+    // do período, usando o registro do mês quando existe.
+    const extras = extrasParceiro.flatMap((e) => {
+      const pagamentoMap = new Map(
+        pagamentosExtrasParceiro.filter((p) => p.extraParceiroId === e.id).map((p) => [p.competencia, p])
+      );
+      return competenciasPeriodo.flatMap((comp) => {
+        if (e.inicioCompetencia && comp < e.inicioCompetencia) return [];
+        const pagamento = pagamentoMap.get(comp);
+        if (pagamento?.removido) return [];
+        return [{
+          id: pagamento?.id ?? `${e.id}-${comp}`,
+          key: `extra-${e.id}-${comp}`,
+          nome: `${e.nomeParceiro} — ${e.descricao || "valor extra"}`,
+          competencia: comp,
+          servico: "Valor extra (parceiro)",
+          valor: e.valorMensal,
+          vencimento: "",
+          pagamento: pagamento?.dataPagamento,
+          status: pagamento?.status ?? ("Em aberto" as const),
+          banco: pagamento?.banco,
+          tipoPessoa: pagamento?.tipoPessoa,
+          avulso: false as const,
+          clienteIdParceiro: undefined as string | undefined,
+          extraIdParceiro: e.id as string | undefined,
+        }];
+      });
+    });
     return [...doClientes, ...avulsos, ...boletos, ...parceiros, ...extras];
-  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, competenciasPeriodo]);
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, competenciasPeriodo]);
 
   const bancosDisponiveis = useMemo(
     () =>
@@ -358,6 +380,12 @@ export default function FinanceiroPage() {
   function handleDeleteRecebimentoParceiro(clienteId: string, competencia: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) {
       updateRecebimentoParceiro(clienteId, competencia, { removido: true });
+    }
+  }
+
+  function handleDeleteExtraParceiro(extraId: string, competencia: string, nome: string) {
+    if (confirm(`Excluir o lançamento de "${nome}" em ${competencia}?`)) {
+      updatePagamentoExtraParceiro(extraId, competencia, { removido: true });
     }
   }
 
@@ -522,6 +550,16 @@ export default function FinanceiroPage() {
                         <button
                           type="button"
                           onClick={() => handleDeleteRecebimentoParceiro(h.clienteIdParceiro!, h.competencia, h.nome)}
+                          title="Excluir lançamento"
+                          className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
+                      {h.extraIdParceiro && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExtraParceiro(h.extraIdParceiro!, h.competencia, h.nome)}
                           title="Excluir lançamento"
                           className="rounded-md p-1.5 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
                         >

@@ -124,6 +124,7 @@ import type {
   GuiaFiscal,
   RecebimentoParceiroMensal,
   ExtraParceiro,
+  PagamentoExtraParceiroMensal,
   DadosEscritorio,
   SistemaEscritorio,
   DespesaAvulsa,
@@ -190,6 +191,7 @@ interface AppState {
   guiasFiscais: GuiaFiscal[];
   recebimentosParceiro: RecebimentoParceiroMensal[];
   extrasParceiro: ExtraParceiro[];
+  pagamentosExtrasParceiro: PagamentoExtraParceiroMensal[];
   checklistContabil: ChecklistEntry[];
   checklistFiscal: ChecklistEntry[];
   checklistPessoal: ChecklistEntry[];
@@ -352,6 +354,11 @@ interface AppState {
   addExtraParceiro: (extra: ExtraParceiro) => void;
   updateExtraParceiro: (id: string, patch: Partial<ExtraParceiro>) => void;
   deleteExtraParceiro: (id: string) => void;
+  updatePagamentoExtraParceiro: (
+    extraParceiroId: string,
+    competencia: string,
+    patch: Partial<Pick<PagamentoExtraParceiroMensal, "status" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
+  ) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   // Etapa 3 da migração — Clientes e Financeiro vêm do Supabase agora
   // (tabela genérica `dados_financeiros`); essas setters só aplicam
@@ -366,6 +373,7 @@ interface AppState {
   setGuiasFiscaisFromSupabase: (guiasFiscais: GuiaFiscal[]) => void;
   setRecebimentosParceiroFromSupabase: (recebimentos: RecebimentoParceiroMensal[]) => void;
   setExtrasParceiroFromSupabase: (extras: ExtraParceiro[]) => void;
+  setPagamentosExtrasParceiroFromSupabase: (pagamentos: PagamentoExtraParceiroMensal[]) => void;
   setDespesasAvulsasFromSupabase: (despesas: DespesaAvulsa[]) => void;
   setPagamentosSistemasFromSupabase: (pagamentos: PagamentoSistemaMensal[]) => void;
   // Etapa 4 da migração — todo o resto que ainda só vivia no navegador
@@ -479,6 +487,7 @@ const initial = {
   guiasFiscais: [] as GuiaFiscal[],
   recebimentosParceiro: [] as RecebimentoParceiroMensal[],
   extrasParceiro: [] as ExtraParceiro[],
+  pagamentosExtrasParceiro: [] as PagamentoExtraParceiroMensal[],
   checklistContabil: [],
   checklistFiscal: [],
   checklistPessoal: [],
@@ -1304,6 +1313,7 @@ export const useAppStore = create<AppState>()(
       setGuiasFiscaisFromSupabase: (guiasFiscais) => set({ guiasFiscais }),
       setRecebimentosParceiroFromSupabase: (recebimentosParceiro) => set({ recebimentosParceiro }),
       setExtrasParceiroFromSupabase: (extrasParceiro) => set({ extrasParceiro }),
+      setPagamentosExtrasParceiroFromSupabase: (pagamentosExtrasParceiro) => set({ pagamentosExtrasParceiro }),
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
       setLeadsFromSupabase: (leads) => set({ leads }),
@@ -1558,6 +1568,23 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ extrasParceiro: s.extrasParceiro.filter((e) => e.id !== id) }));
         deleteFinanceiro("extrasParceiro", id);
       },
+      updatePagamentoExtraParceiro: (extraParceiroId, competencia, patch) => {
+        const id = `pagextra-${extraParceiroId}-${competencia}`;
+        set((s) => {
+          const existente = s.pagamentosExtrasParceiro.find((p) => p.id === id);
+          if (existente) {
+            return { pagamentosExtrasParceiro: s.pagamentosExtrasParceiro.map((p) => (p.id === id ? { ...p, ...patch } : p)) };
+          }
+          return {
+            pagamentosExtrasParceiro: [
+              ...s.pagamentosExtrasParceiro,
+              { id, extraParceiroId, competencia, status: "Em aberto", ...patch },
+            ],
+          };
+        });
+        const item = useAppStore.getState().pagamentosExtrasParceiro.find((p) => p.id === id);
+        if (item) pushFinanceiro("pagamentosExtrasParceiro", id, null, item);
+      },
 
       updateNotaDepartamento: (clientId, depto, nota) => {
         set((s) => ({
@@ -1757,6 +1784,7 @@ export const useAppStore = create<AppState>()(
           guiasFiscais,
           recebimentosParceiro,
           extrasParceiro,
+          pagamentosExtrasParceiro,
           despesasAvulsas,
           pagamentosSistemas,
           leads,

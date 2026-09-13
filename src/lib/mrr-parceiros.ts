@@ -1,14 +1,17 @@
-import type { Client, RecebimentoParceiroMensal, ExtraParceiro } from "@/lib/types";
+import type { Client, RecebimentoParceiroMensal, ExtraParceiro, PagamentoExtraParceiroMensal } from "@/lib/types";
 
 /** Quanto os clientes de parceiro (pagam via PIX, controlados em Parceiros)
  * somam num conjunto de competências (YYYY-MM) — usa o valor ajustado por
  * competência quando existe (senão cai no valorMensal do cadastro) e soma
- * os valores extras do parceiro, exatamente como a tela de Parceiros
- * calcula, pra manter os dois números consistentes. */
+ * os valores extras recorrentes do parceiro (mesma regra dos sistemas do
+ * escritório: valorMensal fixo, só o mês pode ser marcado como removido),
+ * exatamente como a tela de Parceiros calcula, pra manter os dois números
+ * consistentes. */
 export function valorParceirosNoPeriodo(
   clients: Client[],
   recebimentosParceiro: RecebimentoParceiroMensal[],
   extrasParceiro: ExtraParceiro[],
+  pagamentosExtrasParceiro: PagamentoExtraParceiroMensal[],
   competencias: string[]
 ): number {
   const entryMap = new Map(recebimentosParceiro.map((r) => [`${r.clienteId}__${r.competencia}`, r]));
@@ -25,8 +28,14 @@ export function valorParceirosNoPeriodo(
     }
   }
 
+  const pagamentoMap = new Map(pagamentosExtrasParceiro.map((p) => [`${p.extraParceiroId}__${p.competencia}`, p]));
   for (const extra of extrasParceiro) {
-    if (competencias.includes(extra.competencia)) total += extra.valor;
+    for (const comp of competencias) {
+      if (extra.inicioCompetencia && comp < extra.inicioCompetencia) continue;
+      const pagamento = pagamentoMap.get(`${extra.id}__${comp}`);
+      if (pagamento?.removido) continue;
+      total += extra.valorMensal;
+    }
   }
 
   return total;

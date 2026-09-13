@@ -15,6 +15,14 @@ import { useAppStore } from "@/lib/store/app-store";
 import type { Client, ExtraParceiro, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
+interface LinhaExtra {
+  extra: ExtraParceiro;
+  competencia: string;
+  status: StatusPagamentoParceiro;
+  banco: string;
+  tipoPessoa: TipoPessoaRecebimento | "";
+}
+
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
   { value: "01", label: "Jan" }, { value: "02", label: "Fev" }, { value: "03", label: "Mar" },
@@ -43,12 +51,13 @@ export default function ParceirosPage() {
   const clients = useAppStore((s) => s.clients);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const extrasParceiro = useAppStore((s) => s.extrasParceiro);
+  const pagamentosExtrasParceiro = useAppStore((s) => s.pagamentosExtrasParceiro);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentos = useAppStore((s) => s.recebimentos);
   const updateRecebimentoParceiro = useAppStore((s) => s.updateRecebimentoParceiro);
   const addExtraParceiro = useAppStore((s) => s.addExtraParceiro);
   const updateExtraParceiro = useAppStore((s) => s.updateExtraParceiro);
-  const deleteExtraParceiro = useAppStore((s) => s.deleteExtraParceiro);
+  const updatePagamentoExtraParceiro = useAppStore((s) => s.updatePagamentoExtraParceiro);
 
   const bancoOptions = useMemo(() => {
     const usados = [
@@ -117,29 +126,49 @@ export default function ParceirosPage() {
   }, [linhas, busca]);
 
   /** Valores extras que um parceiro cobra à parte (ex: um sistema usado só
-   * por ele), fora do que vem do cadastro de cada cliente. */
+   * por ele), fora do que vem do cadastro de cada cliente — recorrentes
+   * (mesma lógica dos sistemas do escritório): uma linha por competência do
+   * período, usando o valorMensal do extra e o status daquele mês quando já
+   * existe. */
+  const linhasExtras: LinhaExtra[] = useMemo(() => {
+    const pagamentoMap = new Map(pagamentosExtrasParceiro.map((p) => [`${p.extraParceiroId}__${p.competencia}`, p]));
+    const list: LinhaExtra[] = [];
+    for (const extra of extrasParceiro) {
+      for (const comp of competencias) {
+        if (extra.inicioCompetencia && comp < extra.inicioCompetencia) continue;
+        const pagamento = pagamentoMap.get(`${extra.id}__${comp}`);
+        if (pagamento?.removido) continue;
+        list.push({
+          extra,
+          competencia: comp,
+          status: pagamento?.status ?? "Em aberto",
+          banco: pagamento?.banco ?? "",
+          tipoPessoa: pagamento?.tipoPessoa ?? "",
+        });
+      }
+    }
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extrasParceiro, pagamentosExtrasParceiro, year, mes]);
+
   const extrasFiltradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return extrasParceiro.filter((e) => {
-      if (!competencias.includes(e.competencia)) return false;
-      if (!q) return true;
-      return e.nomeParceiro.toLowerCase().includes(q);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extrasParceiro, year, mes, busca]);
+    if (!q) return linhasExtras;
+    return linhasExtras.filter((le) => le.extra.nomeParceiro.toLowerCase().includes(q));
+  }, [linhasExtras, busca]);
 
   const grupos = useMemo(() => {
-    const porParceiro = new Map<string, { linhas: Linha[]; extras: ExtraParceiro[] }>();
+    const porParceiro = new Map<string, { linhas: Linha[]; extras: LinhaExtra[] }>();
     for (const l of filtradas) {
       const nome = l.cliente.dados.nomeParceiro?.trim() || "Sem parceiro definido";
       const grupo = porParceiro.get(nome) ?? { linhas: [], extras: [] };
       grupo.linhas.push(l);
       porParceiro.set(nome, grupo);
     }
-    for (const ex of extrasFiltradas) {
-      const nome = ex.nomeParceiro.trim() || "Sem parceiro definido";
+    for (const le of extrasFiltradas) {
+      const nome = le.extra.nomeParceiro.trim() || "Sem parceiro definido";
       const grupo = porParceiro.get(nome) ?? { linhas: [], extras: [] };
-      grupo.extras.push(ex);
+      grupo.extras.push(le);
       porParceiro.set(nome, grupo);
     }
     return [...porParceiro.entries()]
@@ -152,18 +181,21 @@ export default function ParceirosPage() {
           );
           return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
         }),
-        extras: extras.sort((a, b) => a.competencia.localeCompare(b.competencia)),
-        total: linhas.reduce((sum, l) => sum + l.valor, 0) + extras.reduce((sum, e) => sum + e.valor, 0),
+        extras: extras.sort((a, b) => {
+          const descCompare = a.extra.descricao.localeCompare(b.extra.descricao, "pt-BR");
+          return descCompare !== 0 ? descCompare : a.competencia.localeCompare(b.competencia);
+        }),
+        total: linhas.reduce((sum, l) => sum + l.valor, 0) + extras.reduce((sum, le) => sum + le.extra.valorMensal, 0),
       }))
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
   }, [filtradas, extrasFiltradas]);
 
   const totalRecebido =
     filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0) +
-    extrasFiltradas.filter((e) => e.status === "Pago").reduce((a, e) => a + e.valor, 0);
+    extrasFiltradas.filter((le) => le.status === "Pago").reduce((a, le) => a + le.extra.valorMensal, 0);
   const totalEmAberto =
     filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0) +
-    extrasFiltradas.filter((e) => e.status === "Em aberto").reduce((a, e) => a + e.valor, 0);
+    extrasFiltradas.filter((le) => le.status === "Em aberto").reduce((a, le) => a + le.extra.valorMensal, 0);
   // MRR = tudo que os parceiros pagam no período (Recebido + Em aberto) —
   // reflete os valores de verdade (ajustados por competência + extras),
   // não só o valorMensal fixo cadastrado no cliente.
@@ -186,16 +218,21 @@ export default function ParceirosPage() {
       addExtraParceiro({
         id,
         nomeParceiro: parceiro,
-        competencia: `${year}-${mes}`,
         descricao: "",
-        valor: 0,
-        status: "Em aberto",
+        valorMensal: 0,
+        inicioCompetencia: mes === "anual" ? undefined : `${year}-${mes}`,
       });
     };
   }
 
-  function handleDeleteExtra(extra: ExtraParceiro) {
-    if (confirm(`Excluir o valor extra "${extra.descricao || "sem descrição"}"?`)) deleteExtraParceiro(extra.id);
+  function toggleStatusExtra(le: LinhaExtra) {
+    updatePagamentoExtraParceiro(le.extra.id, le.competencia, { status: le.status === "Pago" ? "Em aberto" : "Pago" });
+  }
+
+  function handleDeleteExtraLinha(le: LinhaExtra) {
+    if (confirm(`Excluir o lançamento de "${le.extra.descricao || "valor extra"}" em ${inicioContratoLabel(le.competencia)}?`)) {
+      updatePagamentoExtraParceiro(le.extra.id, le.competencia, { removido: true });
+    }
   }
 
   return (
@@ -314,34 +351,34 @@ export default function ParceirosPage() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {g.extras.map((ex) => (
-                  <TableRow key={ex.id} className="bg-sand-50/50">
+                {g.extras.map((le) => (
+                  <TableRow key={`${le.extra.id}-${le.competencia}`} className="bg-sand-50/50">
                     <TableCell>
                       <Input
-                        value={ex.descricao}
-                        onChange={(e) => updateExtraParceiro(ex.id, { descricao: e.target.value })}
+                        value={le.extra.descricao}
+                        onChange={(e) => updateExtraParceiro(le.extra.id, { descricao: e.target.value })}
                         placeholder="Descrição (ex: Sistema)"
                         className="h-8 w-40 text-xs italic"
                       />
                     </TableCell>
                     {mes === "anual" && (
-                      <TableCell className="text-sand-500">{inicioContratoLabel(ex.competencia)}</TableCell>
+                      <TableCell className="text-sand-500">{inicioContratoLabel(le.competencia)}</TableCell>
                     )}
                     <TableCell>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
-                        value={ex.valor}
-                        onChange={(e) => updateExtraParceiro(ex.id, { valor: Number(e.target.value) || 0 })}
+                        value={le.extra.valorMensal}
+                        onChange={(e) => updateExtraParceiro(le.extra.id, { valorMensal: Number(e.target.value) || 0 })}
                         className="h-8 w-28 text-xs"
                       />
                     </TableCell>
                     <TableCell className="text-sand-400">—</TableCell>
                     <TableCell>
                       <Input
-                        value={ex.banco ?? ""}
-                        onChange={(e) => updateExtraParceiro(ex.id, { banco: e.target.value })}
+                        value={le.banco ?? ""}
+                        onChange={(e) => updatePagamentoExtraParceiro(le.extra.id, le.competencia, { banco: e.target.value })}
                         placeholder="Em qual banco"
                         list="parceiros-bancos"
                         className="h-8 w-32 text-xs"
@@ -349,8 +386,8 @@ export default function ParceirosPage() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={ex.tipoPessoa || "—"}
-                        onValueChange={(v) => updateExtraParceiro(ex.id, { tipoPessoa: v === "—" ? undefined : (v as TipoPessoaRecebimento) })}
+                        value={le.tipoPessoa || "—"}
+                        onValueChange={(v) => updatePagamentoExtraParceiro(le.extra.id, le.competencia, { tipoPessoa: v === "—" ? undefined : (v as TipoPessoaRecebimento) })}
                       >
                         <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -364,15 +401,15 @@ export default function ParceirosPage() {
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          onClick={() => updateExtraParceiro(ex.id, { status: ex.status === "Pago" ? "Em aberto" : "Pago" })}
+                          onClick={() => toggleStatusExtra(le)}
                           title="Alternar status de pagamento"
                         >
-                          <StatusBadge status={ex.status} className="cursor-pointer" />
+                          <StatusBadge status={le.status} className="cursor-pointer" />
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteExtra(ex)}
-                          title="Excluir valor extra"
+                          onClick={() => handleDeleteExtraLinha(le)}
+                          title="Excluir lançamento"
                           className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
                         >
                           <Trash2 className="size-3.5" />
