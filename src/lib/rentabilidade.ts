@@ -1,6 +1,11 @@
 import type { Client, DespesaAvulsa, PagamentoSistemaMensal, SistemaEscritorio } from "@/lib/types";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 
+export interface ItemCustoCliente {
+  nome: string;
+  valor: number;
+}
+
 export interface RentabilidadeCliente {
   clienteId: string;
   nome: string;
@@ -8,6 +13,7 @@ export interface RentabilidadeCliente {
   custo: number;
   margem: number;
   margemPercentual: number;
+  itens: ItemCustoCliente[];
 }
 
 /**
@@ -35,6 +41,7 @@ export function calcularRentabilidade(
   const sistemaPorId = new Map(sistemas.map((s) => [s.id, s]));
   const despesaPorId = new Map(despesasAvulsas.map((d) => [d.id, d]));
   const custoPorCliente = new Map<string, number>(clientesAtivos.map((c) => [c.id, 0]));
+  const itensPorCliente = new Map<string, ItemCustoCliente[]>(clientesAtivos.map((c) => [c.id, []]));
 
   const despesasDoMes = contasAPagarDoPeriodo(sistemas, pagamentosSistemas, despesasAvulsas, [competencia]);
   for (const linha of despesasDoMes) {
@@ -43,7 +50,10 @@ export function calcularRentabilidade(
     const beneficiarios = (marcados ?? [...idsElegiveis]).filter((id) => idsElegiveis.has(id));
     if (beneficiarios.length === 0) continue;
     const fatia = linha.valor / beneficiarios.length;
-    for (const id of beneficiarios) custoPorCliente.set(id, (custoPorCliente.get(id) ?? 0) + fatia);
+    for (const id of beneficiarios) {
+      custoPorCliente.set(id, (custoPorCliente.get(id) ?? 0) + fatia);
+      itensPorCliente.get(id)?.push({ nome: linha.descricao, valor: fatia });
+    }
   }
 
   return clientesAtivos.map((c) => {
@@ -57,6 +67,7 @@ export function calcularRentabilidade(
       custo,
       margem,
       margemPercentual: receita > 0 ? (margem / receita) * 100 : 0,
+      itens: itensPorCliente.get(c.id) ?? [],
     };
   });
 }

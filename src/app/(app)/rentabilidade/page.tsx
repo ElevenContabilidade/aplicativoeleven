@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import { calcularRentabilidade } from "@/lib/rentabilidade";
+import { calcularRentabilidade, type RentabilidadeCliente } from "@/lib/rentabilidade";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -38,6 +39,7 @@ export default function RentabilidadePage() {
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [detalheCliente, setDetalheCliente] = useState<RentabilidadeCliente | null>(null);
 
   const competencia = `${year}-${mes}`;
 
@@ -133,7 +135,16 @@ export default function RentabilidadePage() {
                     <Link href={`/clientes/${l.clienteId}`} className="hover:text-wine-700 hover:underline">{l.nome}</Link>
                   </TableCell>
                   <TableCell>{formatCurrency(l.receita)}</TableCell>
-                  <TableCell>{formatCurrency(l.custo)}</TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => setDetalheCliente(l)}
+                      className="underline decoration-dotted underline-offset-2 hover:text-wine-700"
+                      title="Ver quais sistemas/despesas compõem esse custo"
+                    >
+                      {formatCurrency(l.custo)}
+                    </button>
+                  </TableCell>
                   <TableCell className={cn("font-medium", margemTone(l.margemPercentual))}>{formatCurrency(l.margem)}</TableCell>
                   <TableCell className={cn("text-right font-medium", margemTone(l.margemPercentual))}>
                     {l.margemPercentual.toFixed(1)}%
@@ -147,6 +158,44 @@ export default function RentabilidadePage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!detalheCliente} onOpenChange={(open) => !open && setDetalheCliente(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sistemas e despesas que {detalheCliente?.nome} consome</DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Sistema / despesa</TableHead>
+                <TableHead className="text-right">Fatia do custo</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {detalheCliente?.itens.map((item, i) => (
+                <TableRow key={`${item.nome}-${i}`}>
+                  <TableCell>{item.nome}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(item.valor)}</TableCell>
+                </TableRow>
+              ))}
+              {detalheCliente?.itens.length === 0 && (
+                <TableRow><TableCell colSpan={2} className="py-8 text-center text-sand-400">Esse cliente não está marcado como usuário de nenhum sistema/despesa nessa competência.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+          {detalheCliente && (
+            <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
+              <span>Total ({detalheCliente.itens.length} itens)</span>
+              <span>{formatCurrency(detalheCliente.custo)}</span>
+            </div>
+          )}
+          <p className="text-xs text-sand-500">
+            Marque quem usa cada sistema em{" "}
+            <Link href="/dados-escritorio" className="underline">Dados do escritório</Link> e cada despesa avulsa em{" "}
+            <Link href="/financeiro" className="underline">Financeiro → Contas a pagar</Link>.
+          </p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
