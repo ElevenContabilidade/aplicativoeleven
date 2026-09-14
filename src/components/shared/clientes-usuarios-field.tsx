@@ -20,10 +20,18 @@ export function ClientesUsuariosField({
   onChange: (ids: string[] | undefined) => void;
   label?: string;
 }) {
-  const clients = useAppStore((s) => s.clients);
+  const clientsRaw = useAppStore((s) => s.clients);
   const [search, setSearch] = useState("");
   const modoTodos = value === undefined;
   const selecionados = new Set(value ?? []);
+
+  const clients = useMemo(
+    () =>
+      [...clientsRaw].sort((a, b) =>
+        (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR")
+      ),
+    [clientsRaw]
+  );
 
   const filtrados = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -33,10 +41,16 @@ export function ClientesUsuariosField({
     );
   }, [clients, search]);
 
+  const todosSelecionados = clients.length > 0 && clients.every((c) => selecionados.has(c.id));
+
   function toggleCliente(id: string) {
     const next = new Set(selecionados);
     if (next.has(id)) next.delete(id); else next.add(id);
     onChange([...next]);
+  }
+
+  function toggleTodos() {
+    onChange(todosSelecionados ? [] : clients.map((c) => c.id));
   }
 
   return (
@@ -62,6 +76,10 @@ export function ClientesUsuariosField({
             />
           </div>
           <div className="max-h-56 overflow-y-auto rounded-lg border border-sand-200">
+            <label className="flex items-center gap-2 border-b border-sand-100 bg-sand-50 px-3 py-1.5 text-xs font-medium hover:bg-sand-100">
+              <Checkbox checked={todosSelecionados} onCheckedChange={toggleTodos} />
+              <span>Selecionar todos</span>
+            </label>
             {filtrados.map((c) => (
               <label
                 key={c.id}
