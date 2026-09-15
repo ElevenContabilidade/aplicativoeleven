@@ -172,21 +172,31 @@ export default function ParceirosPage() {
       porParceiro.set(nome, grupo);
     }
     return [...porParceiro.entries()]
-      .map(([parceiro, { linhas, extras }]) => ({
-        parceiro,
-        linhas: linhas.sort((a, b) => {
-          const nomeCompare = (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
-            b.cliente.dados.nomeFantasia ?? b.cliente.dados.razaoSocial,
-            "pt-BR"
-          );
-          return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
-        }),
-        extras: extras.sort((a, b) => {
-          const descCompare = a.extra.descricao.localeCompare(b.extra.descricao, "pt-BR");
-          return descCompare !== 0 ? descCompare : a.competencia.localeCompare(b.competencia);
-        }),
-        total: linhas.reduce((sum, l) => sum + l.valor, 0) + extras.reduce((sum, le) => sum + le.extra.valorMensal, 0),
-      }))
+      .map(([parceiro, { linhas, extras }]) => {
+        const recebido =
+          linhas.filter((l) => l.status === "Pago").reduce((sum, l) => sum + l.valor, 0) +
+          extras.filter((le) => le.status === "Pago").reduce((sum, le) => sum + le.extra.valorMensal, 0);
+        const emAberto =
+          linhas.filter((l) => l.status === "Em aberto").reduce((sum, l) => sum + l.valor, 0) +
+          extras.filter((le) => le.status === "Em aberto").reduce((sum, le) => sum + le.extra.valorMensal, 0);
+        return {
+          parceiro,
+          linhas: linhas.sort((a, b) => {
+            const nomeCompare = (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
+              b.cliente.dados.nomeFantasia ?? b.cliente.dados.razaoSocial,
+              "pt-BR"
+            );
+            return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
+          }),
+          extras: extras.sort((a, b) => {
+            const descCompare = a.extra.descricao.localeCompare(b.extra.descricao, "pt-BR");
+            return descCompare !== 0 ? descCompare : a.competencia.localeCompare(b.competencia);
+          }),
+          total: recebido + emAberto,
+          recebido,
+          emAberto,
+        };
+      })
       .sort((a, b) => a.parceiro.localeCompare(b.parceiro, "pt-BR"));
   }, [filtradas, extrasFiltradas]);
 
@@ -203,6 +213,38 @@ export default function ParceirosPage() {
 
   function toggleStatus(l: Linha) {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
+  }
+
+  /** Acha os outros clientes do mesmo parceiro, na mesma competência, que
+   * ainda não têm banco/tipo definido — usado pra replicar automaticamente
+   * o banco/tipo do primeiro lançamento pros demais, evitando marcar campo
+   * por campo quando o dinheiro de todo mundo do mesmo parceiro cai sempre
+   * no mesmo lugar. */
+  function outrosDoGrupoSemValor(l: Linha, campo: "banco" | "tipoPessoa") {
+    const nomeParceiro = l.cliente.dados.nomeParceiro?.trim() || "Sem parceiro definido";
+    return linhas.filter(
+      (outra) =>
+        outra.cliente.id !== l.cliente.id &&
+        outra.competencia === l.competencia &&
+        (outra.cliente.dados.nomeParceiro?.trim() || "Sem parceiro definido") === nomeParceiro &&
+        !outra[campo]
+    );
+  }
+
+  function handleBancoChange(l: Linha, banco: string) {
+    updateRecebimentoParceiro(l.cliente.id, l.competencia, { banco });
+    if (!banco) return;
+    for (const outra of outrosDoGrupoSemValor(l, "banco")) {
+      updateRecebimentoParceiro(outra.cliente.id, outra.competencia, { banco });
+    }
+  }
+
+  function handleTipoChange(l: Linha, tipo: TipoPessoaRecebimento | undefined) {
+    updateRecebimentoParceiro(l.cliente.id, l.competencia, { tipoPessoa: tipo });
+    if (!tipo) return;
+    for (const outra of outrosDoGrupoSemValor(l, "tipoPessoa")) {
+      updateRecebimentoParceiro(outra.cliente.id, outra.competencia, { tipoPessoa: tipo });
+    }
   }
 
   function handleDeleteLinha(l: Linha) {
@@ -315,7 +357,7 @@ export default function ParceirosPage() {
                     <TableCell>
                       <Input
                         value={l.banco}
-                        onChange={(e) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { banco: e.target.value })}
+                        onChange={(e) => handleBancoChange(l, e.target.value)}
                         placeholder="Em qual banco"
                         list="parceiros-bancos"
                         className="h-8 w-32 text-xs"
@@ -324,7 +366,7 @@ export default function ParceirosPage() {
                     <TableCell>
                       <Select
                         value={l.tipoPessoa || "—"}
-                        onValueChange={(v) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { tipoPessoa: v === "—" ? undefined : (v as TipoPessoaRecebimento) })}
+                        onValueChange={(v) => handleTipoChange(l, v === "—" ? undefined : (v as TipoPessoaRecebimento))}
                       >
                         <SelectTrigger className="h-8 w-20 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -432,9 +474,27 @@ export default function ParceirosPage() {
                   </TableCell>
                 </TableRow>
                 <TableRow className="bg-cream-100 hover:bg-cream-100">
-                  <TableCell className="font-semibold text-wine-700">Total</TableCell>
+                  <TableCell className="font-semibold text-wine-700">Total a receber</TableCell>
                   {mes === "anual" && <TableCell />}
                   <TableCell className="font-semibold text-wine-700">{formatCurrency(g.total)}</TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                </TableRow>
+                <TableRow className="bg-cream-50 hover:bg-cream-50">
+                  <TableCell className="text-status-success">Recebido</TableCell>
+                  {mes === "anual" && <TableCell />}
+                  <TableCell className="text-status-success">{formatCurrency(g.recebido)}</TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                  <TableCell />
+                </TableRow>
+                <TableRow className="bg-cream-50 hover:bg-cream-50">
+                  <TableCell className="text-status-warning">Resta receber</TableCell>
+                  {mes === "anual" && <TableCell />}
+                  <TableCell className="text-status-warning">{formatCurrency(g.emAberto)}</TableCell>
                   <TableCell />
                   <TableCell />
                   <TableCell />
