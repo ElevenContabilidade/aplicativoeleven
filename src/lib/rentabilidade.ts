@@ -4,6 +4,8 @@ import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 export interface ItemCustoCliente {
   nome: string;
   valor: number;
+  origemTipo: "sistema" | "avulsa";
+  origemId: string;
 }
 
 export interface RentabilidadeCliente {
@@ -52,7 +54,7 @@ export function calcularRentabilidade(
     const fatia = linha.valor / beneficiarios.length;
     for (const id of beneficiarios) {
       custoPorCliente.set(id, (custoPorCliente.get(id) ?? 0) + fatia);
-      itensPorCliente.get(id)?.push({ nome: linha.descricao, valor: fatia });
+      itensPorCliente.get(id)?.push({ nome: linha.descricao, valor: fatia, origemTipo: linha.origem, origemId: linha.refId });
     }
   }
 

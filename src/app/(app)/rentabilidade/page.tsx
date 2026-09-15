@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { PiggyBank, Search, Info } from "lucide-react";
+import { PiggyBank, Search, Info, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import { calcularRentabilidade, type RentabilidadeCliente } from "@/lib/rentabilidade";
+import { calcularRentabilidade, type ItemCustoCliente } from "@/lib/rentabilidade";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -33,13 +33,15 @@ export default function RentabilidadePage() {
   const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
   const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
   const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
+  const updateSistemaEscritorio = useAppStore((s) => s.updateSistemaEscritorio);
+  const updateDespesaAvulsa = useAppStore((s) => s.updateDespesaAvulsa);
   const [busca, setBusca] = useState("");
   const [year, setYear] = useState(() => {
     const current = new Date().getFullYear().toString();
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
-  const [detalheCliente, setDetalheCliente] = useState<RentabilidadeCliente | null>(null);
+  const [detalheClienteId, setDetalheClienteId] = useState<string | null>(null);
 
   const competencia = `${year}-${mes}`;
 
@@ -59,6 +61,28 @@ export default function RentabilidadePage() {
   const custoTotal = linhas.reduce((a, l) => a + l.custo, 0);
   const margemTotal = receitaTotal - custoTotal;
   const margemMediaPercentual = receitaTotal > 0 ? (margemTotal / receitaTotal) * 100 : 0;
+
+  // Deriva do array recalculado (em vez de guardar uma cópia) pra o diálogo
+  // atualizar sozinho assim que um item é removido do cliente.
+  const detalheCliente = linhas.find((l) => l.clienteId === detalheClienteId) ?? null;
+
+  /** Tira esse cliente da lista de quem usa esse sistema/despesa — sem
+   * precisar abrir o cadastro do sistema/despesa e procurar o cliente lá.
+   * Sistema/despesa sem ninguém marcado ainda (undefined = "todos") vira uma
+   * lista explícita com todo mundo menos esse cliente. */
+  function handleRemoverItem(item: ItemCustoCliente, clienteId: string) {
+    if (item.origemTipo === "sistema") {
+      const sistema = sistemasEscritorio.find((s) => s.id === item.origemId);
+      if (!sistema) return;
+      const atuais = sistema.clientesQueUsam ?? clients.map((c) => c.id);
+      updateSistemaEscritorio(sistema.id, { clientesQueUsam: atuais.filter((id) => id !== clienteId) });
+    } else {
+      const despesa = despesasAvulsas.find((d) => d.id === item.origemId);
+      if (!despesa) return;
+      const atuais = despesa.clientesQueUsam ?? clients.map((c) => c.id);
+      updateDespesaAvulsa(despesa.id, { clientesQueUsam: atuais.filter((id) => id !== clienteId) });
+    }
+  }
 
   return (
     <div>
@@ -138,7 +162,7 @@ export default function RentabilidadePage() {
                   <TableCell>
                     <button
                       type="button"
-                      onClick={() => setDetalheCliente(l)}
+                      onClick={() => setDetalheClienteId(l.clienteId)}
                       className="underline decoration-dotted underline-offset-2 hover:text-wine-700"
                       title="Ver quais sistemas/despesas compõem esse custo"
                     >
@@ -159,7 +183,7 @@ export default function RentabilidadePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!detalheCliente} onOpenChange={(open) => !open && setDetalheCliente(null)}>
+      <Dialog open={!!detalheClienteId} onOpenChange={(open) => !open && setDetalheClienteId(null)}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Sistemas e despesas que {detalheCliente?.nome} consome</DialogTitle>
@@ -169,6 +193,7 @@ export default function RentabilidadePage() {
               <TableRow>
                 <TableHead>Sistema / despesa</TableHead>
                 <TableHead className="text-right">Fatia do custo</TableHead>
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -176,10 +201,20 @@ export default function RentabilidadePage() {
                 <TableRow key={`${item.nome}-${i}`}>
                   <TableCell>{item.nome}</TableCell>
                   <TableCell className="text-right">{formatCurrency(item.valor)}</TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverItem(item, detalheCliente!.clienteId)}
+                      title="Esse cliente não usa isso — remover do rateio"
+                      className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </TableCell>
                 </TableRow>
               ))}
               {detalheCliente?.itens.length === 0 && (
-                <TableRow><TableCell colSpan={2} className="py-8 text-center text-sand-400">Esse cliente não está marcado como usuário de nenhum sistema/despesa nessa competência.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="py-8 text-center text-sand-400">Esse cliente não está marcado como usuário de nenhum sistema/despesa nessa competência.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -190,9 +225,8 @@ export default function RentabilidadePage() {
             </div>
           )}
           <p className="text-xs text-sand-500">
-            Marque quem usa cada sistema em{" "}
-            <Link href="/dados-escritorio" className="underline">Dados do escritório</Link> e cada despesa avulsa em{" "}
-            <Link href="/financeiro" className="underline">Financeiro → Contas a pagar</Link>.
+            Clique no × pra tirar esse cliente do rateio de um item direto por aqui — mais rápido do que abrir o
+            sistema (Dados do escritório) ou a despesa (Financeiro → Contas a pagar) pra procurar o cliente na lista.
           </p>
         </DialogContent>
       </Dialog>
