@@ -12,13 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { NovoParceiroDialog } from "@/components/parceiros/novo-parceiro-dialog";
 import { useAppStore } from "@/lib/store/app-store";
-import type { Client, ExtraParceiro, StatusPagamentoParceiro, TipoPessoaRecebimento } from "@/lib/types";
+import type { Client, ExtraParceiro, TipoPessoaRecebimento } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
+import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
 
 interface LinhaExtra {
   extra: ExtraParceiro;
   competencia: string;
-  status: StatusPagamentoParceiro;
+  valorPago: number;
+  status: ReturnType<typeof statusRecebimentoParceiro>;
   banco: string;
   tipoPessoa: TipoPessoaRecebimento | "";
 }
@@ -35,7 +37,8 @@ interface Linha {
   cliente: Client;
   competencia: string;
   valor: number;
-  status: StatusPagamentoParceiro;
+  valorPago: number;
+  status: ReturnType<typeof statusRecebimentoParceiro>;
   banco: string;
   tipoPessoa: TipoPessoaRecebimento | "";
 }
@@ -101,11 +104,14 @@ export default function ParceirosPage() {
         if (inicio && comp < inicio) continue;
         const entry = entryMap.get(`${cliente.id}__${comp}`);
         if (entry?.removido) continue;
+        const valor = entry?.valor ?? cliente.financeiro.valorMensal;
+        const valorPago = valorPagoResolvido(entry?.valorPago, entry?.status, valor);
         list.push({
           cliente,
           competencia: comp,
-          valor: entry?.valor ?? cliente.financeiro.valorMensal,
-          status: entry?.status ?? "Em aberto",
+          valor,
+          valorPago,
+          status: statusRecebimentoParceiro(valorPago, valor),
           banco: entry?.banco ?? "",
           tipoPessoa: entry?.tipoPessoa ?? "",
         });
@@ -138,10 +144,12 @@ export default function ParceirosPage() {
         if (extra.inicioCompetencia && comp < extra.inicioCompetencia) continue;
         const pagamento = pagamentoMap.get(`${extra.id}__${comp}`);
         if (pagamento?.removido) continue;
+        const valorPago = valorPagoResolvido(pagamento?.valorPago, pagamento?.status, extra.valorMensal);
         list.push({
           extra,
           competencia: comp,
-          status: pagamento?.status ?? "Em aberto",
+          valorPago,
+          status: statusRecebimentoParceiro(valorPago, extra.valorMensal),
           banco: pagamento?.banco ?? "",
           tipoPessoa: pagamento?.tipoPessoa ?? "",
         });
@@ -174,11 +182,10 @@ export default function ParceirosPage() {
     return [...porParceiro.entries()]
       .map(([parceiro, { linhas, extras }]) => {
         const recebido =
-          linhas.filter((l) => l.status === "Pago").reduce((sum, l) => sum + l.valor, 0) +
-          extras.filter((le) => le.status === "Pago").reduce((sum, le) => sum + le.extra.valorMensal, 0);
+          linhas.reduce((sum, l) => sum + l.valorPago, 0) + extras.reduce((sum, le) => sum + le.valorPago, 0);
         const emAberto =
-          linhas.filter((l) => l.status === "Em aberto").reduce((sum, l) => sum + l.valor, 0) +
-          extras.filter((le) => le.status === "Em aberto").reduce((sum, le) => sum + le.extra.valorMensal, 0);
+          linhas.reduce((sum, l) => sum + Math.max(l.valor - l.valorPago, 0), 0) +
+          extras.reduce((sum, le) => sum + Math.max(le.extra.valorMensal - le.valorPago, 0), 0);
         return {
           parceiro,
           linhas: linhas.sort((a, b) => {
@@ -201,18 +208,31 @@ export default function ParceirosPage() {
   }, [filtradas, extrasFiltradas]);
 
   const totalRecebido =
-    filtradas.filter((l) => l.status === "Pago").reduce((a, l) => a + l.valor, 0) +
-    extrasFiltradas.filter((le) => le.status === "Pago").reduce((a, le) => a + le.extra.valorMensal, 0);
+    filtradas.reduce((a, l) => a + l.valorPago, 0) + extrasFiltradas.reduce((a, le) => a + le.valorPago, 0);
   const totalEmAberto =
-    filtradas.filter((l) => l.status === "Em aberto").reduce((a, l) => a + l.valor, 0) +
-    extrasFiltradas.filter((le) => le.status === "Em aberto").reduce((a, le) => a + le.extra.valorMensal, 0);
+    filtradas.reduce((a, l) => a + Math.max(l.valor - l.valorPago, 0), 0) +
+    extrasFiltradas.reduce((a, le) => a + Math.max(le.extra.valorMensal - le.valorPago, 0), 0);
   // MRR = tudo que os parceiros pagam no período (Recebido + Em aberto) —
   // reflete os valores de verdade (ajustados por competência + extras),
   // não só o valorMensal fixo cadastrado no cliente.
   const mrr = totalRecebido + totalEmAberto;
 
+  /** Clique rápido no status: alterna entre "tudo pago" e "nada pago". Pra
+   * um pagamento parcial (o parceiro adiantou só uma parte), usar o campo
+   * "Pago" da linha em vez desse atalho. */
   function toggleStatus(l: Linha) {
-    updateRecebimentoParceiro(l.cliente.id, l.competencia, { status: l.status === "Pago" ? "Em aberto" : "Pago" });
+    const quitado = l.status === "Pago";
+    updateRecebimentoParceiro(l.cliente.id, l.competencia, {
+      status: quitado ? "Em aberto" : "Pago",
+      valorPago: quitado ? 0 : l.valor,
+    });
+  }
+
+  function handleValorPagoChange(l: Linha, valorPago: number) {
+    updateRecebimentoParceiro(l.cliente.id, l.competencia, {
+      valorPago,
+      status: valorPago >= l.valor && l.valor > 0 ? "Pago" : "Em aberto",
+    });
   }
 
   /** Acha os outros clientes do mesmo parceiro, na mesma competência, que
@@ -268,7 +288,18 @@ export default function ParceirosPage() {
   }
 
   function toggleStatusExtra(le: LinhaExtra) {
-    updatePagamentoExtraParceiro(le.extra.id, le.competencia, { status: le.status === "Pago" ? "Em aberto" : "Pago" });
+    const quitado = le.status === "Pago";
+    updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
+      status: quitado ? "Em aberto" : "Pago",
+      valorPago: quitado ? 0 : le.extra.valorMensal,
+    });
+  }
+
+  function handleValorPagoExtraChange(le: LinhaExtra, valorPago: number) {
+    updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
+      valorPago,
+      status: valorPago >= le.extra.valorMensal && le.extra.valorMensal > 0 ? "Pago" : "Em aberto",
+    });
   }
 
   function handleDeleteExtraLinha(le: LinhaExtra) {
@@ -323,7 +354,9 @@ export default function ParceirosPage() {
               <TableRow>
                 <TableHead>Empresa do parceiro</TableHead>
                 {mes === "anual" && <TableHead className="w-24">Competência</TableHead>}
-                <TableHead className="w-32">Valor</TableHead>
+                <TableHead className="w-28">Valor</TableHead>
+                <TableHead className="w-28">Pago</TableHead>
+                <TableHead className="w-28">Falta</TableHead>
                 <TableHead className="w-36">Início do contrato</TableHead>
                 <TableHead className="w-36">Banco</TableHead>
                 <TableHead className="w-24">Tipo</TableHead>
@@ -333,7 +366,7 @@ export default function ParceirosPage() {
             {grupos.map((g) => (
               <TableBody key={g.parceiro}>
                 <TableRow className="bg-wine-50/60 hover:bg-wine-50/60">
-                  <TableCell colSpan={mes === "anual" ? 7 : 6} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
+                  <TableCell colSpan={mes === "anual" ? 9 : 8} className="py-1.5 text-[11px] font-semibold uppercase tracking-wide text-wine-700">
                     {g.parceiro}
                   </TableCell>
                 </TableRow>
@@ -350,8 +383,21 @@ export default function ParceirosPage() {
                         min="0"
                         value={l.valor}
                         onChange={(e) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { valor: Number(e.target.value) || 0 })}
-                        className="h-8 w-28 text-xs"
+                        className="h-8 w-24 text-xs"
                       />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.valorPago}
+                        onChange={(e) => handleValorPagoChange(l, Number(e.target.value) || 0)}
+                        className="h-8 w-24 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell className={cn("font-medium", l.valor - l.valorPago > 0 ? "text-status-warning" : "text-status-success")}>
+                      {formatCurrency(Math.max(l.valor - l.valorPago, 0))}
                     </TableCell>
                     <TableCell className="text-sand-500">{inicioContratoLabel(l.cliente.financeiro.inicioContrato)}</TableCell>
                     <TableCell>
@@ -413,8 +459,21 @@ export default function ParceirosPage() {
                         min="0"
                         value={le.extra.valorMensal}
                         onChange={(e) => updateExtraParceiro(le.extra.id, { valorMensal: Number(e.target.value) || 0 })}
-                        className="h-8 w-28 text-xs"
+                        className="h-8 w-24 text-xs"
                       />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={le.valorPago}
+                        onChange={(e) => handleValorPagoExtraChange(le, Number(e.target.value) || 0)}
+                        className="h-8 w-24 text-xs"
+                      />
+                    </TableCell>
+                    <TableCell className={cn("font-medium", le.extra.valorMensal - le.valorPago > 0 ? "text-status-warning" : "text-status-success")}>
+                      {formatCurrency(Math.max(le.extra.valorMensal - le.valorPago, 0))}
                     </TableCell>
                     <TableCell className="text-sand-400">—</TableCell>
                     <TableCell>
@@ -461,7 +520,7 @@ export default function ParceirosPage() {
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={mes === "anual" ? 7 : 6} className="py-1">
+                  <TableCell colSpan={mes === "anual" ? 9 : 8} className="py-1">
                     <button
                       type="button"
                       onClick={handleAddExtra(g.parceiro)}
@@ -481,11 +540,15 @@ export default function ParceirosPage() {
                   <TableCell />
                   <TableCell />
                   <TableCell />
+                  <TableCell />
+                  <TableCell />
                 </TableRow>
                 <TableRow className="bg-cream-50 hover:bg-cream-50">
                   <TableCell className="text-status-success">Recebido</TableCell>
                   {mes === "anual" && <TableCell />}
                   <TableCell className="text-status-success">{formatCurrency(g.recebido)}</TableCell>
+                  <TableCell />
+                  <TableCell />
                   <TableCell />
                   <TableCell />
                   <TableCell />
@@ -499,12 +562,14 @@ export default function ParceirosPage() {
                   <TableCell />
                   <TableCell />
                   <TableCell />
+                  <TableCell />
+                  <TableCell />
                 </TableRow>
               </TableBody>
             ))}
             {grupos.length === 0 && (
               <TableBody>
-                <TableRow><TableCell colSpan={mes === "anual" ? 7 : 6} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={mes === "anual" ? 9 : 8} className="py-10 text-center text-sand-400">Nenhum cliente de parceiro com assessoria mensal encontrado.</TableCell></TableRow>
               </TableBody>
             )}
           </Table>

@@ -15,6 +15,7 @@ const map: Record<string, BadgeTone> = {
   // financeiro
   pago: "success",
   "em aberto": "info",
+  parcial: "warning",
   atrasado: "danger",
   negociado: "warning",
   cancelado: "neutral",

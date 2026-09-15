@@ -21,6 +21,7 @@ import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
+import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
 
@@ -161,6 +162,7 @@ export default function FinanceiroPage() {
         avulso: false as const,
         clienteIdParceiro: undefined as string | undefined,
         extraIdParceiro: undefined as string | undefined,
+        valorPago: undefined as number | undefined,
       }))
     );
     const avulsos = recebimentos.map((r) => ({
@@ -169,6 +171,7 @@ export default function FinanceiroPage() {
       avulso: true as const,
       clienteIdParceiro: undefined as string | undefined,
       extraIdParceiro: undefined as string | undefined,
+      valorPago: undefined as number | undefined,
     }));
     const boletos = clients.flatMap((c) => {
       const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
@@ -190,6 +193,7 @@ export default function FinanceiroPage() {
           avulso: false as const,
           clienteIdParceiro: undefined as string | undefined,
           extraIdParceiro: undefined as string | undefined,
+          valorPago: undefined as number | undefined,
         };
       });
     });
@@ -208,16 +212,19 @@ export default function FinanceiroPage() {
         if (inicio && comp < inicio) return [];
         const entry = entryMap.get(comp);
         if (entry?.removido) return [];
+        const valor = entry?.valor ?? c.financeiro.valorMensal;
+        const valorPago = valorPagoResolvido(entry?.valorPago, entry?.status, valor);
         return [{
           id: entry?.id ?? `${c.id}-${comp}`,
           key: `parceiro-${c.id}-${comp}`,
           nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
           competencia: comp,
           servico: "Recebimento parceiro (PIX)",
-          valor: entry?.valor ?? c.financeiro.valorMensal,
+          valor,
+          valorPago,
           vencimento: "",
           pagamento: entry?.dataPagamento,
-          status: entry?.status ?? ("Em aberto" as const),
+          status: statusRecebimentoParceiro(valorPago, valor),
           banco: entry?.banco,
           tipoPessoa: entry?.tipoPessoa,
           avulso: false as const,
@@ -240,6 +247,7 @@ export default function FinanceiroPage() {
         if (e.inicioCompetencia && comp < e.inicioCompetencia) return [];
         const pagamento = pagamentoMap.get(comp);
         if (pagamento?.removido) return [];
+        const valorPago = valorPagoResolvido(pagamento?.valorPago, pagamento?.status, e.valorMensal);
         return [{
           id: pagamento?.id ?? `${e.id}-${comp}`,
           key: `extra-${e.id}-${comp}`,
@@ -247,9 +255,10 @@ export default function FinanceiroPage() {
           competencia: comp,
           servico: "Valor extra (parceiro)",
           valor: e.valorMensal,
+          valorPago,
           vencimento: "",
           pagamento: pagamento?.dataPagamento,
-          status: pagamento?.status ?? ("Em aberto" as const),
+          status: statusRecebimentoParceiro(valorPago, e.valorMensal),
           banco: pagamento?.banco,
           tipoPessoa: pagamento?.tipoPessoa,
           avulso: false as const,
@@ -323,8 +332,14 @@ export default function FinanceiroPage() {
         .slice(0, 30)
     : [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
 
-  const recebido = ledgerFiltrado.filter((h) => h.status === "Pago").reduce((a, h) => a + h.valor, 0);
-  const emAberto = ledgerFiltrado.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
+  // valorPago só existe nos lançamentos de parceiro/valor extra (permite
+  // pagamento parcial); os demais caem no cálculo antigo (status "Pago" =
+  // valor cheio recebido, senão nada).
+  const pagoEfetivo = (h: (typeof ledgerFiltrado)[number]) => h.valorPago ?? (h.status === "Pago" ? h.valor : 0);
+  const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0);
+  const emAberto = ledgerFiltrado
+    .filter((h) => h.status !== "Atrasado")
+    .reduce((a, h) => a + Math.max(h.valor - pagoEfetivo(h), 0), 0);
   const inadimplencia = ledgerFiltrado.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
 
   const contasAPagar = useMemo(

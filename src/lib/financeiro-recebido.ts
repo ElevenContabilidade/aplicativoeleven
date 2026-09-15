@@ -1,5 +1,6 @@
 import type { Client, Recebimento, BoletoMensal, RecebimentoParceiroMensal } from "@/lib/types";
 import { resolveBoletoLedger } from "@/lib/boleto";
+import { valorPagoResolvido } from "@/lib/pagamento-parceiro";
 
 /** Soma tudo que entrou (status "Pago") num conjunto de competências
  * (YYYY-MM), juntando honorários lançados direto no cliente, recebimentos
@@ -36,7 +37,8 @@ export function recebidoDoPeriodo(
   for (const c of clients) {
     const entradas = recebimentosParceiro.filter((r) => r.clienteId === c.id && !r.removido);
     for (const r of entradas) {
-      if (r.status === "Pago" && competencias.includes(r.competencia)) total += r.valor ?? c.financeiro.valorMensal;
+      if (!competencias.includes(r.competencia)) continue;
+      total += valorPagoResolvido(r.valorPago, r.status, r.valor ?? c.financeiro.valorMensal);
     }
   }
 

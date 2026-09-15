@@ -349,7 +349,7 @@ interface AppState {
   updateRecebimentoParceiro: (
     clienteId: string,
     competencia: string,
-    patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
+    patch: Partial<Pick<RecebimentoParceiroMensal, "status" | "valor" | "valorPago" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
   ) => void;
   addExtraParceiro: (extra: ExtraParceiro) => void;
   updateExtraParceiro: (id: string, patch: Partial<ExtraParceiro>) => void;
@@ -357,7 +357,7 @@ interface AppState {
   updatePagamentoExtraParceiro: (
     extraParceiroId: string,
     competencia: string,
-    patch: Partial<Pick<PagamentoExtraParceiroMensal, "status" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
+    patch: Partial<Pick<PagamentoExtraParceiroMensal, "status" | "valorPago" | "dataPagamento" | "removido" | "banco" | "tipoPessoa">>
   ) => void;
   updateNotaDepartamento: (clientId: string, depto: DepartamentoChave, nota: string) => void;
   // Etapa 3 da migração — Clientes e Financeiro vêm do Supabase agora

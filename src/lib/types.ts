@@ -861,6 +861,10 @@ export interface RecebimentoParceiroMensal {
   competencia: string; // "YYYY-MM"
   status: StatusPagamentoParceiro;
   valor?: number;
+  /** Quanto o parceiro já pagou de fato nesse mês — pode ser menor que o
+   * valor total (pagamento parcial/adiantamento). Ausente = comportamento
+   * antigo (segue só o campo status). */
+  valorPago?: number;
   dataPagamento?: string; // "YYYY-MM-DD"
   removido?: boolean;
   /** Banco em que o PIX caiu. */
@@ -892,6 +896,8 @@ export interface PagamentoExtraParceiroMensal {
   extraParceiroId: string;
   competencia: string; // "YYYY-MM"
   status: StatusPagamentoParceiro;
+  /** Quanto já foi pago de fato nesse mês — ver RecebimentoParceiroMensal.valorPago. */
+  valorPago?: number;
   dataPagamento?: string; // "YYYY-MM-DD"
   removido?: boolean;
   /** Banco em que o PIX caiu. */
