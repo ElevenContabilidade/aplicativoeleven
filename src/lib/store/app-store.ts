@@ -127,6 +127,7 @@ import type {
   PagamentoExtraParceiroMensal,
   DadosEscritorio,
   SistemaEscritorio,
+  SenhaPortalEscritorio,
   DespesaAvulsa,
   PagamentoSistemaMensal,
   ContratoAssinatura,
@@ -151,6 +152,7 @@ interface AppState {
   team: TeamMember[];
   dadosEscritorio: DadosEscritorio;
   sistemasEscritorio: SistemaEscritorio[];
+  senhasPortais: SenhaPortalEscritorio[];
   metaMensalClientes: number;
   despesasAvulsas: DespesaAvulsa[];
   pagamentosSistemas: PagamentoSistemaMensal[];
@@ -229,6 +231,9 @@ interface AppState {
   addSistemaEscritorio: (sistema: SistemaEscritorio) => void;
   updateSistemaEscritorio: (id: string, patch: Partial<SistemaEscritorio>) => void;
   deleteSistemaEscritorio: (id: string) => void;
+  addSenhaPortal: (senha: SenhaPortalEscritorio) => void;
+  updateSenhaPortal: (id: string, patch: Partial<SenhaPortalEscritorio>) => void;
+  deleteSenhaPortal: (id: string) => void;
   updateMetaMensalClientes: (valor: number) => void;
   addDespesaAvulsa: (despesa: DespesaAvulsa) => void;
   updateDespesaAvulsa: (id: string, patch: Partial<DespesaAvulsa>) => void;
@@ -396,6 +401,7 @@ interface AppState {
   setChecklistPessoalFromSupabase: (checklist: ChecklistEntry[]) => void;
   setChecklistMeiFromSupabase: (checklist: ChecklistEntry[]) => void;
   setSistemasEscritorioFromSupabase: (sistemas: SistemaEscritorio[]) => void;
+  setSenhasPortaisFromSupabase: (senhas: SenhaPortalEscritorio[]) => void;
   setDadosEscritorioFromSupabase: (dados: DadosEscritorio) => void;
   setMetaMensalClientesFromSupabase: (valor: number) => void;
   setContratosAssinaturaFromSupabase: (contratos: ContratoAssinatura[]) => void;
@@ -512,6 +518,7 @@ const initial = {
     horarioAtendimento: "Segunda a sexta, 9h às 18h",
   },
   sistemasEscritorio: [],
+  senhasPortais: [],
   metaMensalClientes: 5,
   despesasAvulsas: [],
   pagamentosSistemas: [],
@@ -805,6 +812,19 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ sistemasEscritorio: s.sistemasEscritorio.filter((sis) => sis.id !== id) }));
         deleteFinanceiro("sistemasEscritorio", id);
         if (sistema) logAuditoria("Sistema excluído", "Dados do Escritório", sistema.nome);
+      },
+      addSenhaPortal: (senha) => {
+        set((s) => ({ senhasPortais: [...s.senhasPortais, senha] }));
+        pushFinanceiro("senhasPortais", senha.id, null, senha);
+      },
+      updateSenhaPortal: (id, patch) => {
+        set((s) => ({ senhasPortais: s.senhasPortais.map((sp) => (sp.id === id ? { ...sp, ...patch } : sp)) }));
+        const senha = useAppStore.getState().senhasPortais.find((sp) => sp.id === id);
+        if (senha) pushFinanceiro("senhasPortais", id, null, senha);
+      },
+      deleteSenhaPortal: (id) => {
+        set((s) => ({ senhasPortais: s.senhasPortais.filter((sp) => sp.id !== id) }));
+        deleteFinanceiro("senhasPortais", id);
       },
       updateMetaMensalClientes: (valor) => {
         set({ metaMensalClientes: valor });
@@ -1335,6 +1355,7 @@ export const useAppStore = create<AppState>()(
       setChecklistPessoalFromSupabase: (checklistPessoal) => set({ checklistPessoal }),
       setChecklistMeiFromSupabase: (checklistMei) => set({ checklistMei }),
       setSistemasEscritorioFromSupabase: (sistemasEscritorio) => set({ sistemasEscritorio }),
+      setSenhasPortaisFromSupabase: (senhasPortais) => set({ senhasPortais }),
       setDadosEscritorioFromSupabase: (dadosEscritorio) => set({ dadosEscritorio }),
       setMetaMensalClientesFromSupabase: (metaMensalClientes) => set({ metaMensalClientes }),
       setContratosAssinaturaFromSupabase: (contratosAssinatura) => set({ contratosAssinatura }),
@@ -1803,6 +1824,7 @@ export const useAppStore = create<AppState>()(
           checklistPessoal,
           checklistMei,
           sistemasEscritorio,
+          senhasPortais,
           dadosEscritorio,
           metaMensalClientes,
           contratosAssinatura,

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { GoogleDriveCard } from "@/components/office/google-drive-card";
 import { ImportarDadosLocaisCard } from "@/components/office/importar-dados-locais-card";
 import { SistemasFerramentasSection } from "@/components/office/sistemas-ferramentas-section";
+import { SenhasPortaisSection } from "@/components/office/senhas-portais-section";
 import { useAppStore } from "@/lib/store/app-store";
 import type { DadosEscritorio } from "@/lib/types";
 import { lookupCnpj, maskCnpj } from "@/lib/cnpj";
@@ -154,6 +155,7 @@ export default function DadosEscritorioPage() {
       <ImportarDadosLocaisCard />
 
       <SistemasFerramentasSection />
+      <SenhasPortaisSection />
     </div>
   );
 }

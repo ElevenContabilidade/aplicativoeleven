@@ -205,6 +205,19 @@ export interface SistemaEscritorio {
   clientesQueUsam?: string[];
 }
 
+/** Login/senha de um portal que o escritório usa pra atender os clientes em
+ * geral (ex: SEFAZ, SEFIN, e-CAC) — não é um sistema pago nem pertence a um
+ * cliente específico, só um acesso institucional guardado pra consulta
+ * rápida em "Dados do escritório". */
+export interface SenhaPortalEscritorio {
+  id: string;
+  nomePortal: string;
+  usuario?: string;
+  senha: string;
+  link?: string;
+  observacoes?: string;
+}
+
 // ---------- Contas a pagar ----------
 
 export type StatusContaPagar = "Pago" | "Em aberto";

@@ -30,6 +30,7 @@ import type {
   ServicoPortfolio,
   ChecklistEntry,
   SistemaEscritorio,
+  SenhaPortalEscritorio,
   DadosEscritorio,
   ContratoAssinatura,
   Funcionario,
@@ -85,6 +86,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setChecklistPessoalFromSupabase = useAppStore((s) => s.setChecklistPessoalFromSupabase);
   const setChecklistMeiFromSupabase = useAppStore((s) => s.setChecklistMeiFromSupabase);
   const setSistemasEscritorioFromSupabase = useAppStore((s) => s.setSistemasEscritorioFromSupabase);
+  const setSenhasPortaisFromSupabase = useAppStore((s) => s.setSenhasPortaisFromSupabase);
   const setDadosEscritorioFromSupabase = useAppStore((s) => s.setDadosEscritorioFromSupabase);
   const setMetaMensalClientesFromSupabase = useAppStore((s) => s.setMetaMensalClientesFromSupabase);
   const setContratosAssinaturaFromSupabase = useAppStore((s) => s.setContratosAssinaturaFromSupabase);
@@ -152,6 +154,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setChecklistPessoalFromSupabase(porTipo<ChecklistEntry>("checklistPessoal"));
       setChecklistMeiFromSupabase(porTipo<ChecklistEntry>("checklistMei"));
       setSistemasEscritorioFromSupabase(porTipo<SistemaEscritorio>("sistemasEscritorio"));
+      setSenhasPortaisFromSupabase(porTipo<SenhaPortalEscritorio>("senhasPortais"));
       setContratosAssinaturaFromSupabase(porTipo<ContratoAssinatura>("contratosAssinatura"));
       setFuncionariosFromSupabase(porTipo<Funcionario>("funcionarios"));
       setAuditLogFromSupabase(porTipo<AuditLogEntry>("auditLog"));
@@ -221,6 +224,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setChecklistPessoalFromSupabase,
     setChecklistMeiFromSupabase,
     setSistemasEscritorioFromSupabase,
+    setSenhasPortaisFromSupabase,
     setDadosEscritorioFromSupabase,
     setMetaMensalClientesFromSupabase,
     setContratosAssinaturaFromSupabase,

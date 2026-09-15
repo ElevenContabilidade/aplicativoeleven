@@ -11,13 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 
-type TipoAcesso = "Portal Nacional / Prefeitura" | "gov.br" | "Certificado digital";
+type TipoAcesso = "Portal Nacional / Prefeitura" | "gov.br" | "Certificado digital" | "Portal do escritório";
 
-const TIPOS: TipoAcesso[] = ["Portal Nacional / Prefeitura", "gov.br", "Certificado digital"];
+const TIPOS: TipoAcesso[] = ["Portal Nacional / Prefeitura", "gov.br", "Certificado digital", "Portal do escritório"];
 
 interface AcessoSenha {
   id: string;
-  clienteId: string;
+  /** Ausente pros acessos que não são de um cliente específico (senhas de
+   * portal do escritório) — nesse caso o link de edição vai pra Dados do
+   * escritório em vez do cadastro do cliente. */
+  clienteId?: string;
   clienteNome: string;
   tipo: TipoAcesso;
   usuario?: string;
@@ -28,9 +31,21 @@ interface AcessoSenha {
 function useAcessos(): AcessoSenha[] {
   const clients = useAppStore((s) => s.clients);
   const certificados = useAppStore((s) => s.certificados);
+  const senhasPortais = useAppStore((s) => s.senhasPortais);
 
   return useMemo(() => {
     const linhas: AcessoSenha[] = [];
+
+    for (const sp of senhasPortais) {
+      linhas.push({
+        id: `portal-escritorio-${sp.id}`,
+        clienteNome: sp.nomePortal,
+        tipo: "Portal do escritório",
+        usuario: sp.usuario,
+        senha: sp.senha,
+        detalhe: sp.observacoes,
+      });
+    }
 
     for (const c of clients) {
       const nome = c.dados.nomeFantasia || c.dados.razaoSocial;
@@ -76,7 +91,7 @@ function useAcessos(): AcessoSenha[] {
     }
 
     return linhas.sort((a, b) => a.clienteNome.localeCompare(b.clienteNome));
-  }, [clients, certificados]);
+  }, [clients, certificados, senhasPortais]);
 }
 
 export default function SenhasPage() {
@@ -114,7 +129,7 @@ export default function SenhasPage() {
     }
   }
 
-  const clientesComAcesso = new Set(acessos.map((a) => a.clienteId)).size;
+  const clientesComAcesso = new Set(acessos.filter((a) => a.clienteId).map((a) => a.clienteId)).size;
 
   return (
     <div>
@@ -147,8 +162,8 @@ export default function SenhasPage() {
         <CardHeader>
           <CardTitle>Acessos ({linhas.length})</CardTitle>
           <p className="mt-1 text-xs text-sand-500">
-            As senhas aqui vêm do cadastro de cada cliente (Sócios &amp; contatos, Dados cadastrais, Certificados) — pra
-            alterar, edite lá.
+            As senhas aqui vêm do cadastro de cada cliente (Sócios &amp; contatos, Dados cadastrais, Certificados) e
+            dos portais do escritório (Dados do escritório) — pra alterar, edite lá.
           </p>
         </CardHeader>
         <CardContent className="pt-4">
@@ -168,9 +183,13 @@ export default function SenhasPage() {
                 return (
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">
-                      <Link href={`/clientes/${a.clienteId}`} className="hover:text-wine-700 hover:underline">
-                        {a.clienteNome}
-                      </Link>
+                      {a.clienteId ? (
+                        <Link href={`/clientes/${a.clienteId}`} className="hover:text-wine-700 hover:underline">
+                          {a.clienteNome}
+                        </Link>
+                      ) : (
+                        a.clienteNome
+                      )}
                     </TableCell>
                     <TableCell>
                       {a.tipo}
@@ -200,8 +219,8 @@ export default function SenhasPage() {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/clientes/${a.clienteId}`}
-                        title="Editar no cadastro do cliente"
+                        href={a.clienteId ? `/clientes/${a.clienteId}` : "/dados-escritorio"}
+                        title={a.clienteId ? "Editar no cadastro do cliente" : "Editar em Dados do escritório"}
                         className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700"
                       >
                         <ExternalLink className="size-3.5" />
