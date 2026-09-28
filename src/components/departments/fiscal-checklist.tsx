@@ -62,10 +62,16 @@ export function FiscalChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
   const [origemId, setOrigemId] = useState("");
 
+  // MEI sem contabilidade regular não faz nenhuma rotina fiscal desse
+  // checklist (já é acompanhado à parte na tela MEI) — sem esse filtro ele
+  // aparecia aqui como uma linha praticamente toda travada em "—".
   const clientesDoSetor = useMemo(
     () =>
       clients.filter(
-        (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "fiscal")
+        (c) =>
+          (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
+          setorAtendidoPelaEleven(c, "fiscal") &&
+          !(c.dados.regimeTributario === "MEI" && !c.dados.contabilidadeRegular)
       ),
     [clients]
   );
