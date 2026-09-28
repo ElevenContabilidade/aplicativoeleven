@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Copy } from "lucide-react";
 
 const WINE = "#5C1420";
 
@@ -58,6 +60,7 @@ export function FiscalChecklist() {
 
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [origemId, setOrigemId] = useState("");
 
   const clientesDoSetor = useMemo(
     () =>
@@ -117,6 +120,33 @@ export function FiscalChecklist() {
   );
 
   const groupsWithClients = REGIME_GROUPS.map((g) => ({ ...g, clients: myClients.filter(g.match) })).filter((g) => g.clients.length > 0);
+
+  /** Copia o checklist de um cliente (mês corrente) pros demais clientes do
+   * período — só preenche rotinas aplicáveis a cada cliente que ainda estão
+   * em branco (nunca sobrescreve uma marcação já feita), pra não precisar
+   * repetir a mesma marcação cliente por cliente quando o mês é igual pra
+   * quase todo mundo. */
+  function handleAplicarParaTodos() {
+    const origem = myClients.find((c) => c.id === origemId);
+    if (!origem) return;
+    const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
+    const destino = myClients.filter((c) => c.id !== origemId);
+    if (
+      !confirm(
+        `Copiar o checklist de "${nomeOrigem}" (${MESES.find((m) => m.value === period)?.label}/${year}) pra outros ${destino.length} clientes?\n\nSó preenche as rotinas que ainda estão em branco em cada cliente — não mexe em nada que já foi marcado.`
+      )
+    )
+      return;
+    for (const cliente of destino) {
+      const aplicaveis = rotinasFiscaisMensaisFor(cliente);
+      for (const rotina of ROTINAS_FISCAIS_MENSAIS) {
+        if (!aplicaveis.includes(rotina)) continue;
+        if (statusFor(cliente.id, competencia, rotina) !== null) continue;
+        const status = statusFor(origemId, competencia, rotina);
+        if (status !== null) setChecklistFiscal(cliente.id, competencia, rotina, status);
+      }
+    }
+  }
 
   return (
     <>
@@ -236,8 +266,24 @@ export function FiscalChecklist() {
               {groupsWithClients.length === 0 && <p className="py-8 text-center text-sand-400">Nenhum cliente atribuído ao setor Fiscal.</p>}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-xs">
+            <div>
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-sand-500">Copiar checklist de:</span>
+                <Select value={origemId} onValueChange={setOrigemId}>
+                  <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
+                  <SelectContent>
+                    {myClients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="sm" variant="outline" disabled={!origemId} onClick={handleAplicarParaTodos}>
+                  <Copy className="size-3.5" /> Aplicar pros demais clientes do mês
+                </Button>
+                <span className="text-[11px] text-sand-400">preenche só quem ainda está em branco</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-xs">
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
@@ -276,6 +322,7 @@ export function FiscalChecklist() {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </CardContent>
