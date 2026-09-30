@@ -110,14 +110,28 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     let cancelled = false;
 
     async function loadAll() {
-      const { data, error } = await supabase.from("dados_financeiros").select("tipo, data");
-      if (cancelled) return;
-      if (error) {
-        console.error("Erro ao carregar dados do Eleven Hub:", error.message);
-        setFinanceiroCarregado();
-        return;
+      // Busca sem paginar vinha limitada às primeiras ~1000 linhas (limite
+      // padrão do Supabase por consulta) — com a tabela já passando disso,
+      // tipos menores e mais recentes (como "tasks") ficavam de fora da
+      // resposta inteiros, sem nenhum erro, dando a impressão de terem
+      // sumido. Agora busca em páginas até não sobrar mais nada.
+      const PAGE_SIZE = 1000;
+      const rows: DadosFinanceirosRow[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("dados_financeiros")
+          .select("tipo, data")
+          .range(from, from + PAGE_SIZE - 1);
+        if (cancelled) return;
+        if (error) {
+          console.error("Erro ao carregar dados do Eleven Hub:", error.message);
+          setFinanceiroCarregado();
+          return;
+        }
+        const pagina = (data ?? []) as DadosFinanceirosRow[];
+        rows.push(...pagina);
+        if (pagina.length < PAGE_SIZE) break;
       }
-      const rows = (data ?? []) as DadosFinanceirosRow[];
       function porTipo<T>(tipo: string): T[] {
         return rows.filter((r) => r.tipo === tipo).map((r) => r.data as T);
       }
