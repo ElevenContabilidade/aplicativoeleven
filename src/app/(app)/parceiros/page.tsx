@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Repeat, CircleDollarSign, Wallet, Search, Plus, Trash2 } from "lucide-react";
+import { Repeat, CircleDollarSign, Wallet, Search, Plus, Trash2, SplitSquareHorizontal } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -78,6 +78,7 @@ export default function ParceirosPage() {
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [valorDistribuir, setValorDistribuir] = useState<Record<string, string>>({});
 
   // Antes só entravam clientes de parceiro que já tinham uma mensalidade
   // cadastrada — um parceiro novo, sem valor definido ainda, simplesmente
@@ -300,6 +301,41 @@ export default function ParceirosPage() {
       valorPago,
       status: valorPago >= le.extra.valorMensal && le.extra.valorMensal > 0 ? "Pago" : "Em aberto",
     });
+  }
+
+  /** Parceiro paga tudo de uma vez, sem detalhar quanto é de cada empresa —
+   * em vez de calcular e digitar o "Pago" empresa por empresa, distribui o
+   * valor informado nessa ordem (mesma da tabela), preenchendo o que falta
+   * de cada lançamento até o valor acabar. Nunca mexe em quem já está
+   * quitado nem reduz um valor já lançado manualmente. */
+  function handleDistribuirRecebido(parceiro: string) {
+    const valor = Number(valorDistribuir[parceiro]) || 0;
+    if (valor <= 0) return;
+    const grupo = grupos.find((g) => g.parceiro === parceiro);
+    if (!grupo) return;
+
+    let restante = valor;
+    for (const l of grupo.linhas) {
+      if (restante <= 0) break;
+      const falta = Math.max(l.valor - l.valorPago, 0);
+      if (falta <= 0) continue;
+      const alocado = Math.min(falta, restante);
+      handleValorPagoChange(l, l.valorPago + alocado);
+      restante -= alocado;
+    }
+    for (const le of grupo.extras) {
+      if (restante <= 0) break;
+      const falta = Math.max(le.extra.valorMensal - le.valorPago, 0);
+      if (falta <= 0) continue;
+      const alocado = Math.min(falta, restante);
+      handleValorPagoExtraChange(le, le.valorPago + alocado);
+      restante -= alocado;
+    }
+
+    setValorDistribuir((v) => ({ ...v, [parceiro]: "" }));
+    if (restante > 0) {
+      alert(`Todos os lançamentos de "${parceiro}" já estavam quitados — sobrou ${formatCurrency(restante)} que não foi possível distribuir.`);
+    }
   }
 
   function handleDeleteExtraLinha(le: LinhaExtra) {
@@ -564,6 +600,26 @@ export default function ParceirosPage() {
                   <TableCell />
                   <TableCell />
                   <TableCell />
+                </TableRow>
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={mes === "anual" ? 9 : 8} className="py-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] text-sand-500">Parceiro pagou tudo de uma vez:</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={valorDistribuir[g.parceiro] ?? ""}
+                        onChange={(e) => setValorDistribuir((v) => ({ ...v, [g.parceiro]: e.target.value }))}
+                        placeholder="R$ 0,00"
+                        className="h-8 w-32 text-xs"
+                      />
+                      <Button type="button" size="sm" variant="outline" onClick={() => handleDistribuirRecebido(g.parceiro)}>
+                        <SplitSquareHorizontal className="size-3.5" /> Distribuir entre as empresas
+                      </Button>
+                      <span className="text-[11px] text-sand-400">preenche o &quot;Pago&quot; de cada empresa em ordem, até acabar o valor</span>
+                    </div>
+                  </TableCell>
                 </TableRow>
               </TableBody>
             ))}
