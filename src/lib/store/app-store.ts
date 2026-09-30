@@ -49,11 +49,24 @@ function logAuditoria(acao: string, modulo: string, detalhe?: string) {
  * boleto etc.) como JSON, marcado por `tipo`. Evita ter que desenhar e
  * manter uma tabela relacional própria pra cada um dos ~9 tipos de dado
  * financeiro, que têm formato bem diferente entre si. */
+/** Toda escrita no Supabase aqui é "dispara e esquece" (a UI já atualizou
+ * local antes de chamar isso) — sem isso, uma escrita que falha (RLS,
+ * queda de rede, etc.) fica só no console, e a próxima sincronização
+ * (Realtime ou F5) sobrescreve a tela com o estado do banco, fazendo a
+ * mudança "sumir" sem explicação nenhuma. Um alerta na hora, com o erro de
+ * verdade, é o que permite descobrir a causa real em vez de ficar
+ * adivinhando. */
+function avisarErroPersistencia(mensagem: string) {
+  console.error(mensagem);
+  if (typeof window !== "undefined") {
+    alert(`${mensagem}\n\nEssa alteração pode não ter sido salva — se ela sumir depois de atualizar a página, tente de novo ou avise o suporte com essa mensagem.`);
+  }
+}
 function pushFinanceiro(tipo: string, id: string, clienteId: string | null, data: unknown) {
   void createClient()
     .from("dados_financeiros")
     .upsert({ tipo, id, cliente_id: clienteId, data }, { onConflict: "tipo,id" })
-    .then(({ error }) => error && console.error(`Erro ao salvar dado financeiro (${tipo}):`, error.message));
+    .then(({ error }) => error && avisarErroPersistencia(`Erro ao salvar dado financeiro (${tipo}): ${error.message}`));
 }
 function deleteFinanceiro(tipo: string, id: string) {
   void createClient()
@@ -61,7 +74,7 @@ function deleteFinanceiro(tipo: string, id: string) {
     .delete()
     .eq("tipo", tipo)
     .eq("id", id)
-    .then(({ error }) => error && console.error(`Erro ao excluir dado financeiro (${tipo}):`, error.message));
+    .then(({ error }) => error && avisarErroPersistencia(`Erro ao excluir dado financeiro (${tipo}): ${error.message}`));
 }
 /** Some com a linha do cliente e com tudo que referencia esse cliente
  * (boletos, notas fiscais mensais, recebimentos de parceiro). */
@@ -70,7 +83,7 @@ function deleteFinanceiroPorCliente(clienteId: string) {
     .from("dados_financeiros")
     .delete()
     .eq("cliente_id", clienteId)
-    .then(({ error }) => error && console.error("Erro ao excluir dados financeiros do cliente:", error.message));
+    .then(({ error }) => error && avisarErroPersistencia(`Erro ao excluir dados financeiros do cliente: ${error.message}`));
 }
 /** Reflete no Supabase a mudança que uma action de cliente acabou de fazer
  * localmente — chamada depois do `set()`, lendo o cliente já atualizado
