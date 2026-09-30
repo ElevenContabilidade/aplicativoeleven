@@ -7,6 +7,7 @@ import { syncCertificadoAlerts } from "@/lib/certificado-alerts";
 import { syncFiscalAlerts } from "@/lib/fiscal-alerts";
 import { syncDocumentoAlerts } from "@/lib/documento-alerts";
 import { syncReajusteAlerts } from "@/lib/reajuste-alerts";
+import { syncTaskAlerts } from "@/lib/task-alerts";
 import { ETAPAS_ABERTURA_EMPRESA, ONBOARDING_TEMPLATE } from "@/lib/types";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { createClient } from "@/lib/supabase/client";
@@ -297,7 +298,7 @@ interface AppState {
   addAnotacao: (nota: Anotacao) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
   markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  markAllNotificationsRead: (viewerId?: string) => void;
   addClient: (client: Client) => void;
   deleteClient: (clientId: string) => void;
   updateClientStatus: (clientId: string, status: ClientStatus) => void;
@@ -455,18 +456,23 @@ function syncAllAlerts(
   certificados: Certificado[],
   clients: Client[],
   checklistFiscal: ChecklistEntry[],
-  documentos: Documento[]
+  documentos: Documento[],
+  tasks: Task[]
 ): AppNotification[] {
-  return syncReajusteAlerts(
-    syncDocumentoAlerts(
-      syncFiscalAlerts(
-        syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients),
-        checklistFiscal,
+  return syncTaskAlerts(
+    syncReajusteAlerts(
+      syncDocumentoAlerts(
+        syncFiscalAlerts(
+          syncCertificadoAlerts(syncLicencaAlerts(notifications, licencas, clients), certificados, clients),
+          checklistFiscal,
+          clients
+        ),
+        documentos,
         clients
       ),
-      documentos,
       clients
     ),
+    tasks,
     clients
   );
 }
@@ -593,17 +599,20 @@ export const useAppStore = create<AppState>()(
 
       updateTask: (taskId, patch) => {
         set((s) => ({ tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)) }));
+        set((s) => ({ notifications: syncTaskAlerts(s.notifications, s.tasks, s.clients) }));
         const task = useAppStore.getState().tasks.find((t) => t.id === taskId);
         if (task) pushFinanceiro("tasks", taskId, task.clienteId ?? null, task);
       },
 
       addTask: (task) => {
         set((s) => ({ tasks: [task, ...s.tasks] }));
+        set((s) => ({ notifications: syncTaskAlerts(s.notifications, s.tasks, s.clients) }));
         pushFinanceiro("tasks", task.id, task.clienteId ?? null, task);
       },
       deleteTask: (taskId) => {
         const task = useAppStore.getState().tasks.find((t) => t.id === taskId);
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
+        set((s) => ({ notifications: syncTaskAlerts(s.notifications, s.tasks, s.clients) }));
         deleteFinanceiro("tasks", taskId);
         if (task) logAuditoria("Tarefa excluída", "Tarefas", task.titulo);
       },
@@ -662,10 +671,13 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, lida: true } : n)) }));
         pushFinanceiro("notificacoesLidas", id, null, { id, lida: true });
       },
-      markAllNotificationsRead: () => {
-        set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, lida: true })) }));
+      markAllNotificationsRead: (viewerId) => {
+        // Sem viewerId, marca só os alertas gerais (sem destinatário) — não
+        // dá pra silenciar de vez o aviso pessoal de outro colaborador.
+        const visivel = (n: AppNotification) => !n.destinatarioId || n.destinatarioId === viewerId;
+        set((s) => ({ notifications: s.notifications.map((n) => (visivel(n) ? { ...n, lida: true } : n)) }));
         for (const n of useAppStore.getState().notifications) {
-          pushFinanceiro("notificacoesLidas", n.id, null, { id: n.id, lida: true });
+          if (visivel(n)) pushFinanceiro("notificacoesLidas", n.id, null, { id: n.id, lida: true });
         }
       },
 
@@ -1350,7 +1362,8 @@ export const useAppStore = create<AppState>()(
       setDespesasAvulsasFromSupabase: (despesasAvulsas) => set({ despesasAvulsas }),
       setPagamentosSistemasFromSupabase: (pagamentosSistemas) => set({ pagamentosSistemas }),
       setLeadsFromSupabase: (leads) => set({ leads }),
-      setTasksFromSupabase: (tasks) => set({ tasks }),
+      setTasksFromSupabase: (tasks) =>
+        set((s) => ({ tasks, notifications: syncTaskAlerts(s.notifications, tasks, s.clients) })),
       setObligationsFromSupabase: (obligations) => set({ obligations }),
       setProcessosSocietariosFromSupabase: (processosSocietarios) => set({ processosSocietarios }),
       setCertificadosFromSupabase: (certificados) =>
@@ -1784,7 +1797,7 @@ export const useAppStore = create<AppState>()(
 
       resyncAlerts: () =>
         set((s) => ({
-          notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal, s.documentos),
+          notifications: syncAllAlerts(s.notifications, s.licencas, s.certificados, s.clients, s.checklistFiscal, s.documentos, s.tasks),
         })),
     }),
     {

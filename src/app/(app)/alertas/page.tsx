@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { cn, formatDateTime } from "@/lib/utils";
 import type { NotificationTipo } from "@/lib/types";
 
@@ -49,14 +50,16 @@ export default function AlertasPage() {
   const notifications = useAppStore((s) => s.notifications);
   const markRead = useAppStore((s) => s.markNotificationRead);
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
-  const sorted = [...notifications].sort((a, b) => b.data.localeCompare(a.data));
+  const { userId } = useAuthStore();
+  const visiveis = notifications.filter((n) => !n.destinatarioId || n.destinatarioId === userId);
+  const sorted = [...visiveis].sort((a, b) => b.data.localeCompare(a.data));
 
   return (
     <div>
       <PageHeader
         title="Central de alertas"
         description="Obrigações vencendo, certificados e licenças expirando, leads sem contato e honorários em atraso."
-        actions={<Button variant="outline" size="sm" onClick={markAllRead}><CheckCheck className="size-3.5" /> Marcar tudo como lido</Button>}
+        actions={<Button variant="outline" size="sm" onClick={() => markAllRead(userId ?? undefined)}><CheckCheck className="size-3.5" /> Marcar tudo como lido</Button>}
       />
 
       <div className="space-y-2">

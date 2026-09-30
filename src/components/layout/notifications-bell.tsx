@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { useAppStore } from "@/lib/store/app-store";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { cn, formatDate } from "@/lib/utils";
 import type { NotificationTipo } from "@/lib/types";
 
@@ -41,7 +42,9 @@ export function NotificationsBell() {
   const notifications = useAppStore((s) => s.notifications);
   const markRead = useAppStore((s) => s.markNotificationRead);
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
-  const unread = notifications.filter((n) => !n.lida).length;
+  const { userId } = useAuthStore();
+  const visiveis = notifications.filter((n) => !n.destinatarioId || n.destinatarioId === userId);
+  const unread = visiveis.filter((n) => !n.lida).length;
 
   return (
     <DropdownMenu>
@@ -59,14 +62,14 @@ export function NotificationsBell() {
         <div className="flex items-center justify-between px-3 py-2.5">
           <DropdownMenuLabel className="p-0">Central de alertas</DropdownMenuLabel>
           {unread > 0 && (
-            <button onClick={markAllRead} className="text-[11px] font-medium text-wine-700 hover:underline">
+            <button onClick={() => markAllRead(userId ?? undefined)} className="text-[11px] font-medium text-wine-700 hover:underline">
               Marcar tudo como lido
             </button>
           )}
         </div>
         <DropdownMenuSeparator className="m-0" />
         <div className="max-h-96 overflow-y-auto scrollbar-thin">
-          {notifications.map((n) => {
+          {visiveis.map((n) => {
             const Icon = ICONS[n.tipo];
             return (
               <Link
@@ -87,7 +90,7 @@ export function NotificationsBell() {
               </Link>
             );
           })}
-          {notifications.length === 0 && <p className="px-3 py-8 text-center text-xs text-sand-400">Sem notificações.</p>}
+          {visiveis.length === 0 && <p className="px-3 py-8 text-center text-xs text-sand-400">Sem notificações.</p>}
         </div>
         <DropdownMenuSeparator className="m-0" />
         <Link href="/alertas" className="block px-3 py-2.5 text-center text-xs font-medium text-wine-700 hover:bg-sand-50">

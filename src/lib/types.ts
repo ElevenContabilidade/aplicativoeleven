@@ -1099,6 +1099,10 @@ export interface AppNotification {
   data: string;
   lida: boolean;
   href?: string;
+  /** Ausente = alerta geral, visível pra equipe inteira (ex: licença
+   * vencendo). Quando definido, só aparece pra esse colaborador (ex: "tarefa
+   * atribuída a você"). */
+  destinatarioId?: string;
 }
 
 // ---------- Checklist de rotinas contábeis ----------
