@@ -71,7 +71,7 @@ export default function LoginPage() {
     });
     setForgotLoading(false);
     if (resetError) {
-      setError("Não foi possível enviar o link agora. Confira o e-mail e tente de novo.");
+      setError(`Não foi possível enviar o link: ${resetError.message}`);
       return;
     }
     setForgotSent(true);
