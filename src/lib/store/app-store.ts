@@ -93,6 +93,30 @@ function pushCliente(clientId: string) {
   const client = useAppStore.getState().clients.find((c) => c.id === clientId);
   if (client) pushFinanceiro("clients", clientId, clientId, client);
 }
+/** Reconstrói o checklist de onboarding de um cliente a partir do template
+ * atual, casando pelo texto (label) pra preservar o que já foi concluído.
+ * O id é sempre gerado pela posição atual (`ob-${clienteId}-${indice}`),
+ * nunca reaproveitado de um item salvo — dados antigos (de antes dessa
+ * normalização rodar em todo carregamento) podem ter dois itens com o
+ * mesmo id depois de o template mudar de ordem algumas vezes, e
+ * toggleOnboardingItem atualiza TODO item cujo id bate com o clicado, então
+ * marcar um sem querer desmarcava outro. Rodar isso sempre que os clientes
+ * chegam do Supabase cura esses ids duplicados de vez, mesmo sem migração. */
+function normalizarOnboarding(client: Client): Client {
+  const byLabel = new Map(client.onboarding.map((o) => [o.label, o]));
+  return {
+    ...client,
+    onboarding: ONBOARDING_TEMPLATE.map((label, i) => {
+      const match = byLabel.get(label);
+      return {
+        id: `ob-${client.id}-${i}`,
+        label,
+        concluido: match?.concluido ?? false,
+        dataConclusao: match?.dataConclusao,
+      };
+    }),
+  };
+}
 import type {
   TeamMember,
   HistoricoAcaoUsuario,
@@ -1348,7 +1372,7 @@ export const useAppStore = create<AppState>()(
         }).catch((err) => console.error("Erro ao salvar envio mensal:", err));
       },
       setEnviosMensaisDocumentoFromSupabase: (enviosMensaisDocumento) => set({ enviosMensaisDocumento }),
-      setClientsFromSupabase: (clients) => set({ clients }),
+      setClientsFromSupabase: (clients) => set({ clients: clients.map(normalizarOnboarding) }),
       setRecebimentosFromSupabase: (recebimentos) => set({ recebimentos }),
       setParcelamentosFromSupabase: (parcelamentos) => set({ parcelamentos }),
       setEnviosParcelamentoFromSupabase: (enviosParcelamento) => set({ enviosParcelamento }),
