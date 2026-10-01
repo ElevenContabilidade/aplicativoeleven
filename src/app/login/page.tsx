@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Lock, Mail, Building2 } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Building2, Check } from "lucide-react";
 import { EleveMark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,9 @@ export default function LoginPage() {
   const [clientId, setClientId] = useState(clients[0]?.id ?? "");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +57,32 @@ export default function LoginPage() {
     }
   }
 
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) {
+      setError("Informe seu e-mail pra receber o link de redefinição.");
+      return;
+    }
+    setError("");
+    setForgotLoading(true);
+    const supabase = createClient();
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    setForgotLoading(false);
+    if (resetError) {
+      setError("Não foi possível enviar o link agora. Confira o e-mail e tente de novo.");
+      return;
+    }
+    setForgotSent(true);
+  }
+
+  function voltarParaLogin() {
+    setForgotMode(false);
+    setForgotSent(false);
+    setError("");
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-wine-950 px-4 py-10">
       <div
@@ -80,98 +109,166 @@ export default function LoginPage() {
         </div>
 
         <div className="rounded-3xl border border-white/10 bg-white p-6 shadow-2xl sm:p-7">
-          <div className="mb-1 text-center">
-            <h2 className="font-display text-lg font-semibold text-sand-900">Eleven Hub</h2>
-            <p className="mt-1 text-xs text-sand-500">Entre para acessar sua plataforma</p>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-sand-100 p-1">
-            <button
-              type="button"
-              onClick={() => setTab("equipe")}
-              className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                tab === "equipe" ? "bg-white text-wine-800 shadow-sm" : "text-sand-500 hover:text-sand-700"
-              }`}
-            >
-              Sou da equipe
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("cliente")}
-              className={`rounded-lg py-2 text-xs font-medium transition-colors ${
-                tab === "cliente" ? "bg-white text-wine-800 shadow-sm" : "text-sand-500 hover:text-sand-700"
-              }`}
-            >
-              Sou cliente
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder={tab === "equipe" ? "seunome@eleven.com.br" : "seuemail@empresa.com.br"}
-                  className="pl-9"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
+          {forgotMode ? (
+            forgotSent ? (
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-status-success-bg text-status-success">
+                  <Check className="size-5" />
+                </div>
+                <h2 className="font-display text-lg font-semibold text-sand-900">Link enviado</h2>
+                <p className="mt-1 text-xs text-sand-500">
+                  Mandamos um link de redefinição pra <strong>{email}</strong>. Abra ele nesse mesmo navegador pra criar uma
+                  senha nova.
+                </p>
+                <Button type="button" variant="outline" className="mt-5 w-full" size="lg" onClick={voltarParaLogin}>
+                  Voltar para o login
+                </Button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="mb-1 text-center">
+                  <h2 className="font-display text-lg font-semibold text-sand-900">Esqueci minha senha</h2>
+                  <p className="mt-1 text-xs text-sand-500">Informe seu e-mail e enviaremos um link pra criar uma senha nova.</p>
+                </div>
+                <form onSubmit={handleForgotPassword} className="mt-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-email">E-mail</Label>
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="seunome@eleven.com.br"
+                        className="pl-9"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {error && <p className="text-xs font-medium text-status-danger">{error}</p>}
+                  <Button type="submit" className="w-full" size="lg" disabled={forgotLoading}>
+                    {forgotLoading ? "Enviando..." : "Enviar link de redefinição"}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={voltarParaLogin}
+                    className="block w-full text-center text-[11px] font-medium text-sand-500 hover:text-wine-700 hover:underline"
+                  >
+                    Voltar para o login
+                  </button>
+                </form>
+              </>
+            )
+          ) : (
+            <>
+              <div className="mb-1 text-center">
+                <h2 className="font-display text-lg font-semibold text-sand-900">Eleven Hub</h2>
+                <p className="mt-1 text-xs text-sand-500">Entre para acessar sua plataforma</p>
+              </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Lock className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="pl-9 pr-9"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+              <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl bg-sand-100 p-1">
                 <button
                   type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
-                  tabIndex={-1}
+                  onClick={() => setTab("equipe")}
+                  className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                    tab === "equipe" ? "bg-white text-wine-800 shadow-sm" : "text-sand-500 hover:text-sand-700"
+                  }`}
                 >
-                  {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                  Sou da equipe
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("cliente")}
+                  className={`rounded-lg py-2 text-xs font-medium transition-colors ${
+                    tab === "cliente" ? "bg-white text-wine-800 shadow-sm" : "text-sand-500 hover:text-sand-700"
+                  }`}
+                >
+                  Sou cliente
                 </button>
               </div>
-            </div>
 
-            {tab === "cliente" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="entity">Empresa (demo)</Label>
-                <div className="relative">
-                  <Building2 className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-                  <select
-                    id="entity"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-sand-300 bg-white pl-9 pr-3 text-sm text-sand-900 outline-none focus:border-wine-500 focus:ring-2 focus:ring-wine-100"
-                  >
-                    {clients.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.dados.nomeFantasia ?? c.dados.razaoSocial}
-                      </option>
-                    ))}
-                  </select>
+              <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">E-mail</Label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder={tab === "equipe" ? "seunome@eleven.com.br" : "seuemail@empresa.com.br"}
+                      className="pl-9"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {error && <p className="text-xs font-medium text-status-danger">{error}</p>}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password">Senha</Label>
+                    {tab === "equipe" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForgotMode(true);
+                          setError("");
+                        }}
+                        className="text-[11px] font-medium text-wine-700 hover:underline"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-9 pr-9"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-sand-400 hover:text-sand-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                    </button>
+                  </div>
+                </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
+                {tab === "cliente" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="entity">Empresa (demo)</Label>
+                    <div className="relative">
+                      <Building2 className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+                      <select
+                        id="entity"
+                        value={clientId}
+                        onChange={(e) => setClientId(e.target.value)}
+                        className="h-9 w-full rounded-lg border border-sand-300 bg-white pl-9 pr-3 text-sm text-sand-900 outline-none focus:border-wine-500 focus:ring-2 focus:ring-wine-100"
+                      >
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {error && <p className="text-xs font-medium text-status-danger">{error}</p>}
+
+                <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                  {loading ? "Entrando..." : "Entrar"}
+                </Button>
+              </form>
+            </>
+          )}
         </div>
 
         <p className="mt-6 text-center text-[11px] text-cream-200/60">Acesso restrito à equipe Eleven</p>
