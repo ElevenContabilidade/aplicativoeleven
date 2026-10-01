@@ -138,7 +138,7 @@ export default function ClientesPage() {
     function valorDe(c: Client): string | number {
       switch (sortField) {
         case "cliente":
-          return (c.dados.nomeFantasia ?? c.dados.razaoSocial).toLowerCase();
+          return c.dados.razaoSocial.toLowerCase();
         case "segmento":
           return c.segmento.toLowerCase();
         case "regime":
@@ -223,10 +223,10 @@ export default function ClientesPage() {
                 <TableCell>
                   <Link href={`/clientes/${c.id}`} className="flex items-center gap-2.5 hover:underline">
                     <Avatar className="size-8">
-                      <AvatarFallback>{initials(c.dados.nomeFantasia ?? c.dados.razaoSocial)}</AvatarFallback>
+                      <AvatarFallback>{initials(c.dados.razaoSocial)}</AvatarFallback>
                     </Avatar>
                     <span>
-                      <span className="block font-medium text-sand-900">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                      <span className="block font-medium text-sand-900">{c.dados.razaoSocial}</span>
                       <span className="block text-[11px] text-sand-400">{c.dados.cnpj}</span>
                     </span>
                   </Link>
@@ -265,7 +265,7 @@ export default function ClientesPage() {
                       <CardContent className="space-y-1.5 p-3">
                         <div className="flex items-start justify-between gap-2">
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-medium text-sand-900">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                            <span className="block truncate text-sm font-medium text-sand-900">{c.dados.razaoSocial}</span>
                             <span className="block text-[11px] text-sand-400">{c.dados.cnpj}</span>
                           </span>
                           <StatusBadge status={c.status} />

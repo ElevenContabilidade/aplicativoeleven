@@ -259,7 +259,7 @@ export default function ClientProfilePage() {
         <CardContent className="flex flex-wrap items-start justify-between gap-4 p-5">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-xl font-semibold text-sand-900">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</h1>
+              <h1 className="font-display text-xl font-semibold text-sand-900">{client.dados.razaoSocial}</h1>
               <Select value={client.status} onValueChange={(v) => updateClientStatus(client.id, v as ClientStatus)}>
                 <SelectTrigger className={cn(badgeVariants({ variant: toneFor(client.status) }), "h-auto w-auto gap-1 border-0 py-0.5")}>
                   <SelectValue />
@@ -285,7 +285,10 @@ export default function ClientProfilePage() {
                 className="h-6 w-20 rounded-full border-dashed px-2.5 text-[11px]"
               />
             </div>
-            <p className="mt-1 text-sm text-sand-500">{client.dados.razaoSocial} • {client.dados.cnpj}</p>
+            <p className="mt-1 text-sm text-sand-500">
+              {client.dados.nomeFantasia ? `${client.dados.nomeFantasia} • ` : ""}
+              {client.dados.cnpj}
+            </p>
           </div>
           <div className="flex flex-wrap items-start gap-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs sm:grid-cols-4">
