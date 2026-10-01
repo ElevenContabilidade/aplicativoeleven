@@ -21,14 +21,25 @@ export default function RedefinirSenhaPage() {
   const [pronto, setPronto] = useState(false);
   const [sessaoStatus, setSessaoStatus] = useState<SessaoStatus>("checking");
 
-  // O próprio createClient (createBrowserClient) já detecta o access_token
-  // que vem no link do e-mail (#access_token=...&type=recovery) e autentica
-  // essa sessão temporária de recuperação assim que a página carrega.
+  // O link do e-mail pode chegar em dois formatos dependendo da configuração
+  // do projeto no Supabase: com "#access_token=..." na URL (createClient já
+  // detecta e autentica sozinho) ou com "?code=..." (precisa trocar o code
+  // pela sessão manualmente). Trata os dois pra funcionar em qualquer caso.
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getSession().then(({ data }) => {
+    const code = new URL(window.location.href).searchParams.get("code");
+
+    async function init() {
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        setSessaoStatus(exchangeError ? "invalid" : "ready");
+        return;
+      }
+      const { data } = await supabase.auth.getSession();
       setSessaoStatus((cur) => (cur === "checking" ? (data.session ? "ready" : "invalid") : cur));
-    });
+    }
+    void init();
+
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setSessaoStatus("ready");
     });
