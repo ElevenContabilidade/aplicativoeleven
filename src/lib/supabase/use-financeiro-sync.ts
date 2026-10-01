@@ -108,6 +108,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     if (!active) return;
     const supabase = createClient();
     let cancelled = false;
+    let reloadTimer: ReturnType<typeof setTimeout> | undefined;
 
     async function loadAll() {
       // Busca sem paginar vinha limitada às primeiras ~1000 linhas (limite
@@ -198,13 +199,27 @@ export function useSupabaseFinanceiroSync(active: boolean) {
 
     void loadAll();
 
+    // Marcar várias caixinhas rapidamente (ex: checklist de onboarding)
+    // dispara uma gravação por clique, e cada gravação dispara esse evento —
+    // recarregar a tabela inteira (que já passa de 1000 linhas, então leva um
+    // tempinho) a cada clique deixava recargas se sobrepondo: uma recarga que
+    // começou antes do clique mais recente terminar de salvar podia
+    // "pisar" por cima dele com um estado mais antigo, parecendo que outra
+    // caixinha desmarcou sozinha. Espera uma pausa nos eventos antes de
+    // recarregar, pra pegar sempre o estado final de verdade.
+    function scheduleReload() {
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => void loadAll(), 600);
+    }
+
     const channel = supabase
       .channel("dados-financeiros-sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "dados_financeiros" }, () => void loadAll())
+      .on("postgres_changes", { event: "*", schema: "public", table: "dados_financeiros" }, scheduleReload)
       .subscribe();
 
     return () => {
       cancelled = true;
+      if (reloadTimer) clearTimeout(reloadTimer);
       void supabase.removeChannel(channel);
     };
   }, [
