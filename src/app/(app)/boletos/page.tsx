@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { vencimentoDaCompetencia } from "@/lib/boleto";
 import { telefonePrincipalCliente } from "@/lib/contato-telefone";
-import type { Client, ClientStatus, StatusEmissaoBoleto } from "@/lib/types";
+import type { Client, StatusEmissaoBoleto } from "@/lib/types";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -152,14 +152,14 @@ export default function BoletosPage() {
   const naoEmitidos = filtradas.filter((l) => l.status === "Não emitido").length;
   const recebidoTotal = filtradas.filter((l) => l.recebido).reduce((a, l) => a + l.valorRecebido, 0);
 
-  // Mesma regra do MRR Assessoria do Financeiro — cliente que já saiu
-  // (suspenso, cancelando ou encerrado) não conta mais.
-  const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
-  const clientesMensaisAtivos = clients.filter(
-    (c) => !c.dados.clienteParceiro && c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
-  );
-  const mrrAssessoria = clientesMensaisAtivos.reduce((a, c) => a + c.financeiro.valorMensal, 0);
-  const ticketMedio = clientesMensaisAtivos.length ? mrrAssessoria / clientesMensaisAtivos.length : 0;
+  // MRR Assessoria precisa bater com o período selecionado, assim como os
+  // outros cards desta página — antes somava o valorMensal atual de todo
+  // cliente ativo HOJE, então mostrava o mesmo número não importa qual mês
+  // estivesse selecionado. Agora soma o valor dos boletos do próprio
+  // período (filtradas), que já respeita início de contrato e ajustes por
+  // competência.
+  const mrrAssessoria = filtradas.reduce((a, l) => a + l.valor, 0);
+  const ticketMedio = filtradas.length ? mrrAssessoria / filtradas.length : 0;
 
   // Só boleto já emitido entra em Em aberto/Inadimplência — o que ainda não
   // foi emitido já tem seu próprio card ("Não emitidos").
