@@ -752,6 +752,7 @@ export interface ProcessoSocietario {
   etapas: EtapaProcesso[];
   valorProcesso?: number;
   pagamento?: PagamentoProcesso;
+  dataPagamento?: string;
 }
 
 // ---------- Parcelamentos ----------

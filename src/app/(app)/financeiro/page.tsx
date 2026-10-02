@@ -57,7 +57,6 @@ export default function FinanceiroPage() {
   const updatePagamentoSistema = useAppStore((s) => s.updatePagamentoSistema);
   const updateDespesaAvulsa = useAppStore((s) => s.updateDespesaAvulsa);
   const deleteDespesaAvulsa = useAppStore((s) => s.deleteDespesaAvulsa);
-  const resumoSocietario = resumoFinanceiroSocietario(processosSocietarios);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -149,6 +148,11 @@ export default function FinanceiroPage() {
   const competenciasPeriodo = useMemo(
     () => (mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`]),
     [year, mes]
+  );
+
+  const resumoSocietario = useMemo(
+    () => resumoFinanceiroSocietario(processosSocietarios, competenciasPeriodo),
+    [processosSocietarios, competenciasPeriodo]
   );
 
   const ledgerAll = useMemo(() => {

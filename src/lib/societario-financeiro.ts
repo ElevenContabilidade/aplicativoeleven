@@ -18,10 +18,19 @@ export interface SocietarioFinanceiroResumo {
 /**
  * Agrega o valor cobrado (valorProcesso) dos processos societários por tipo
  * de serviço, separando o que já foi pago do que ainda está pendente.
- * Só considera processos com valorProcesso informado (> 0).
+ * Só considera processos com valorProcesso informado (> 0). Quando
+ * `competencias` é informado, também exige que a competência do processo
+ * (data do pagamento quando já pago, ou data de abertura enquanto pendente)
+ * caia dentro do período filtrado — assim o processo "muda de mês" no
+ * Financeiro assim que a data do pagamento é preenchida.
  */
-export function resumoFinanceiroSocietario(processos: ProcessoSocietario[]): SocietarioFinanceiroResumo {
-  const cobrados = processos.filter((p) => (p.valorProcesso ?? 0) > 0);
+export function resumoFinanceiroSocietario(processos: ProcessoSocietario[], competencias?: string[]): SocietarioFinanceiroResumo {
+  const cobrados = processos.filter((p) => {
+    if ((p.valorProcesso ?? 0) <= 0) return false;
+    if (!competencias) return true;
+    const competencia = (p.pagamento === "Pago" ? p.dataPagamento : p.dataAbertura)?.slice(0, 7);
+    return !!competencia && competencias.includes(competencia);
+  });
 
   const porServicoMap = new Map<string, ServicoFinanceiro>();
   for (const p of cobrados) {

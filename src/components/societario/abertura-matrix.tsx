@@ -171,7 +171,14 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                   <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Pagamento</span>
                   <Select
                     value={p.pagamento ?? "Pendente"}
-                    onValueChange={(v) => updateProcessoSocietario(p.id, { pagamento: v as PagamentoProcesso })}
+                    onValueChange={(v) => {
+                      const pagamento = v as PagamentoProcesso;
+                      const hoje = new Date().toISOString().slice(0, 10);
+                      updateProcessoSocietario(p.id, {
+                        pagamento,
+                        dataPagamento: pagamento === "Pago" ? (p.dataPagamento ?? hoje) : undefined,
+                      });
+                    }}
                   >
                     <SelectTrigger
                       className={cn(
@@ -188,6 +195,18 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                     </SelectContent>
                   </Select>
                 </div>
+
+                {p.pagamento === "Pago" && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Data pagto</span>
+                    <Input
+                      type="date"
+                      value={p.dataPagamento ?? ""}
+                      onChange={(e) => updateProcessoSocietario(p.id, { dataPagamento: e.target.value })}
+                      className="h-8 w-36 text-[12px]"
+                    />
+                  </div>
+                )}
 
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">R$</span>
