@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { CLIENT_STATUS, ONBOARDING_TEMPLATE, type Client, type ClientStatus, type DadosCadastrais } from "@/lib/types";
+import { CLIENT_STATUS, ONBOARDING_TEMPLATE, type Client, type ClientStatus, type Contato, type DadosCadastrais, type Socio } from "@/lib/types";
 import { lookupCnpj, maskCnpj, onlyDigits } from "@/lib/cnpj";
 
 const REGIMES: DadosCadastrais["regimeTributario"][] = ["MEI", "Simples Nacional", "Lucro Presumido", "Lucro Real", "Doméstica"];
@@ -28,13 +28,15 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
   const [status, setStatus] = useState<ClientStatus>("Onboarding");
   const [valorMensal, setValorMensal] = useState("");
   const [dadosExtra, setDadosExtra] = useState<Partial<DadosCadastrais>>({});
+  const [sociosImportados, setSociosImportados] = useState<Socio[]>([]);
+  const [contatoImportado, setContatoImportado] = useState<Contato | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [buscaErro, setBuscaErro] = useState<string | null>(null);
 
   function reset() {
     setRazaoSocial(""); setNomeFantasia(""); setCnpj(""); setSegmento("");
     setRegime("Simples Nacional"); setStatus("Onboarding"); setValorMensal("");
-    setDadosExtra({}); setBuscaErro(null);
+    setDadosExtra({}); setSociosImportados([]); setContatoImportado(null); setBuscaErro(null);
   }
 
   async function buscarCnpj() {
@@ -59,6 +61,31 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         estado: dados.estado,
         endereco: dados.endereco,
       });
+      // Já deixa os sócios do QSA e o contato (e-mail/telefone) prontos pra
+      // entrar junto na criação do cliente, sem precisar digitar de novo na
+      // aba Sócios & contatos depois.
+      const hoje = new Date().toISOString().slice(0, 10);
+      setSociosImportados(
+        dados.socios.map((s, i) => ({
+          id: `socio-${Date.now()}-${i}`,
+          nome: s.nome,
+          cpf: s.cpf,
+          percentual: 0,
+          administrador: s.administrador,
+          dataEntrada: s.dataEntrada || hoje,
+        }))
+      );
+      setContatoImportado(
+        dados.email || dados.telefone
+          ? {
+              id: `contato-${Date.now()}`,
+              nome: dados.nomeFantasia || dados.razaoSocial || "Contato da empresa",
+              papel: "Outro",
+              email: dados.email,
+              telefone: dados.telefone,
+            }
+          : null
+      );
     } catch (err) {
       setBuscaErro(err instanceof Error ? err.message : "Não foi possível consultar o CNPJ.");
     } finally {
@@ -88,8 +115,8 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
         estado: dadosExtra.estado ?? "—",
         endereco: dadosExtra.endereco ?? "—",
       },
-      socios: [],
-      contatos: [],
+      socios: sociosImportados,
+      contatos: contatoImportado ? [contatoImportado] : [],
       responsaveis: { comercial: userId ?? undefined, relacionamento: userId ?? undefined },
       segmento: segmento || "Outros",
       tags: [],
@@ -134,7 +161,17 @@ export function ClientFormDialog({ open, onOpenChange }: { open: boolean; onOpen
             </div>
             {buscaErro && <p className="mt-1 text-[11px] text-status-danger">{buscaErro}</p>}
             {!buscaErro && dadosExtra.municipio && (
-              <p className="mt-1 text-[11px] text-status-success">Dados preenchidos automaticamente pela Receita Federal.</p>
+              <p className="mt-1 text-[11px] text-status-success">
+                Dados preenchidos automaticamente pela Receita Federal
+                {sociosImportados.length > 0 || contatoImportado
+                  ? ` — vai entrar com ${[
+                      sociosImportados.length > 0 ? `${sociosImportados.length} sócio${sociosImportados.length > 1 ? "s" : ""}` : null,
+                      contatoImportado ? "contato" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" e ")} já cadastrado.`
+                  : "."}
+              </p>
             )}
           </div>
           <div>

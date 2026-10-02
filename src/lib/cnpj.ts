@@ -24,6 +24,13 @@ export function maskCnpjCpf(value: string) {
   return onlyDigits(value).length > 11 ? maskCnpj(value) : maskCpf(value);
 }
 
+export interface CnpjLookupSocio {
+  nome: string;
+  cpf: string;
+  dataEntrada: string;
+  administrador: boolean;
+}
+
 export interface CnpjLookupResult {
   razaoSocial: string;
   nomeFantasia?: string;
@@ -36,11 +43,21 @@ export interface CnpjLookupResult {
   municipio: string;
   estado: string;
   endereco: string;
+  email?: string;
+  telefone?: string;
+  socios: CnpjLookupSocio[];
 }
 
 interface BrasilApiCnae {
   codigo?: number | string;
   descricao?: string;
+}
+
+interface BrasilApiQsa {
+  nome_socio?: string;
+  cnpj_cpf_do_socio?: string;
+  data_entrada_sociedade?: string;
+  qualificacao_socio?: string;
 }
 
 interface BrasilApiCnpjResponse {
@@ -60,6 +77,9 @@ interface BrasilApiCnpjResponse {
   logradouro?: string;
   numero?: string;
   bairro?: string;
+  email?: string;
+  ddd_telefone_1?: string;
+  qsa?: BrasilApiQsa[];
 }
 
 /**
@@ -103,5 +123,15 @@ export async function lookupCnpj(cnpj: string): Promise<CnpjLookupResult> {
     municipio: data.municipio ?? "",
     estado: data.uf ?? "",
     endereco,
+    email: data.email || undefined,
+    telefone: data.ddd_telefone_1 || undefined,
+    socios: (data.qsa ?? [])
+      .filter((s) => s.nome_socio)
+      .map((s) => ({
+        nome: s.nome_socio!,
+        cpf: s.cnpj_cpf_do_socio ?? "",
+        dataEntrada: s.data_entrada_sociedade ?? "",
+        administrador: (s.qualificacao_socio ?? "").toLowerCase().includes("administrador"),
+      })),
   };
 }

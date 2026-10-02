@@ -22,11 +22,14 @@ const SETORES: { value: DepartamentoChave; label: string }[] = [
 
 export function CadastroForm({ client }: { client: Client }) {
   const salvarCadastroCliente = useAppStore((s) => s.salvarCadastroCliente);
+  const addSocio = useAppStore((s) => s.addSocio);
+  const addContato = useAppStore((s) => s.addContato);
   const [form, setForm] = useState<DadosCadastrais>(client.dados);
   const [segmento, setSegmento] = useState(client.segmento);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [buscaErro, setBuscaErro] = useState<string | null>(null);
+  const [buscaInfo, setBuscaInfo] = useState<string | null>(null);
   const [showSenha, setShowSenha] = useState(false);
 
   function set<K extends keyof DadosCadastrais>(key: K, value: DadosCadastrais[K]) {
@@ -48,6 +51,7 @@ export function CadastroForm({ client }: { client: Client }) {
     }
     setBuscando(true);
     setBuscaErro(null);
+    setBuscaInfo(null);
     try {
       const dados = await lookupCnpj(form.cnpj);
       setForm((f) => ({
@@ -64,6 +68,43 @@ export function CadastroForm({ client }: { client: Client }) {
         estado: dados.estado || f.estado,
         endereco: dados.endereco || f.endereco,
       }));
+
+      // Importa pra aba "Sócios & contatos" o que a Receita Federal já sabe —
+      // QSA vira sócio (sem duplicar quem já está cadastrado, casando por
+      // CPF quando tem, senão por nome) e o e-mail/telefone da empresa vira
+      // um contato, pra não precisar digitar tudo de novo manualmente.
+      const hoje = new Date().toISOString().slice(0, 10);
+      let sociosImportados = 0;
+      for (const s of dados.socios) {
+        const jaExiste = client.socios.some((existente) => (s.cpf && existente.cpf === s.cpf) || existente.nome === s.nome);
+        if (jaExiste) continue;
+        addSocio(client.id, {
+          id: `socio-${Date.now()}-${sociosImportados}`,
+          nome: s.nome,
+          cpf: s.cpf,
+          percentual: 0,
+          administrador: s.administrador,
+          dataEntrada: s.dataEntrada || hoje,
+        });
+        sociosImportados++;
+      }
+
+      let contatoImportado = false;
+      if ((dados.email || dados.telefone) && !client.contatos.some((c) => dados.email && c.email === dados.email)) {
+        addContato(client.id, {
+          id: `contato-${Date.now()}`,
+          nome: dados.nomeFantasia || dados.razaoSocial || "Contato da empresa",
+          papel: "Outro",
+          email: dados.email,
+          telefone: dados.telefone,
+        });
+        contatoImportado = true;
+      }
+
+      const partes: string[] = [];
+      if (sociosImportados > 0) partes.push(`${sociosImportados} sócio${sociosImportados > 1 ? "s" : ""}`);
+      if (contatoImportado) partes.push("contato");
+      if (partes.length > 0) setBuscaInfo(`Também importado pra aba Sócios & contatos: ${partes.join(" e ")}.`);
     } catch (err) {
       setBuscaErro(err instanceof Error ? err.message : "Não foi possível consultar o CNPJ.");
     } finally {
@@ -103,6 +144,7 @@ export function CadastroForm({ client }: { client: Client }) {
               </Button>
             </div>
             {buscaErro && <p className="mt-1 text-[11px] text-status-danger">{buscaErro}</p>}
+            {buscaInfo && <p className="mt-1 text-[11px] text-status-success">{buscaInfo}</p>}
           </Field>
           <Field label="Inscrição estadual">
             <Input value={form.inscricaoEstadual ?? ""} onChange={(e) => set("inscricaoEstadual", e.target.value)} />
