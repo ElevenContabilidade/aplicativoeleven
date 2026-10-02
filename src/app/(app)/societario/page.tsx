@@ -83,7 +83,18 @@ export default function SocietarioPage() {
     (p) => (p.tipoServico === "Abertura" || p.tipoServico === "Abertura de empresa") && (p.etapas ?? []).length > 0
   );
 
-  const resumoFinanceiro = useMemo(() => resumoFinanceiroSocietario(filteredPeriodo), [filteredPeriodo]);
+  // A aba Financeiro não usa filteredPeriodo (que filtra por data de abertura):
+  // aqui o processo precisa aparecer no mês em que foi de fato pago, então o
+  // período filtra pela mesma competência (data do pagamento, ou data de
+  // abertura enquanto pendente) que resumoFinanceiroSocietario já calcula.
+  const competenciasFinanceiro = useMemo(
+    () => (mes === "anual" ? MESES.map((m) => `${year}-${m.value}`) : [`${year}-${mes}`]),
+    [year, mes]
+  );
+  const resumoFinanceiro = useMemo(
+    () => resumoFinanceiroSocietario(processos, competenciasFinanceiro),
+    [processos, competenciasFinanceiro]
+  );
 
   return (
     <div>
