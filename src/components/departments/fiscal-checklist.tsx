@@ -132,7 +132,7 @@ export function FiscalChecklist() {
    * em branco (nunca sobrescreve uma marcação já feita), pra não precisar
    * repetir a mesma marcação cliente por cliente quando o mês é igual pra
    * quase todo mundo. */
-  function handleAplicarParaTodos() {
+  async function handleAplicarParaTodos() {
     const origem = myClients.find((c) => c.id === origemId);
     if (!origem) return;
     const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
@@ -143,13 +143,30 @@ export function FiscalChecklist() {
       )
     )
       return;
+
+    const atualizacoes: { clienteId: string; rotina: string; status: ChecklistStatus }[] = [];
     for (const cliente of destino) {
       const aplicaveis = rotinasFiscaisMensaisFor(cliente);
       for (const rotina of ROTINAS_FISCAIS_MENSAIS) {
         if (!aplicaveis.includes(rotina)) continue;
         if (statusFor(cliente.id, competencia, rotina) !== null) continue;
         const status = statusFor(origemId, competencia, rotina);
-        if (status !== null) setChecklistFiscal(cliente.id, competencia, rotina, status);
+        if (status !== null) atualizacoes.push({ clienteId: cliente.id, rotina, status });
+      }
+    }
+
+    // Marcar tudo de uma vez dispara uma gravação por célula ao mesmo
+    // tempo — com dezenas de clientes isso passa do limite de requisições
+    // simultâneas do navegador e algumas falhavam com "Failed to fetch".
+    // Aplica em lotes pequenos, com uma pausa entre eles, pra nunca ter
+    // gravação demais em voo ao mesmo tempo.
+    const TAMANHO_LOTE = 15;
+    for (let i = 0; i < atualizacoes.length; i += TAMANHO_LOTE) {
+      for (const { clienteId, rotina, status } of atualizacoes.slice(i, i + TAMANHO_LOTE)) {
+        setChecklistFiscal(clienteId, competencia, rotina, status);
+      }
+      if (i + TAMANHO_LOTE < atualizacoes.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
       }
     }
   }
