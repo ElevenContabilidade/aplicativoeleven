@@ -10,8 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search, ArrowUp, ArrowDown, ArrowUpDown, UploadCloud } from "lucide-react";
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
+import { CertificadoBulkImportDialog } from "@/components/certificates/certificado-bulk-import-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { statusAutomaticoCertificado, type Certificado } from "@/lib/types";
@@ -85,6 +86,7 @@ export default function CertificadosPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   function openCreate() {
     setEditing(null);
@@ -166,7 +168,12 @@ export default function CertificadosPage() {
       <PageHeader
         title="Certificados digitais"
         description="Gestão de e-CPF e e-CNPJ da carteira, com alertas de vencimento."
-        actions={<Button onClick={openCreate}><Plus className="size-3.5" /> Novo certificado</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setBulkOpen(true)}><UploadCloud className="size-3.5" /> Importar em lote</Button>
+            <Button onClick={openCreate}><Plus className="size-3.5" /> Novo certificado</Button>
+          </div>
+        }
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -296,6 +303,7 @@ export default function CertificadosPage() {
         onOpenChange={(v) => { setFormOpen(v); if (!v) setEditing(null); }}
         certificado={editing}
       />
+      <CertificadoBulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} />
     </div>
   );
 }
