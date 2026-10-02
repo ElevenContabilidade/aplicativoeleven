@@ -647,30 +647,52 @@ export default function ClientProfilePage() {
                     <TableHead>Emissão</TableHead>
                     <TableHead>Vencimento</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-10" />
+                    <TableHead className="w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {myLicencas.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell className="flex items-center gap-2 font-medium text-sand-800">
-                        <Award className="size-3.5 shrink-0 text-wine-500" /> {l.nome}
-                      </TableCell>
-                      <TableCell>{l.dataEmissao ? formatDate(l.dataEmissao) : "—"}</TableCell>
-                      <TableCell>{formatDate(l.dataVencimento)}</TableCell>
-                      <TableCell><StatusBadge status={l.status} /></TableCell>
-                      <TableCell>
-                        <button
-                          type="button"
-                          onClick={() => confirm(`Excluir "${l.nome}"?`) && deleteLicenca(l.id)}
-                          title="Excluir"
-                          className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {myLicencas.map((l) => {
+                    const arquivo = l.documentoId ? documentos.find((d) => d.id === l.documentoId) : undefined;
+                    return (
+                      <TableRow key={l.id}>
+                        <TableCell className="flex items-center gap-2 font-medium text-sand-800">
+                          <Award className="size-3.5 shrink-0 text-wine-500" /> {l.nome}
+                        </TableCell>
+                        <TableCell>{l.dataEmissao ? formatDate(l.dataEmissao) : "—"}</TableCell>
+                        <TableCell>{formatDate(l.dataVencimento)}</TableCell>
+                        <TableCell><StatusBadge status={l.status} /></TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            {l.documentoId && (
+                              arquivo?.url ? (
+                                <a
+                                  href={arquivo.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Visualizar PDF anexado"
+                                  className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700"
+                                >
+                                  <Eye className="size-3.5" />
+                                </a>
+                              ) : (
+                                <span title="Arquivo indisponível nesta sessão" className="flex size-7 items-center justify-center text-sand-200">
+                                  <Eye className="size-3.5" />
+                                </span>
+                              )
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => confirm(`Excluir "${l.nome}"?`) && deleteLicenca(l.id)}
+                              title="Excluir"
+                              className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger-bg hover:text-status-danger"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {myLicencas.length === 0 && (
                     <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhuma licença ou registro cadastrado.</TableCell></TableRow>
                   )}
