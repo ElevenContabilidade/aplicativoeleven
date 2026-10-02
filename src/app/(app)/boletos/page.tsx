@@ -172,7 +172,15 @@ export default function BoletosPage() {
     .reduce((a, l) => a + l.valor, 0);
 
   function toggleStatus(l: Linha) {
-    updateBoleto(l.cliente.id, l.competencia, { status: l.status === "Emitido" ? "Não emitido" : "Emitido" });
+    const emitindo = l.status !== "Emitido";
+    updateBoleto(l.cliente.id, l.competencia, {
+      status: emitindo ? "Emitido" : "Não emitido",
+      // Trava o valor da competência no momento da emissão — sem isso, o
+      // boleto continua puxando o valorMensal do cadastro ao vivo, e um
+      // reajuste futuro no cliente mudaria retroativamente o valor de um
+      // mês que já foi emitido (ou até recebido).
+      ...(emitindo && l.valor != null ? { valor: l.valor } : {}),
+    });
   }
 
   function toggleRecebido(l: Linha) {
@@ -180,6 +188,7 @@ export default function BoletosPage() {
     updateBoleto(l.cliente.id, l.competencia, {
       recebido,
       dataRecebimento: recebido && !l.dataRecebimento ? new Date().toISOString().slice(0, 10) : l.dataRecebimento,
+      ...(recebido ? { valor: l.valor, valorRecebido: l.valorRecebido } : {}),
     });
   }
 
