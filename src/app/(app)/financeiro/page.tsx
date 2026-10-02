@@ -340,10 +340,13 @@ export default function FinanceiroPage() {
   // pagamento parcial); os demais caem no cálculo antigo (status "Pago" =
   // valor cheio recebido, senão nada).
   const pagoEfetivo = (h: (typeof ledgerFiltrado)[number]) => h.valorPago ?? (h.status === "Pago" ? h.valor : 0);
-  const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0);
-  const emAberto = ledgerFiltrado
-    .filter((h) => h.status !== "Atrasado")
-    .reduce((a, h) => a + Math.max(h.valor - pagoEfetivo(h), 0), 0);
+  // O que entra/falta entrar dos processos societários soma junto com a
+  // carteira de clientes — não faz sentido mostrar "Recebido" lá em cima
+  // sem contar o que já caiu de honorário de abertura/alteração etc.
+  const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) + resumoSocietario.recebido;
+  const emAberto =
+    ledgerFiltrado.filter((h) => h.status !== "Atrasado").reduce((a, h) => a + Math.max(h.valor - pagoEfetivo(h), 0), 0) +
+    resumoSocietario.aReceber;
   const inadimplencia = ledgerFiltrado.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
 
   const contasAPagar = useMemo(
@@ -712,6 +715,7 @@ export default function FinanceiroPage() {
           <CardTitle className="flex items-center gap-2"><Scale className="size-4 text-wine-600" /> Societário — quanto ganho por serviço</CardTitle>
         </CardHeader>
         <CardContent className="pt-4">
+          <p className="mb-3 text-[11px] text-sand-500">Já somado no Recebido e no Em aberto lá em cima — aqui é só o detalhe por tipo de serviço.</p>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             <MetricCard label="Total cobrado" value={formatCurrency(resumoSocietario.total)} icon={Wallet} tone="wine" />
             <MetricCard label="Recebido" value={formatCurrency(resumoSocietario.recebido)} icon={CircleDollarSign} tone="success" />
