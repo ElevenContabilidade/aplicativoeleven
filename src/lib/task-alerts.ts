@@ -6,6 +6,14 @@ function clientLabel(clienteId: string | undefined, clients: Client[]): string |
   return client?.dados.nomeFantasia ?? client?.dados.razaoSocial;
 }
 
+/** Tarefas são criadas com id `t-<Date.now()>` — reaproveita esse timestamp
+ * como data real de criação (tarefas antigas da base de exemplo, sem esse
+ * formato, caem no início dos tempos em vez de aparecerem como "agora"). */
+function dataCriacaoTask(taskId: string): string {
+  const match = taskId.match(/^t-(\d+)/);
+  return new Date(match ? Number(match[1]) : 0).toISOString();
+}
+
 export function taskAlertId(taskId: string): string {
   return `task-alert-${taskId}`;
 }
@@ -19,7 +27,10 @@ function buildTaskAlert(task: Task, clients: Client[]): AppNotification | null {
     tipo: "tarefa",
     titulo: "Tarefa atribuída a você",
     descricao: `${task.titulo}${nomeCliente ? ` — ${nomeCliente}` : ""}`,
-    data: new Date().toISOString(),
+    // `notifications` é recalculado do zero a cada carregamento da página,
+    // então "agora" fazia todo alerta empatar na ordenação — usa a data de
+    // criação real da tarefa em vez disso.
+    data: dataCriacaoTask(task.id),
     lida: false,
     href: "/tarefas",
     destinatarioId: task.responsavelId,
@@ -43,12 +54,9 @@ export function syncTaskAlerts(notifications: AppNotification[], tasks: Task[], 
       const existing = existingById.get(built.id);
       // Só mantém "lida" se o responsável não mudou — reatribuir a tarefa
       // pra outra pessoa é um aviso novo pra ela, mesmo que o antigo
-      // responsável já tivesse visto. A data também é preservada do alerta
-      // original — sem isso, toda tarefa em aberto "nascia de novo" hoje a
-      // cada resync, e os alertas mais recentes nunca ficavam ordenados na
-      // frente dos mais antigos.
+      // responsável já tivesse visto.
       const mesmoDestinatario = existing && existing.destinatarioId === built.destinatarioId;
-      return { ...built, lida: mesmoDestinatario ? existing.lida : false, data: mesmoDestinatario ? existing.data : built.data };
+      return { ...built, lida: mesmoDestinatario ? existing.lida : false };
     })
     .filter((n): n is AppNotification => n !== null);
 
