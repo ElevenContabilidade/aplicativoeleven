@@ -10,6 +10,17 @@ function diffDays(dateIso: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** Data em que o alerta "nasceu" (entrou na janela de aviso) — sempre no
+ * passado ou presente, pra poder ser comparada de verdade com alertas de
+ * outros tipos (como tarefa, cuja data é a criação). Usar o vencimento em
+ * si faria uma licença vencendo daqui a 25 dias (data futura) furar na
+ * frente de uma tarefa criada hoje. */
+function dataInicioAlerta(dataVencimentoIso: string): string {
+  const d = new Date(`${dataVencimentoIso}T00:00:00`);
+  d.setDate(d.getDate() - ALERT_WINDOW_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
 export function licencaAlertId(licencaId: string): string {
   return `lic-alert-${licencaId}`;
 }
@@ -36,13 +47,7 @@ function buildLicencaAlert(licenca: Licenca, clients: Client[]): AppNotification
     tipo: "licenca",
     titulo,
     descricao,
-    // Usa a própria data de vencimento como "data" do alerta — como
-    // `notifications` é recalculado do zero a cada carregamento da página
-    // (não fica salvo em lugar nenhum), usar "agora" aqui fazia todo alerta
-    // "nascer" no instante do carregamento, empatando a ordenação entre
-    // todos eles. A data de vencimento é um dado estável, então ordena
-    // certo: a licença vencida mais recentemente fica no topo.
-    data: licenca.dataVencimento,
+    data: dataInicioAlerta(licenca.dataVencimento),
     lida: false,
     href: `/clientes/${licenca.clienteId}`,
   };

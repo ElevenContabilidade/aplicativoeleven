@@ -474,6 +474,20 @@ interface AppState {
   resyncAlerts: () => void;
 }
 
+// Prefixos reconhecidos pelos sync*Alerts abaixo — cada um só limpa/rebuilda
+// os próprios ids, preservando tudo o mais em "others" indefinidamente. Sem
+// esse filtro final, qualquer notificação de um tipo que já saiu do código
+// (ou veio de localStorage antigo, de antes do Supabase) ficava presa pra
+// sempre na lista, sendo recarregada a cada sessão.
+const PREFIXOS_ALERTA_CONHECIDOS = [
+  "task-alert-",
+  "lic-alert-",
+  "cert-alert-",
+  "fiscal-iss-alert-",
+  "reajuste-alert-",
+  "doc-alert-",
+];
+
 function syncAllAlerts(
   notifications: AppNotification[],
   licencas: Licenca[],
@@ -483,7 +497,7 @@ function syncAllAlerts(
   documentos: Documento[],
   tasks: Task[]
 ): AppNotification[] {
-  return syncTaskAlerts(
+  const atualizadas = syncTaskAlerts(
     syncReajusteAlerts(
       syncDocumentoAlerts(
         syncFiscalAlerts(
@@ -499,6 +513,7 @@ function syncAllAlerts(
     tasks,
     clients
   );
+  return atualizadas.filter((n) => PREFIXOS_ALERTA_CONHECIDOS.some((p) => n.id.startsWith(p)));
 }
 
 // Todos os arrays abaixo começam vazios de propósito, mesmo os que já
@@ -1832,7 +1847,11 @@ export const useAppStore = create<AppState>()(
       // sincronia por Realtime, então guardar no localStorage só arriscaria
       // mostrar dado desatualizado antes da store terminar de buscar do
       // banco. `notifications` continua local (é recalculado a partir do
-      // resto, só o "lida" vem do banco via applyNotificationsLidas).
+      // resto, só o "lida" vem do banco via applyNotificationsLidas) — por
+      // isso também precisa ficar de fora daqui; sem essa exclusão, alertas
+      // de tipos que já saíram do código (ou ficaram "congelados" com a
+      // data de quando o navegador salvou) voltavam do localStorage a cada
+      // carregamento e nunca mais eram limpos.
       partialize: (state) => {
         /* eslint-disable @typescript-eslint/no-unused-vars */
         const {
@@ -1843,6 +1862,7 @@ export const useAppStore = create<AppState>()(
           auditLog,
           documentos,
           pendencias,
+          notifications,
           tiposDocumentoRecorrente,
           enviosMensaisDocumento,
           clients,

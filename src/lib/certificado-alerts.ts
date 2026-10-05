@@ -10,6 +10,17 @@ function diffDays(dateIso: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
+/** Data em que o alerta "nasceu" (entrou na janela de aviso) — sempre no
+ * passado ou presente, pra poder ser comparada de verdade com alertas de
+ * outros tipos (como tarefa, cuja data é a criação). Usar o vencimento em
+ * si faria um certificado vencendo daqui a 25 dias (data futura) furar na
+ * frente de uma tarefa criada hoje. */
+function dataInicioAlerta(dataVencimentoIso: string): string {
+  const d = new Date(`${dataVencimentoIso}T00:00:00`);
+  d.setDate(d.getDate() - ALERT_WINDOW_DAYS);
+  return d.toISOString().slice(0, 10);
+}
+
 export function certificadoAlertId(certificadoId: string): string {
   return `cert-alert-${certificadoId}`;
 }
@@ -40,10 +51,7 @@ function buildCertificadoAlert(certificado: Certificado, clients: Client[]): App
     tipo: "certificado",
     titulo,
     descricao,
-    // Usa a própria data de vencimento como "data" do alerta — `notifications`
-    // é recalculado do zero a cada carregamento da página, então "agora"
-    // fazia todo alerta empatar na ordenação. O vencimento é estável.
-    data: certificado.dataVencimento,
+    data: dataInicioAlerta(certificado.dataVencimento),
     lida: false,
     href: "/certificados",
   };

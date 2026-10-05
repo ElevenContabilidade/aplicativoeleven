@@ -26,20 +26,27 @@ export function reajusteAlertId(clienteId: string): string {
   return `reajuste-alert-${clienteId}`;
 }
 
+/** Data em que o alerta "nasceu" (completou os 12 meses sem reajuste) —
+ * sempre no passado ou presente, pra poder ser comparada de verdade com
+ * alertas de outros tipos (como tarefa, cuja data é a criação). */
+function dataInicioAlerta(base: string): string {
+  const d = new Date(`${base}T00:00:00`);
+  d.setMonth(d.getMonth() + MESES_PARA_ALERTA);
+  return d.toISOString().slice(0, 10);
+}
+
 function buildReajusteAlert(client: Client): AppNotification | null {
   const meses = mesesSemReajuste(client);
   if (meses === null || meses < MESES_PARA_ALERTA) return null;
 
   const nome = client.dados.nomeFantasia || client.dados.razaoSocial;
+  const base = dataBase(client);
   return {
     id: reajusteAlertId(client.id),
     tipo: "reajuste",
     titulo: "Reajuste de honorário pendente",
     descricao: `${nome} está há ${meses} meses sem reajuste de honorário.`,
-    // Usa a própria data-base (último reajuste ou início do contrato) —
-    // `notifications` é recalculado do zero a cada carregamento da página,
-    // então "agora" fazia todo alerta empatar na ordenação.
-    data: dataBase(client) ?? new Date().toISOString(),
+    data: base ? dataInicioAlerta(base) : new Date().toISOString(),
     lida: false,
     href: `/clientes/${client.id}`,
   };
