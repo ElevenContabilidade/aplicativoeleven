@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import {
   CHECKLIST_STATUS,
@@ -60,6 +62,8 @@ export function PessoalChecklist() {
 
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [origemId, setOrigemId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
 
   const clientesDoSetor = useMemo(
     () =>
@@ -123,6 +127,59 @@ export function PessoalChecklist() {
 
   const clientesComFuncionarios = myClients.filter(possuiFuncionarios);
 
+  /** Copia o checklist de um cliente (mês/ano corrente) pra uma lista de
+   * clientes destino — só preenche rotinas aplicáveis a cada cliente que
+   * ainda estão em branco (nunca sobrescreve uma marcação já feita). Cobre
+   * fixas + variáveis (ou a rotina anual) de uma vez, igual as duas/uma
+   * tabela(s) exibidas pro período. */
+  async function aplicarChecklist(destino: Client[], confirmLabel: string) {
+    const origem = myClients.find((c) => c.id === origemId);
+    if (!origem || destino.length === 0) return;
+    const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
+    const periodoLabel = period === "anual" ? year : `${MESES.find((m) => m.value === period)?.label}/${year}`;
+    if (
+      !confirm(
+        `Copiar o checklist de "${nomeOrigem}" (${periodoLabel}) ${confirmLabel}?\n\nSó preenche as rotinas que ainda estão em branco — não mexe em nada que já foi marcado.`
+      )
+    )
+      return;
+
+    const todasRotinas = period === "anual" ? [ROTINA_PESSOAL_ANUAL] : [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS];
+    const atualizacoes: { clienteId: string; rotina: string; status: ChecklistStatus }[] = [];
+    for (const cliente of destino) {
+      const aplicaveis = rotinasFor(cliente, period);
+      for (const rotina of todasRotinas) {
+        if (!aplicaveis.includes(rotina)) continue;
+        if (statusFor(cliente.id, competencia, rotina) !== null) continue;
+        const status = statusFor(origemId, competencia, rotina);
+        if (status !== null) atualizacoes.push({ clienteId: cliente.id, rotina, status });
+      }
+    }
+
+    // Lotes pequenos com pausa entre eles — marcar tudo de uma vez passa
+    // do limite de requisições simultâneas do navegador.
+    const TAMANHO_LOTE = 15;
+    for (let i = 0; i < atualizacoes.length; i += TAMANHO_LOTE) {
+      for (const { clienteId, rotina, status } of atualizacoes.slice(i, i + TAMANHO_LOTE)) {
+        setChecklistPessoal(clienteId, competencia, rotina, status);
+      }
+      if (i + TAMANHO_LOTE < atualizacoes.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+    }
+  }
+
+  async function handleAplicarParaTodos() {
+    const destino = myClients.filter((c) => c.id !== origemId);
+    await aplicarChecklist(destino, `pra outros ${destino.length} clientes`);
+  }
+
+  async function handleCopiarParaUm() {
+    const destino = myClients.filter((c) => c.id === destinoId);
+    const nomeDestino = destino[0]?.dados.nomeFantasia ?? destino[0]?.dados.razaoSocial ?? "";
+    await aplicarChecklist(destino, `pra "${nomeDestino}"`);
+  }
+
   return (
     <>
       <Card className="mt-4">
@@ -185,6 +242,34 @@ export function PessoalChecklist() {
             {MESES.map((m) => (
               <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
             ))}
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-[11px] text-sand-500">Copiar checklist de:</span>
+            <Select value={origemId} onValueChange={(v) => { setOrigemId(v); if (v === destinoId) setDestinoId(""); }}>
+              <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
+              <SelectContent>
+                {myClients.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="text-[11px] text-sand-500">para:</span>
+            <Select value={destinoId} onValueChange={setDestinoId}>
+              <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
+              <SelectContent>
+                {myClients.filter((c) => c.id !== origemId).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" size="sm" variant="outline" disabled={!origemId || !destinoId} onClick={handleCopiarParaUm}>
+              <Copy className="size-3.5" /> Copiar só pra esse
+            </Button>
+            <Button type="button" size="sm" variant="outline" disabled={!origemId} onClick={handleAplicarParaTodos}>
+              <Copy className="size-3.5" /> Aplicar pros demais clientes do mês
+            </Button>
+            <span className="text-[11px] text-sand-400">preenche só quem ainda está em branco</span>
           </div>
 
           {period === "anual" ? (

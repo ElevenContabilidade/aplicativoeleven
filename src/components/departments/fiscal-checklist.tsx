@@ -61,6 +61,7 @@ export function FiscalChecklist() {
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
   const [origemId, setOrigemId] = useState("");
+  const [destinoId, setDestinoId] = useState("");
 
   // MEI sem contabilidade regular não faz nenhuma rotina fiscal desse
   // checklist (já é acompanhado à parte na tela MEI) — sem esse filtro ele
@@ -127,19 +128,18 @@ export function FiscalChecklist() {
 
   const groupsWithClients = REGIME_GROUPS.map((g) => ({ ...g, clients: myClients.filter(g.match) })).filter((g) => g.clients.length > 0);
 
-  /** Copia o checklist de um cliente (mês corrente) pros demais clientes do
-   * período — só preenche rotinas aplicáveis a cada cliente que ainda estão
-   * em branco (nunca sobrescreve uma marcação já feita), pra não precisar
-   * repetir a mesma marcação cliente por cliente quando o mês é igual pra
-   * quase todo mundo. */
-  async function handleAplicarParaTodos() {
+  /** Copia o checklist de um cliente (mês corrente) pra uma lista de
+   * clientes destino — só preenche rotinas aplicáveis a cada cliente que
+   * ainda estão em branco (nunca sobrescreve uma marcação já feita), pra
+   * não precisar repetir a mesma marcação cliente por cliente quando o mês
+   * é igual pra quase todo mundo. */
+  async function aplicarChecklist(destino: Client[], confirmLabel: string) {
     const origem = myClients.find((c) => c.id === origemId);
-    if (!origem) return;
+    if (!origem || destino.length === 0) return;
     const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
-    const destino = myClients.filter((c) => c.id !== origemId);
     if (
       !confirm(
-        `Copiar o checklist de "${nomeOrigem}" (${MESES.find((m) => m.value === period)?.label}/${year}) pra outros ${destino.length} clientes?\n\nSó preenche as rotinas que ainda estão em branco em cada cliente — não mexe em nada que já foi marcado.`
+        `Copiar o checklist de "${nomeOrigem}" (${MESES.find((m) => m.value === period)?.label}/${year}) ${confirmLabel}?\n\nSó preenche as rotinas que ainda estão em branco — não mexe em nada que já foi marcado.`
       )
     )
       return;
@@ -169,6 +169,17 @@ export function FiscalChecklist() {
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
     }
+  }
+
+  async function handleAplicarParaTodos() {
+    const destino = myClients.filter((c) => c.id !== origemId);
+    await aplicarChecklist(destino, `pra outros ${destino.length} clientes`);
+  }
+
+  async function handleCopiarParaUm() {
+    const destino = myClients.filter((c) => c.id === destinoId);
+    const nomeDestino = destino[0]?.dados.nomeFantasia ?? destino[0]?.dados.razaoSocial ?? "";
+    await aplicarChecklist(destino, `pra "${nomeDestino}"`);
   }
 
   return (
@@ -292,7 +303,7 @@ export function FiscalChecklist() {
             <div>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <span className="text-[11px] text-sand-500">Copiar checklist de:</span>
-                <Select value={origemId} onValueChange={setOrigemId}>
+                <Select value={origemId} onValueChange={(v) => { setOrigemId(v); if (v === destinoId) setDestinoId(""); }}>
                   <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
                   <SelectContent>
                     {myClients.map((c) => (
@@ -300,6 +311,18 @@ export function FiscalChecklist() {
                     ))}
                   </SelectContent>
                 </Select>
+                <span className="text-[11px] text-sand-500">para:</span>
+                <Select value={destinoId} onValueChange={setDestinoId}>
+                  <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
+                  <SelectContent>
+                    {myClients.filter((c) => c.id !== origemId).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="sm" variant="outline" disabled={!origemId || !destinoId} onClick={handleCopiarParaUm}>
+                  <Copy className="size-3.5" /> Copiar só pra esse
+                </Button>
                 <Button type="button" size="sm" variant="outline" disabled={!origemId} onClick={handleAplicarParaTodos}>
                   <Copy className="size-3.5" /> Aplicar pros demais clientes do mês
                 </Button>
