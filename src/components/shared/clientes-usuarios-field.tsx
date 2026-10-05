@@ -6,7 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+
+const SOMENTE_PROPRIOS = "__proprios__";
 
 /** Escolhe quais clientes usam um sistema/despesa — usado em Rentabilidade
  * pra ratear o custo só entre quem de fato usa, em vez de todo mundo.
@@ -43,6 +46,17 @@ export function ClientesUsuariosField({
 
   const todosSelecionados = clients.length > 0 && clients.every((c) => selecionados.has(c.id));
 
+  // Parceiros distintos entre os clientes de parceiro, pra oferecer como
+  // atalho — selecionar um já marca de uma vez só os clientes dele, em vez
+  // de caçar um por um na lista.
+  const parceiros = useMemo(
+    () =>
+      [...new Set(clientsRaw.filter((c) => c.dados.clienteParceiro && c.dados.nomeParceiro).map((c) => c.dados.nomeParceiro!))].sort(
+        (a, b) => a.localeCompare(b, "pt-BR")
+      ),
+    [clientsRaw]
+  );
+
   function toggleCliente(id: string) {
     const next = new Set(selecionados);
     if (next.has(id)) next.delete(id); else next.add(id);
@@ -51,6 +65,17 @@ export function ClientesUsuariosField({
 
   function toggleTodos() {
     onChange(todosSelecionados ? [] : clients.map((c) => c.id));
+  }
+
+  /** Atalho: escolher um parceiro marca só os clientes dele; escolher
+   * "nenhum parceiro" marca só os clientes próprios da Eleven (sem
+   * nenhum cliente de parceiro junto). */
+  function selecionarPorParceiro(escolha: string) {
+    if (escolha === SOMENTE_PROPRIOS) {
+      onChange(clients.filter((c) => !c.dados.clienteParceiro).map((c) => c.id));
+    } else {
+      onChange(clients.filter((c) => c.dados.nomeParceiro === escolha).map((c) => c.id));
+    }
   }
 
   return (
@@ -66,6 +91,18 @@ export function ClientesUsuariosField({
       </div>
       {!modoTodos && (
         <>
+          <div className="mb-2 flex items-center gap-2">
+            <span className="shrink-0 text-[11px] text-sand-500">Selecionar por grupo:</span>
+            <Select onValueChange={selecionarPorParceiro}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolher parceiro ou só a Eleven..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SOMENTE_PROPRIOS}>Nenhum parceiro — só clientes próprios da Eleven</SelectItem>
+                {parceiros.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
             <Input
