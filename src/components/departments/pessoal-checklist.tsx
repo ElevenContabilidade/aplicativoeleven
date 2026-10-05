@@ -279,7 +279,7 @@ function RotinaTable({
             const pct = pctForClient(c);
             const applicable = applicableFor?.(c);
             return (
-              <tr key={c.id} className="odd:bg-sand-50/60">
+              <tr key={c.id} className="bg-white odd:bg-sand-50">
                 <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
                   <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
                     {c.dados.nomeFantasia ?? c.dados.razaoSocial}
