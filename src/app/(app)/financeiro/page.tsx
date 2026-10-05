@@ -55,6 +55,7 @@ export default function FinanceiroPage() {
   const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
   const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
   const updatePagamentoSistema = useAppStore((s) => s.updatePagamentoSistema);
+  const addDespesaAvulsa = useAppStore((s) => s.addDespesaAvulsa);
   const updateDespesaAvulsa = useAppStore((s) => s.updateDespesaAvulsa);
   const deleteDespesaAvulsa = useAppStore((s) => s.deleteDespesaAvulsa);
 
@@ -436,6 +437,56 @@ export default function FinanceiroPage() {
     if (confirm(`Excluir a despesa "${descricao}"?`)) deleteDespesaAvulsa(id);
   }
 
+  /** Copia as despesas avulsas do mês anterior pro mês selecionado — não
+   * existe recorrência automática de verdade (não sabemos se o aluguel vai
+   * repetir pra sempre), então é uma ação explícita: um clique duplica o
+   * que já estava lançado, e dali ela edita/exclui só o que mudou, em vez
+   * de lançar tudo de novo do zero todo mês. Pula descrições que já
+   * existem no mês atual, pra poder clicar de novo sem duplicar. */
+  function handleRepetirMesAnterior() {
+    if (mes === "anual") return;
+    const competenciaAtual = `${year}-${mes}`;
+    const anoAtual = Number(year);
+    const mesAtual = Number(mes);
+    const anterior = new Date(anoAtual, mesAtual - 2, 1);
+    const competenciaAnterior = `${anterior.getFullYear()}-${String(anterior.getMonth() + 1).padStart(2, "0")}`;
+
+    const doMesAnterior = despesasAvulsas.filter((d) => d.vencimento.slice(0, 7) === competenciaAnterior);
+    const jaLancadas = new Set(
+      despesasAvulsas.filter((d) => d.vencimento.slice(0, 7) === competenciaAtual).map((d) => d.descricao.trim().toLowerCase())
+    );
+    const novas = doMesAnterior.filter((d) => !jaLancadas.has(d.descricao.trim().toLowerCase()));
+
+    if (doMesAnterior.length === 0) {
+      alert(`Não achei nenhuma despesa avulsa lançada em ${competenciaAnterior}.`);
+      return;
+    }
+    if (novas.length === 0) {
+      alert("Todas as despesas do mês anterior já estão lançadas neste mês.");
+      return;
+    }
+    if (
+      !confirm(
+        `Repetir ${novas.length} despesa${novas.length === 1 ? "" : "s"} de ${competenciaAnterior} pra ${competenciaAtual}?\n\nSó cria o que ainda não existe neste mês (mesma descrição) — o valor de cada uma pode ser editado ou a linha excluída depois, se for diferente ou não se aplicar.`
+      )
+    )
+      return;
+
+    const ultimoDia = new Date(anoAtual, mesAtual, 0).getDate();
+    for (const d of novas) {
+      const dia = Math.min(Number(d.vencimento.slice(8, 10)) || 10, ultimoDia);
+      addDespesaAvulsa({
+        id: `desp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        descricao: d.descricao,
+        categoria: d.categoria,
+        valor: d.valor,
+        vencimento: `${competenciaAtual}-${String(dia).padStart(2, "0")}`,
+        status: "Em aberto",
+        clientesQueUsam: d.clientesQueUsam,
+      });
+    }
+  }
+
   function handleEditLinha(linha: ReturnType<typeof contasAPagarDoPeriodo>[number]) {
     if (linha.origem === "avulsa") {
       const despesa = despesasAvulsas.find((d) => d.id === linha.refId);
@@ -622,17 +673,24 @@ export default function FinanceiroPage() {
       <Card className="mt-4">
         <CardHeader className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2"><TrendingDown className="size-4 text-status-danger" /> Contas a pagar — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditingDespesa(null);
-              setDespesaFormOpenKey((k) => k + 1);
-              setDespesaFormOpen(true);
-            }}
-          >
-            <Plus className="size-3.5" /> Nova despesa
-          </Button>
+          <div className="flex gap-2">
+            {mes !== "anual" && (
+              <Button size="sm" variant="outline" onClick={handleRepetirMesAnterior}>
+                <RotateCcw className="size-3.5" /> Repetir despesas do mês anterior
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingDespesa(null);
+                setDespesaFormOpenKey((k) => k + 1);
+                setDespesaFormOpen(true);
+              }}
+            >
+              <Plus className="size-3.5" /> Nova despesa
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-4">
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
