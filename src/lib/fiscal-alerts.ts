@@ -58,13 +58,16 @@ export function syncFiscalAlerts(
 
       const id = fiscalIssAlertId(c.id, competencia);
       const [year, month] = competencia.split("-");
+      const existing = existingById.get(id);
       alerts.push({
         id,
         tipo: "fiscal",
         titulo: "Encerramento do ISS atrasado",
         descricao: `${clientLabel(c.id, clients)} — encerramento do ISS de ${month}/${year} não foi concluído até o dia ${DEADLINE_DAY}.`,
-        data: new Date().toISOString().slice(0, 10),
-        lida: existingById.get(id)?.lida ?? false,
+        // Preserva a data original do alerta — sem isso ele "nascia de novo"
+        // hoje a cada resync e nunca ordenava certo entre os mais recentes.
+        data: existing?.data ?? new Date().toISOString(),
+        lida: existing?.lida ?? false,
         href: "/fiscal",
       });
     }

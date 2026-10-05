@@ -36,7 +36,7 @@ function buildReajusteAlert(client: Client): AppNotification | null {
     tipo: "reajuste",
     titulo: "Reajuste de honorário pendente",
     descricao: `${nome} está há ${meses} meses sem reajuste de honorário.`,
-    data: new Date().toISOString().slice(0, 10),
+    data: new Date().toISOString(),
     lida: false,
     href: `/clientes/${client.id}`,
   };
@@ -59,7 +59,9 @@ export function syncReajusteAlerts(notifications: AppNotification[], clients: Cl
       const built = buildReajusteAlert(c);
       if (!built) return null;
       const existing = existingById.get(built.id);
-      return existing ? { ...built, lida: existing.lida } : built;
+      // Preserva a data original do alerta — sem isso ele "nascia de novo"
+      // hoje a cada resync e nunca ordenava certo entre os mais recentes.
+      return existing ? { ...built, lida: existing.lida, data: existing.data } : built;
     })
     .filter((n): n is AppNotification => n !== null);
 

@@ -36,7 +36,7 @@ function buildLicencaAlert(licenca: Licenca, clients: Client[]): AppNotification
     tipo: "licenca",
     titulo,
     descricao,
-    data: new Date().toISOString().slice(0, 10),
+    data: new Date().toISOString(),
     lida: false,
     href: `/clientes/${licenca.clienteId}`,
   };
@@ -60,7 +60,9 @@ export function syncLicencaAlerts(
       const built = buildLicencaAlert(l, clients);
       if (!built) return null;
       const existing = existingById.get(built.id);
-      return existing ? { ...built, lida: existing.lida } : built;
+      // Preserva a data original do alerta — sem isso ele "nascia de novo"
+      // hoje a cada resync e nunca ordenava certo entre os mais recentes.
+      return existing ? { ...built, lida: existing.lida, data: existing.data } : built;
     })
     .filter((n): n is AppNotification => n !== null);
 

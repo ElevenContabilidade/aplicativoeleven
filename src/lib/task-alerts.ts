@@ -19,7 +19,7 @@ function buildTaskAlert(task: Task, clients: Client[]): AppNotification | null {
     tipo: "tarefa",
     titulo: "Tarefa atribuída a você",
     descricao: `${task.titulo}${nomeCliente ? ` — ${nomeCliente}` : ""}`,
-    data: new Date().toISOString().slice(0, 10),
+    data: new Date().toISOString(),
     lida: false,
     href: "/tarefas",
     destinatarioId: task.responsavelId,
@@ -43,9 +43,12 @@ export function syncTaskAlerts(notifications: AppNotification[], tasks: Task[], 
       const existing = existingById.get(built.id);
       // Só mantém "lida" se o responsável não mudou — reatribuir a tarefa
       // pra outra pessoa é um aviso novo pra ela, mesmo que o antigo
-      // responsável já tivesse visto.
-      const lida = existing && existing.destinatarioId === built.destinatarioId ? existing.lida : false;
-      return { ...built, lida };
+      // responsável já tivesse visto. A data também é preservada do alerta
+      // original — sem isso, toda tarefa em aberto "nascia de novo" hoje a
+      // cada resync, e os alertas mais recentes nunca ficavam ordenados na
+      // frente dos mais antigos.
+      const mesmoDestinatario = existing && existing.destinatarioId === built.destinatarioId;
+      return { ...built, lida: mesmoDestinatario ? existing.lida : false, data: mesmoDestinatario ? existing.data : built.data };
     })
     .filter((n): n is AppNotification => n !== null);
 

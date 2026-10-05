@@ -43,7 +43,9 @@ export function NotificationsBell() {
   const markRead = useAppStore((s) => s.markNotificationRead);
   const markAllRead = useAppStore((s) => s.markAllNotificationsRead);
   const { userId } = useAuthStore();
-  const visiveis = notifications.filter((n) => !n.destinatarioId || n.destinatarioId === userId);
+  const visiveis = notifications
+    .filter((n) => !n.destinatarioId || n.destinatarioId === userId)
+    .sort((a, b) => b.data.localeCompare(a.data));
   const unread = visiveis.filter((n) => !n.lida).length;
 
   return (
