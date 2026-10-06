@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Copy, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 
 const WINE = "#5C1420";
 
@@ -65,6 +65,7 @@ export function FiscalChecklist() {
   const [somenteProprios, setSomenteProprios] = useState(false);
   const [mostrarPrefeitura, setMostrarPrefeitura] = useState(false);
   const [senhasReveladas, setSenhasReveladas] = useState<Set<string>>(new Set());
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
   function toggleSenhaRevelada(clienteId: string) {
     setSenhasReveladas((atual) => {
@@ -72,6 +73,16 @@ export function FiscalChecklist() {
       if (next.has(clienteId)) next.delete(clienteId); else next.add(clienteId);
       return next;
     });
+  }
+
+  async function copiarSenha(clienteId: string, senha: string) {
+    try {
+      await navigator.clipboard.writeText(senha);
+      setCopiadoId(clienteId);
+      setTimeout(() => setCopiadoId((cur) => (cur === clienteId ? null : cur)), 2000);
+    } catch {
+      // clipboard indisponível — dá pra copiar manualmente pela senha revelada
+    }
   }
 
   // MEI sem contabilidade regular não faz nenhuma rotina fiscal desse
@@ -387,6 +398,8 @@ export function FiscalChecklist() {
                       mostrarPrefeitura={mostrarPrefeitura}
                       senhaRevelada={senhasReveladas.has(c.id)}
                       onToggleSenha={() => toggleSenhaRevelada(c.id)}
+                      copiado={copiadoId === c.id}
+                      onCopiarSenha={() => c.dados.senhaPrefeituraPortalNacional && copiarSenha(c.id, c.dados.senhaPrefeituraPortalNacional)}
                     />
                   ))}
                   {myClients.length === 0 && (
@@ -425,6 +438,8 @@ function ClientRow({
   mostrarPrefeitura,
   senhaRevelada,
   onToggleSenha,
+  copiado,
+  onCopiarSenha,
 }: {
   client: Client;
   columns: string[];
@@ -436,6 +451,8 @@ function ClientRow({
   mostrarPrefeitura?: boolean;
   senhaRevelada?: boolean;
   onToggleSenha?: () => void;
+  copiado?: boolean;
+  onCopiarSenha?: () => void;
 }) {
   const socio = socioResponsavel(c);
   const senha = c.dados.senhaPrefeituraPortalNacional;
@@ -453,14 +470,24 @@ function ClientRow({
               <span className="whitespace-nowrap">{socio?.cpf || "—"}</span>
               <span className="whitespace-nowrap font-mono">{senha ? (senhaRevelada ? senha : "••••••") : "—"}</span>
               {senha && (
-                <button
-                  type="button"
-                  onClick={onToggleSenha}
-                  title={senhaRevelada ? "Ocultar senha" : "Exibir senha"}
-                  className="flex size-5 shrink-0 items-center justify-center rounded text-sand-400 hover:bg-sand-100 hover:text-wine-700"
-                >
-                  {senhaRevelada ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={onToggleSenha}
+                    title={senhaRevelada ? "Ocultar senha" : "Exibir senha"}
+                    className="flex size-5 shrink-0 items-center justify-center rounded text-sand-400 hover:bg-sand-100 hover:text-wine-700"
+                  >
+                    {senhaRevelada ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCopiarSenha}
+                    title="Copiar senha"
+                    className="flex size-5 shrink-0 items-center justify-center rounded text-sand-400 hover:bg-sand-100 hover:text-wine-700"
+                  >
+                    {copiado ? <Check className="size-3 text-status-success" /> : <Copy className="size-3" />}
+                  </button>
+                </>
               )}
             </div>
           ) : (
