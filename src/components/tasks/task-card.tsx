@@ -11,6 +11,7 @@ import { cn, formatDate } from "@/lib/utils";
 export function TaskCard({ task, onOpen }: { task: Task; onOpen: () => void }) {
   const clients = useAppStore((s) => s.clients);
   const client = clients.find((c) => c.id === task.clienteId);
+  const multiplosClientes = task.clienteIds && task.clienteIds.length > 1 ? task.clienteIds.length : null;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
 
   // Comparação por string (não por Date) pra não misturar interpretação
@@ -41,7 +42,11 @@ export function TaskCard({ task, onOpen }: { task: Task; onOpen: () => void }) {
         <span className="flex-1">{task.titulo}</span>
         {task.recorrencia && task.recorrencia !== "Nenhuma" && <Repeat className="mt-0.5 size-3 shrink-0 text-sand-400" />}
       </p>
-      {client && <p className="mt-0.5 truncate text-xs text-sand-500">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</p>}
+      {multiplosClientes ? (
+        <p className="mt-0.5 truncate text-xs text-sand-500">{multiplosClientes} clientes</p>
+      ) : (
+        client && <p className="mt-0.5 truncate text-xs text-sand-500">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</p>
+      )}
 
       <div className="mt-2 flex flex-wrap gap-1">
         <StatusBadge status={task.departamento} />

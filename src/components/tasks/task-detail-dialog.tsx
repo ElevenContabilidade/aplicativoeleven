@@ -27,6 +27,10 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
 
   if (!task) return null;
   const client = clients.find((c) => c.id === task.clienteId);
+  const clientesDaTarefa =
+    task.clienteIds && task.clienteIds.length > 1
+      ? task.clienteIds.map((id) => clients.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c)
+      : null;
 
   function addComment() {
     if (!comment.trim() || !task) return;
@@ -66,7 +70,11 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={task.prioridade} />
           <Badge variant="outline">{task.departamento}</Badge>
-          {client && <Badge variant="cream">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</Badge>}
+          {clientesDaTarefa
+            ? clientesDaTarefa.map((c) => (
+                <Badge key={c.id} variant="cream">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</Badge>
+              ))
+            : client && <Badge variant="cream">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</Badge>}
           <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)} • {teamName(task.responsavelId)}</span>
         </div>
 

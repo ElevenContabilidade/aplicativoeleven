@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
@@ -13,6 +14,8 @@ import type { Departamento, Task, TaskPrioridade } from "@/lib/types";
 
 const DEPARTAMENTOS: Departamento[] = ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"];
 const PRIORIDADES: TaskPrioridade[] = ["Baixa", "Normal", "Alta", "Urgente"];
+const TODOS_VENCIMENTOS = "todos";
+const SEM_VENCIMENTO = "nenhum";
 
 export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addTask = useAppStore((s) => s.addTask);
@@ -22,14 +25,47 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [clienteId, setClienteId] = useState<string>("none");
+  const [clienteIds, setClienteIds] = useState<string[]>([]);
+  const [filtroVencimento, setFiltroVencimento] = useState(TODOS_VENCIMENTOS);
   const [departamento, setDepartamento] = useState<Departamento>("Fiscal");
   const [responsavelId, setResponsavelId] = useState(userId ?? team[0]?.id ?? "");
   const [prioridade, setPrioridade] = useState<TaskPrioridade>("Normal");
   const [prazo, setPrazo] = useState(new Date().toISOString().slice(0, 10));
 
+  // Dias de vencimento de honorário que de fato existem na carteira —
+  // pra oferecer só os que fazem sentido escolher no filtro (ex: "Enviar
+  // boletos dia 05" já aparece com todo mundo que vence dia 5 marcável
+  // de uma vez, em vez de caçar cliente por cliente).
+  const diasVencimento = useMemo(
+    () => [...new Set(clients.map((c) => c.financeiro.vencimentoDia).filter((d): d is number => !!d))].sort((a, b) => a - b),
+    [clients]
+  );
+
+  const clientesFiltrados = useMemo(() => {
+    const ordenados = [...clients].sort((a, b) =>
+      (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR")
+    );
+    if (filtroVencimento === TODOS_VENCIMENTOS) return ordenados;
+    if (filtroVencimento === SEM_VENCIMENTO) return ordenados.filter((c) => !c.financeiro.vencimentoDia);
+    return ordenados.filter((c) => c.financeiro.vencimentoDia === Number(filtroVencimento));
+  }, [clients, filtroVencimento]);
+
+  const todosFiltradosSelecionados = clientesFiltrados.length > 0 && clientesFiltrados.every((c) => clienteIds.includes(c.id));
+
+  function toggleCliente(id: string) {
+    setClienteIds((atual) => (atual.includes(id) ? atual.filter((x) => x !== id) : [...atual, id]));
+  }
+
+  function toggleTodosFiltrados() {
+    setClienteIds((atual) => {
+      const idsFiltrados = clientesFiltrados.map((c) => c.id);
+      if (todosFiltradosSelecionados) return atual.filter((id) => !idsFiltrados.includes(id));
+      return [...new Set([...atual, ...idsFiltrados])];
+    });
+  }
+
   function reset() {
-    setTitulo(""); setDescricao(""); setClienteId("none"); setDepartamento("Fiscal");
+    setTitulo(""); setDescricao(""); setClienteIds([]); setFiltroVencimento(TODOS_VENCIMENTOS); setDepartamento("Fiscal");
     setResponsavelId(userId ?? team[0]?.id ?? ""); setPrioridade("Normal"); setPrazo(new Date().toISOString().slice(0, 10));
   }
 
@@ -40,7 +76,8 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       id: `t-${Date.now()}`,
       titulo,
       descricao: descricao || undefined,
-      clienteId: clienteId === "none" ? undefined : clienteId,
+      clienteId: clienteIds[0],
+      clienteIds: clienteIds.length > 1 ? clienteIds : undefined,
       departamento,
       responsavelId,
       prioridade,
@@ -69,19 +106,42 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             <Label className="mb-1 block">Descrição</Label>
             <Textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1 block">Cliente</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+          <div>
+            <Label className="mb-1 block">Cliente(s)</Label>
+            <p className="mb-1.5 text-[11px] text-sand-400">Deixe em branco pra tarefa interna, marque um ou vários — ex: todo mundo que vence dia 05.</p>
+            <div className="mb-2 flex items-center gap-2">
+              <span className="shrink-0 text-[11px] text-sand-500">Filtrar por vencimento do honorário:</span>
+              <Select value={filtroVencimento} onValueChange={setFiltroVencimento}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Nenhum (interno)</SelectItem>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                  <SelectItem value={TODOS_VENCIMENTOS}>Todos</SelectItem>
+                  {diasVencimento.map((d) => (
+                    <SelectItem key={d} value={String(d)}>Dia {String(d).padStart(2, "0")}</SelectItem>
                   ))}
+                  <SelectItem value={SEM_VENCIMENTO}>Sem vencimento definido</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div className="max-h-40 overflow-y-auto rounded-lg border border-sand-200">
+              <label className="flex items-center gap-2 border-b border-sand-100 bg-sand-50 px-3 py-1.5 text-xs font-medium hover:bg-sand-100">
+                <Checkbox checked={todosFiltradosSelecionados} onCheckedChange={toggleTodosFiltrados} />
+                <span>Selecionar todos (filtrados)</span>
+              </label>
+              {clientesFiltrados.map((c) => (
+                <label key={c.id} className="flex items-center gap-2 border-b border-sand-100 px-3 py-1.5 text-xs last:border-b-0 hover:bg-sand-50">
+                  <Checkbox checked={clienteIds.includes(c.id)} onCheckedChange={() => toggleCliente(c.id)} />
+                  <span className="truncate">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                </label>
+              ))}
+              {clientesFiltrados.length === 0 && (
+                <p className="px-3 py-4 text-center text-[11px] text-sand-400">Nenhum cliente com esse vencimento.</p>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-sand-400">
+              {clienteIds.length === 0 ? "Tarefa interna, sem cliente." : `${clienteIds.length} cliente${clienteIds.length === 1 ? "" : "s"} selecionado${clienteIds.length === 1 ? "" : "s"}`}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="mb-1 block">Departamento</Label>
               <Select value={departamento} onValueChange={(v) => setDepartamento(v as Departamento)}>

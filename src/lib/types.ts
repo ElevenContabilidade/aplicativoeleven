@@ -628,7 +628,14 @@ export interface Task {
   id: string;
   titulo: string;
   descricao?: string;
+  /** Cliente único da tarefa (caso comum). Em tarefa de vários clientes de
+   * uma vez (ex: "Enviar boletos dia 05"), guarda o primeiro — é o que as
+   * telas de um cliente específico usam pra listar as tarefas dele. */
   clienteId?: string;
+  /** Presente só quando a tarefa é sobre mais de um cliente ao mesmo tempo
+   * — a lista completa, incluindo o próprio clienteId. Ausente = tarefa de
+   * um cliente só (ou nenhum). */
+  clienteIds?: string[];
   departamento: Departamento;
   responsavelId: string;
   prioridade: TaskPrioridade;

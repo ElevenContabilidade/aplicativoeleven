@@ -21,12 +21,15 @@ export function taskAlertId(taskId: string): string {
 /** Tarefa concluída não precisa mais avisar o responsável. */
 function buildTaskAlert(task: Task, clients: Client[]): AppNotification | null {
   if (task.status === "Concluída") return null;
-  const nomeCliente = clientLabel(task.clienteId, clients);
+  const contexto =
+    task.clienteIds && task.clienteIds.length > 1
+      ? `${task.clienteIds.length} clientes`
+      : clientLabel(task.clienteId, clients);
   return {
     id: taskAlertId(task.id),
     tipo: "tarefa",
     titulo: "Tarefa atribuída a você",
-    descricao: `${task.titulo}${nomeCliente ? ` — ${nomeCliente}` : ""}`,
+    descricao: `${task.titulo}${contexto ? ` — ${contexto}` : ""}`,
     // `notifications` é recalculado do zero a cada carregamento da página,
     // então "agora" fazia todo alerta empatar na ordenação — usa a data de
     // criação real da tarefa em vez disso.
