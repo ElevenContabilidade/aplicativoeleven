@@ -64,13 +64,17 @@ export function PessoalChecklist() {
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
+  const [somenteProprios, setSomenteProprios] = useState(false);
 
   const clientesDoSetor = useMemo(
     () =>
       clients.filter(
-        (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, "pessoal")
+        (c) =>
+          (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
+          setorAtendidoPelaEleven(c, "pessoal") &&
+          (!somenteProprios || !c.dados.clienteParceiro)
       ),
-    [clients]
+    [clients, somenteProprios]
   );
 
   const competencia = period === "anual" ? year : `${year}-${period}`;
@@ -237,11 +241,14 @@ export function PessoalChecklist() {
           </div>
         </CardHeader>
         <CardContent className="pt-4">
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            <PeriodChip label="Anual" active={period === "anual"} onClick={() => setPeriod("anual")} />
-            {MESES.map((m) => (
-              <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
-            ))}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              <PeriodChip label="Anual" active={period === "anual"} onClick={() => setPeriod("anual")} />
+              {MESES.map((m) => (
+                <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
+              ))}
+            </div>
+            <PeriodChip label="Só clientes próprios da Eleven" active={somenteProprios} onClick={() => setSomenteProprios((v) => !v)} />
           </div>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
