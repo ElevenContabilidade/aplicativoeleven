@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 
 const WINE = "#5C1420";
 
@@ -66,6 +66,11 @@ export function FiscalChecklist() {
   const [mostrarPrefeitura, setMostrarPrefeitura] = useState(false);
   const [senhasReveladas, setSenhasReveladas] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [ordemNome, setOrdemNome] = useState<"asc" | "desc" | null>(null);
+
+  function toggleOrdemNome() {
+    setOrdemNome((atual) => (atual === "asc" ? "desc" : atual === "desc" ? null : "asc"));
+  }
 
   function toggleSenhaRevelada(clienteId: string) {
     setSenhasReveladas((atual) => {
@@ -108,6 +113,14 @@ export function FiscalChecklist() {
     () => clientesDoSetor.filter((c) => clienteAtivoNaCompetencia(c, competencia)),
     [clientesDoSetor, competencia]
   );
+
+  const myClientsOrdenados = useMemo(() => {
+    if (!ordemNome) return myClients;
+    const dir = ordemNome === "asc" ? 1 : -1;
+    return [...myClients].sort(
+      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+    );
+  }, [myClients, ordemNome]);
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -366,7 +379,16 @@ export function FiscalChecklist() {
                 <thead>
                   <tr>
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                      Cliente
+                      <button type="button" onClick={toggleOrdemNome} className="flex items-center gap-1 hover:text-cream-50/80">
+                        Cliente
+                        {ordemNome === "asc" ? (
+                          <ArrowUp className="size-3" />
+                        ) : ordemNome === "desc" ? (
+                          <ArrowDown className="size-3" />
+                        ) : (
+                          <ArrowUpDown className="size-3 text-cream-50/50" />
+                        )}
+                      </button>
                     </th>
                     {mostrarPrefeitura && (
                       <th className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
@@ -385,7 +407,7 @@ export function FiscalChecklist() {
                   </tr>
                 </thead>
                 <tbody>
-                  {myClients.map((c) => (
+                  {myClientsOrdenados.map((c) => (
                     <ClientRow
                       key={c.id}
                       client={c}
@@ -402,7 +424,7 @@ export function FiscalChecklist() {
                       onCopiarSenha={() => c.dados.senhaPrefeituraPortalNacional && copiarSenha(c.id, c.dados.senhaPrefeituraPortalNacional)}
                     />
                   ))}
-                  {myClients.length === 0 && (
+                  {myClientsOrdenados.length === 0 && (
                     <tr>
                       <td colSpan={ROTINAS_FISCAIS_MENSAIS.length + 2 + (mostrarPrefeitura ? 1 : 0)} className="py-8 text-center text-sand-400">
                         Nenhum cliente atribuído ao setor Fiscal.
