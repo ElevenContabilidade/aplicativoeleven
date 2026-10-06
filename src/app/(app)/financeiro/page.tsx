@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
+const WINE = "#5C1420";
 
 type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
 type ContaPagarSortField = "descricao" | "competencia" | "vencimento" | "valor" | "status";
@@ -356,6 +358,21 @@ export default function FinanceiroPage() {
   );
   const totalPago = contasAPagar.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0);
   const totalAPagarEmAberto = contasAPagar.filter((c) => c.status === "Em aberto").reduce((a, c) => a + c.valor, 0);
+
+  // Sistema do escritório não tem campo de categoria própria (é sempre a
+  // mesma assinatura recorrente) — agrupa à parte, só despesa avulsa usa a
+  // categoria cadastrada nela (ou "Sem categoria" quando ficou em branco).
+  const gastosPorCategoria = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const linha of contasAPagar) {
+      const categoria =
+        linha.origem === "sistema"
+          ? "Sistemas e ferramentas"
+          : despesasAvulsas.find((d) => d.id === linha.refId)?.categoria?.trim() || "Sem categoria";
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + linha.valor);
+    }
+    return [...mapa.entries()].map(([categoria, valor]) => ({ categoria, valor })).sort((a, b) => b.valor - a.valor);
+  }, [contasAPagar, despesasAvulsas]);
 
   const [sortFieldContas, setSortFieldContas] = useState<ContaPagarSortField | null>(null);
   const [sortDirContas, setSortDirContas] = useState<"asc" | "desc">("asc");
@@ -765,6 +782,30 @@ export default function FinanceiroPage() {
               )}
             </TableBody>
           </Table>
+
+          {gastosPorCategoria.length > 0 && (
+            <div className="mt-6 border-t border-sand-200 pt-5">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="flex items-center gap-2 text-xs font-semibold text-sand-700">
+                  <BarChart3 className="size-4 text-wine-600" /> Gastos por categoria
+                </p>
+                <p className="text-[11px] text-sand-500">
+                  Maior gasto: <span className="font-semibold text-sand-700">{gastosPorCategoria[0].categoria}</span> ({formatCurrency(gastosPorCategoria[0].valor)})
+                </p>
+              </div>
+              <div style={{ height: Math.max(160, gastosPorCategoria.length * 32) }}>
+                <ResponsiveContainer>
+                  <BarChart data={gastosPorCategoria} layout="vertical" margin={{ left: 8, right: 24 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(v)} />
+                    <YAxis type="category" dataKey="categoria" tick={{ fontSize: 11 }} width={150} />
+                    <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
+                    <Bar dataKey="valor" fill={WINE} radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
