@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 
 const WINE = "#5C1420";
 
@@ -63,6 +63,16 @@ export function FiscalChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [mostrarPrefeitura, setMostrarPrefeitura] = useState(false);
+  const [senhasReveladas, setSenhasReveladas] = useState<Set<string>>(new Set());
+
+  function toggleSenhaRevelada(clienteId: string) {
+    setSenhasReveladas((atual) => {
+      const next = new Set(atual);
+      if (next.has(clienteId)) next.delete(clienteId); else next.add(clienteId);
+      return next;
+    });
+  }
 
   // MEI sem contabilidade regular não faz nenhuma rotina fiscal desse
   // checklist (já é acompanhado à parte na tela MEI) — sem esse filtro ele
@@ -335,6 +345,11 @@ export function FiscalChecklist() {
                 </Button>
                 <span className="text-[11px] text-sand-400">preenche só quem ainda está em branco</span>
               </div>
+              <div className="mb-3">
+                <Button type="button" size="sm" variant={mostrarPrefeitura ? "primary" : "outline"} onClick={() => setMostrarPrefeitura((v) => !v)}>
+                  <KeyRound className="size-3.5" /> {mostrarPrefeitura ? "Ocultar" : "Mostrar"} CPF/senha da prefeitura
+                </Button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-xs">
                 <thead>
@@ -342,6 +357,11 @@ export function FiscalChecklist() {
                     <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                       Cliente
                     </th>
+                    {mostrarPrefeitura && (
+                      <th className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                        CPF / Senha prefeitura
+                      </th>
+                    )}
                     {ROTINAS_FISCAIS_MENSAIS.map((r) => (
                       <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                         {r}
@@ -364,11 +384,14 @@ export function FiscalChecklist() {
                       statusFor={statusFor}
                       setChecklist={setChecklistFiscal}
                       pct={pctFor(c, competencia)}
+                      mostrarPrefeitura={mostrarPrefeitura}
+                      senhaRevelada={senhasReveladas.has(c.id)}
+                      onToggleSenha={() => toggleSenhaRevelada(c.id)}
                     />
                   ))}
                   {myClients.length === 0 && (
                     <tr>
-                      <td colSpan={ROTINAS_FISCAIS_MENSAIS.length + 2} className="py-8 text-center text-sand-400">
+                      <td colSpan={ROTINAS_FISCAIS_MENSAIS.length + 2 + (mostrarPrefeitura ? 1 : 0)} className="py-8 text-center text-sand-400">
                         Nenhum cliente atribuído ao setor Fiscal.
                       </td>
                     </tr>
@@ -384,6 +407,13 @@ export function FiscalChecklist() {
   );
 }
 
+/** Sócio cujo CPF faz sentido usar como login do Portal Nacional/prefeitura
+ * — prioriza o administrador, depois o representante legal, senão o
+ * primeiro sócio cadastrado. */
+function socioResponsavel(client: Client) {
+  return client.socios?.find((s) => s.administrador) ?? client.socios?.find((s) => s.representanteLegal) ?? client.socios?.[0];
+}
+
 function ClientRow({
   client: c,
   columns,
@@ -392,6 +422,9 @@ function ClientRow({
   statusFor,
   setChecklist,
   pct,
+  mostrarPrefeitura,
+  senhaRevelada,
+  onToggleSenha,
 }: {
   client: Client;
   columns: string[];
@@ -400,7 +433,12 @@ function ClientRow({
   statusFor: (clienteId: string, competencia: string, rotina: string) => ChecklistStatus | null;
   setChecklist: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   pct: number;
+  mostrarPrefeitura?: boolean;
+  senhaRevelada?: boolean;
+  onToggleSenha?: () => void;
 }) {
+  const socio = socioResponsavel(c);
+  const senha = c.dados.senhaPrefeituraPortalNacional;
   return (
     <tr className="bg-white odd:bg-sand-50">
       <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
@@ -408,6 +446,28 @@ function ClientRow({
           {c.dados.nomeFantasia ?? c.dados.razaoSocial}
         </Link>
       </td>
+      {mostrarPrefeitura && (
+        <td className="border-b border-l border-sand-200 px-3 py-2 text-[11px] text-sand-600">
+          {socio?.cpf || senha ? (
+            <div className="flex items-center gap-2">
+              <span className="whitespace-nowrap">{socio?.cpf || "—"}</span>
+              <span className="whitespace-nowrap font-mono">{senha ? (senhaRevelada ? senha : "••••••") : "—"}</span>
+              {senha && (
+                <button
+                  type="button"
+                  onClick={onToggleSenha}
+                  title={senhaRevelada ? "Ocultar senha" : "Exibir senha"}
+                  className="flex size-5 shrink-0 items-center justify-center rounded text-sand-400 hover:bg-sand-100 hover:text-wine-700"
+                >
+                  {senhaRevelada ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+                </button>
+              )}
+            </div>
+          ) : (
+            <span className="text-sand-300">Não cadastrado</span>
+          )}
+        </td>
+      )}
       {columns.map((r) => {
         if (applicable && !applicable.includes(r)) {
           return (
