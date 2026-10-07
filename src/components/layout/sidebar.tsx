@@ -88,7 +88,9 @@ export function SidebarNav({
 
                 const filhos = itens.filter((i) => i.group === item.group);
                 const grupoAtivo = filhos.some((f) => isActive(f.href));
-                const fechado = gruposFechados[item.group] ?? false;
+                // Fechado por padrão — só abre sozinho se a página atual for
+                // uma das do grupo, pra não esconder onde o usuário está.
+                const fechado = gruposFechados[item.group] ?? !grupoAtivo;
                 const GroupIcon = NAV_GROUP_ICON[item.group] ?? item.icon;
 
                 if (collapsed) return filhos.map((f) => renderItem(f, false));
