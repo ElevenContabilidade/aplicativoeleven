@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil, BarChart3 } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Wallet, CircleDollarSign, CircleAlert, Repeat, Receipt, Plus, Scale, Trash2, Check, TrendingDown, RotateCcw, Landmark, ArrowUp, ArrowDown, ArrowUpDown, Pencil, BarChart3, PieChart as PieChartIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types
 
 const TODOS = "todos";
 const WINE = "#5C1420";
+const PIE_COLORS = ["#5C1420", "#8A2F3E", "#E6C378", "#B4791F", "#3E6B8A", "#2E7D53", "#948977"];
 
 type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
 type ContaPagarSortField = "descricao" | "competencia" | "vencimento" | "valor" | "status";
@@ -160,7 +161,11 @@ export default function FinanceiroPage() {
     [processosSocietarios, competenciasPeriodo]
   );
 
-  const ledgerAll = useMemo(() => {
+  /** Monta o ledger consolidado (clientes + avulsos + boletos + parceiros +
+   * extras de parceiro) pra um conjunto arbitrário de competências —
+   * extraído pra função reutilizável porque a Visão anual precisa do ledger
+   * do ano inteiro independente do mês selecionado nos filtros da página. */
+  const buildLedger = useCallback((competencias: string[]) => {
     const doClientes = clients.flatMap((c) =>
       c.historicoFinanceiro.map((h) => ({
         ...h,
@@ -217,7 +222,7 @@ export default function FinanceiroPage() {
       if (!c.dados.clienteParceiro) return [];
       const entryMap = new Map(recebimentosParceiro.filter((r) => r.clienteId === c.id).map((r) => [r.competencia, r]));
       const inicio = c.financeiro.inicioContrato?.slice(0, 7);
-      return competenciasPeriodo.flatMap((comp) => {
+      return competencias.flatMap((comp) => {
         if (inicio && comp < inicio) return [];
         const entry = entryMap.get(comp);
         if (entry?.removido) return [];
@@ -252,7 +257,7 @@ export default function FinanceiroPage() {
       const pagamentoMap = new Map(
         pagamentosExtrasParceiro.filter((p) => p.extraParceiroId === e.id).map((p) => [p.competencia, p])
       );
-      return competenciasPeriodo.flatMap((comp) => {
+      return competencias.flatMap((comp) => {
         if (e.inicioCompetencia && comp < e.inicioCompetencia) return [];
         const pagamento = pagamentoMap.get(comp);
         if (pagamento?.removido) return [];
@@ -277,7 +282,100 @@ export default function FinanceiroPage() {
       });
     });
     return [...doClientes, ...avulsos, ...boletos, ...parceiros, ...extras];
-  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, competenciasPeriodo]);
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro]);
+
+  const ledgerAll = useMemo(() => buildLedger(competenciasPeriodo), [buildLedger, competenciasPeriodo]);
+
+  // Visão anual: ano inteiro independente do mês selecionado nos filtros
+  // de cima — pra sempre mostrar o fechamento dos 12 meses do ano em vista.
+  const competenciasAno = useMemo(() => MESES.map((m) => `${year}-${m.value}`), [year]);
+  const ledgerAno = useMemo(() => buildLedger(competenciasAno), [buildLedger, competenciasAno]);
+  const ledgerFiltradoAno = useMemo(
+    () => ledgerAno.filter((h) => competenciasAno.includes(h.competencia)),
+    [ledgerAno, competenciasAno]
+  );
+  const resumoSocietarioAno = useMemo(
+    () => resumoFinanceiroSocietario(processosSocietarios, competenciasAno),
+    [processosSocietarios, competenciasAno]
+  );
+  const contasAPagarAno = useMemo(
+    () => contasAPagarDoPeriodo(sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciasAno),
+    [sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciasAno]
+  );
+  const pagoEfetivoDe = useCallback(
+    (h: { valorPago?: number; status: string; valor: number }) => h.valorPago ?? (h.status === "Pago" ? h.valor : 0),
+    []
+  );
+  const resumoSocietarioPorMes = useMemo(
+    () => new Map(MESES.map((m) => [`${year}-${m.value}`, resumoFinanceiroSocietario(processosSocietarios, [`${year}-${m.value}`])])),
+    [processosSocietarios, year]
+  );
+  const visaoAnualMeses = useMemo(
+    () =>
+      MESES.map((m) => {
+        const comp = `${year}-${m.value}`;
+        const recebidoMes =
+          ledgerFiltradoAno.filter((h) => h.competencia === comp).reduce((a, h) => a + pagoEfetivoDe(h), 0) +
+          (resumoSocietarioPorMes.get(comp)?.recebido ?? 0);
+        const pagoMes = contasAPagarAno
+          .filter((c) => c.competencia === comp && c.status === "Pago")
+          .reduce((a, c) => a + c.valor, 0);
+        const lucroMes = recebidoMes - pagoMes;
+        const margemMes = recebidoMes > 0 ? (lucroMes / recebidoMes) * 100 : 0;
+        return { mes: m.value, label: m.label, recebidoMes, pagoMes, lucroMes, margemMes };
+      }),
+    [ledgerFiltradoAno, contasAPagarAno, resumoSocietarioPorMes, pagoEfetivoDe, year]
+  );
+  const faturadoAno = useMemo(
+    () => ledgerFiltradoAno.reduce((a, h) => a + h.valor, 0) + resumoSocietarioAno.total,
+    [ledgerFiltradoAno, resumoSocietarioAno]
+  );
+  const recebidoAnoTotal = useMemo(
+    () => ledgerFiltradoAno.reduce((a, h) => a + pagoEfetivoDe(h), 0) + resumoSocietarioAno.recebido,
+    [ledgerFiltradoAno, resumoSocietarioAno, pagoEfetivoDe]
+  );
+  const pagoAnoTotal = useMemo(
+    () => contasAPagarAno.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0),
+    [contasAPagarAno]
+  );
+  const lucroAno = recebidoAnoTotal - pagoAnoTotal;
+  const margemAno = recebidoAnoTotal > 0 ? (lucroAno / recebidoAnoTotal) * 100 : 0;
+  const inadimplenciaAno = useMemo(
+    () => ledgerFiltradoAno.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0),
+    [ledgerFiltradoAno]
+  );
+  const inadimplenciaPercentAno = faturadoAno > 0 ? (inadimplenciaAno / faturadoAno) * 100 : 0;
+
+  const pizzaEntradas = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const h of ledgerFiltradoAno) {
+      const valor = pagoEfetivoDe(h);
+      if (valor <= 0) continue;
+      const categoria = h.servico?.trim() || "Assessoria mensal";
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + valor);
+    }
+    for (const s of resumoSocietarioAno.porServico) {
+      if (s.recebido <= 0) continue;
+      const categoria = `Societário — ${s.tipoServico}`;
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + s.recebido);
+    }
+    return [...mapa.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [ledgerFiltradoAno, resumoSocietarioAno, pagoEfetivoDe]);
+
+  const pizzaSaidas = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const linha of contasAPagarAno) {
+      if (linha.status !== "Pago") continue;
+      const categoria =
+        linha.origem === "sistema"
+          ? "Sistemas e ferramentas"
+          : despesasAvulsas.find((d) => d.id === linha.refId)?.categoria?.trim() || "Sem categoria";
+      mapa.set(categoria, (mapa.get(categoria) ?? 0) + linha.valor);
+    }
+    return [...mapa.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [contasAPagarAno, despesasAvulsas]);
+
+  const [abaAnual, setAbaAnual] = useState<"geral" | "entradas" | "saidas">("geral");
 
   const bancosDisponiveis = useMemo(
     () =>
@@ -595,6 +693,47 @@ export default function FinanceiroPage() {
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
         <MetricCard label="Ticket médio" value={formatCurrency(ticketMedio)} icon={Receipt} />
       </div>
+
+      <Card className="mb-6 border-wine-200">
+        <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2"><PieChartIcon className="size-4 text-wine-600" /> Visão anual — {year}</CardTitle>
+          <div className="flex flex-wrap gap-1.5">
+            <PeriodChip label="Visão geral" active={abaAnual === "geral"} onClick={() => setAbaAnual("geral")} />
+            <PeriodChip label="Pizza de entradas" active={abaAnual === "entradas"} onClick={() => setAbaAnual("entradas")} />
+            <PeriodChip label="Pizza de saídas" active={abaAnual === "saidas"} onClick={() => setAbaAnual("saidas")} />
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {abaAnual === "geral" && (
+            <>
+              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                <MetricCard label="Faturado" value={formatCurrency(faturadoAno)} icon={Wallet} tone="wine" />
+                <MetricCard label="Recebido" value={formatCurrency(recebidoAnoTotal)} icon={CircleDollarSign} tone="success" />
+                <MetricCard label="Despesa" value={formatCurrency(pagoAnoTotal)} icon={TrendingDown} tone="danger" />
+                <MetricCard label="Lucro" value={formatCurrency(lucroAno)} icon={Scale} tone={lucroAno >= 0 ? "success" : "danger"} />
+                <MetricCard label="Margem" value={`${margemAno.toFixed(1)}%`} icon={BarChart3} tone="wine" />
+                <MetricCard label="Inadimplência" value={`${inadimplenciaPercentAno.toFixed(1)}%`} icon={CircleAlert} tone="warning" />
+              </div>
+              <p className="mb-2 text-[11px] font-semibold text-sand-500">Mês a mês — lucro e margem de cada competência</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                {visaoAnualMeses.map((m) => (
+                  <div key={m.mes} className="rounded-lg border border-sand-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold text-sand-500">{m.label}/{year}</p>
+                    <p className={cn("mt-1 text-sm font-semibold", m.lucroMes >= 0 ? "text-sand-900" : "text-status-danger")}>
+                      {formatCurrency(m.lucroMes)}
+                    </p>
+                    <p className={cn("text-[11px] font-medium", m.lucroMes >= 0 ? "text-status-success" : "text-status-danger")}>
+                      {m.recebidoMes > 0 ? `${m.margemMes.toFixed(1)}% de margem` : "sem movimento"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {abaAnual === "entradas" && <PizzaFinanceira data={pizzaEntradas} total={recebidoAnoTotal} />}
+          {abaAnual === "saidas" && <PizzaFinanceira data={pizzaSaidas} total={pagoAnoTotal} />}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -937,6 +1076,42 @@ export default function FinanceiroPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function PizzaFinanceira({ data, total }: { data: { name: string; value: number }[]; total: number }) {
+  if (data.length === 0) {
+    return <p className="py-10 text-center text-sm text-sand-400">Nenhum valor no período.</p>;
+  }
+  return (
+    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
+      <div style={{ height: 240 }}>
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={95} paddingAngle={2}>
+              {data.map((_, i) => (
+                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className="space-y-1.5">
+        {data.map((d, i) => (
+          <li key={d.name} className="flex items-center justify-between gap-2 text-xs">
+            <span className="flex items-center gap-2 text-sand-700">
+              <span className="size-2.5 shrink-0 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+              {d.name}
+            </span>
+            <span className="shrink-0 font-medium text-sand-900">
+              {formatCurrency(d.value)}{" "}
+              <span className="text-sand-400">({total > 0 ? ((d.value / total) * 100).toFixed(0) : 0}%)</span>
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
