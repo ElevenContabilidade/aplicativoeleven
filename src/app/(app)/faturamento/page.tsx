@@ -17,8 +17,11 @@ import {
   Copy,
   Check,
   AlertTriangle,
+  RotateCcw,
+  CircleCheck,
+  CircleAlert,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,9 +29,11 @@ import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { EleveLogo } from "@/components/brand/logo";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { setorAtendidoPelaEleven } from "@/lib/types";
+import { setorAtendidoPelaEleven, type FaturamentoMensal } from "@/lib/types";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractPgdasValores } from "@/lib/pgdas-extract";
 import { uploadDocumento } from "@/lib/upload-documento";
@@ -37,8 +42,49 @@ import { cn, formatCurrency } from "@/lib/utils";
 
 const WINE = "#5C1420";
 const GOLD = "#B4791F";
+const PIE_COLORS = ["#5C1420", "#8A2F3E", "#E6C378", "#B4791F", "#3E6B8A", "#2E7D53", "#948977", "#C0392B"];
 const SUBLIMITE_ANUAL = 3_600_000;
 const ALERTA_SUBLIMITE = SUBLIMITE_ANUAL * 0.8;
+const HOJE_ISO = new Date().toISOString().slice(0, 10);
+
+const TRIBUTO_LABELS: Record<string, string> = {
+  irpj: "IRPJ",
+  csll: "CSLL",
+  cofins: "COFINS",
+  pis: "PIS/Pasep",
+  inss: "INSS/CPP",
+  icms: "ICMS",
+  ipi: "IPI",
+  iss: "ISS",
+};
+
+/** Vencimento do DAS — usa o lido do Extrato quando tem; senão estima pelo
+ * dia 20 do mês seguinte à competência (regra padrão do Simples Nacional;
+ * pode cair um ou dois dias depois quando bate fim de semana/feriado, então
+ * é só uma estimativa quando o PDF não informou o vencimento real). */
+function vencimentoEfetivo(h: Pick<FaturamentoMensal, "competencia" | "vencimento">): string {
+  if (h.vencimento) return h.vencimento;
+  const [ano, mes] = h.competencia.split("-").map(Number);
+  return new Date(ano, mes, 20).toISOString().slice(0, 10); // mes já é "mês seguinte" (índice 0-based)
+}
+
+function situacaoRegistro(h: Pick<FaturamentoMensal, "competencia" | "vencimento" | "dataPagamento">): "Pago" | "A vencer" | "Atrasado" {
+  if (h.dataPagamento) return "Pago";
+  return vencimentoEfetivo(h) < HOJE_ISO ? "Atrasado" : "A vencer";
+}
+
+function formatDataBR(iso: string): string {
+  const [ano, mes, dia] = iso.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+
+function formatPercentBR(valor: number, casas = 1): string {
+  return `${valor.toFixed(casas).replace(".", ",")}%`;
+}
+
+function competenciaNumero(comp: string): string {
+  return `${comp.slice(5, 7)}/${comp.slice(0, 4)}`;
+}
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -57,6 +103,13 @@ interface PgdasPreviewItem {
   imposto: number;
   observacao: string;
   cnpjNaoEncontrado?: string;
+  /** Campos extras que só vêm do Extrato — passam direto pro lançamento
+   * salvo (não são editáveis nesse preview, só os campos acima são). */
+  vencimento?: string;
+  dataPagamento?: string;
+  rbt12?: number;
+  anexo?: string;
+  tributos?: FaturamentoMensal["tributos"];
   /** Quando a extração automática falhou pra esse arquivo — a linha continua
    * na lista (não trava os outros PDFs do lote), mas pede preenchimento
    * manual de competência/valores antes de poder salvar. */
@@ -83,7 +136,10 @@ export default function FaturamentoPage() {
   const faturamentoMensal = useAppStore((s) => s.faturamentoMensal);
   const updateFaturamentoMensal = useAppStore((s) => s.updateFaturamentoMensal);
   const deleteFaturamentoMensal = useAppStore((s) => s.deleteFaturamentoMensal);
+  const team = useAppStore((s) => s.team);
+  const dadosEscritorio = useAppStore((s) => s.dadosEscritorio);
   const { userId } = useAuthStore();
+  const colaboradorAtual = team.find((m) => m.id === userId);
 
   const [busca, setBusca] = useState("");
   const [year, setYear] = useState(() => {
@@ -130,8 +186,13 @@ export default function FaturamentoPage() {
             competencia: extraido.competencia ?? competencia,
             faturamento: extraido.faturamento ?? 0,
             imposto: extraido.imposto ?? 0,
-            observacao: extraido.observacaoSugerida ?? "",
+            observacao: "",
             cnpjNaoEncontrado: !cliente ? extraido.cnpj : undefined,
+            vencimento: extraido.vencimento,
+            dataPagamento: extraido.dataPagamento,
+            rbt12: extraido.rbt12,
+            anexo: extraido.anexo,
+            tributos: extraido.tributos,
             erro: faltouLer
               ? `Não consegui ler "${file.name}" automaticamente — confira se é um PGDAS-D digital (não digitalizado/foto) e preencha os valores manualmente abaixo.`
               : undefined,
@@ -184,6 +245,11 @@ export default function FaturamentoPage() {
       faturamento: item.faturamento,
       imposto: item.imposto,
       pgdasUrl,
+      vencimento: item.vencimento,
+      dataPagamento: item.dataPagamento,
+      rbt12: item.rbt12,
+      anexo: item.anexo,
+      tributos: item.tributos,
       ...(item.observacao.trim() ? { observacao: item.observacao.trim() } : {}),
     });
   }
@@ -298,6 +364,24 @@ export default function FaturamentoPage() {
     .filter((h) => h.competencia.slice(0, 4) === anoRelatorio && h.competencia <= relCompetenciaEfetiva)
     .reduce((a, h) => a + (h.faturamento ?? 0), 0);
 
+  // RBT12 declarado no PGDAS/Extrato é o oficial — só cai pra soma dos
+  // nossos próprios lançamentos (menos precisa, pode faltar mês) quando o
+  // PDF não trouxe o campo (ex: lançamento manual ou Declaração antiga).
+  const rbt12Efetivo =
+    entradaAtual?.rbt12 ?? (ultimos13.length > 1 ? ultimos13.slice(0, -1).reduce((a, h) => a + (h.faturamento ?? 0), 0) : undefined);
+
+  const vencimentoAtual = entradaAtual ? vencimentoEfetivo(entradaAtual) : undefined;
+  const situacaoAtual = entradaAtual ? situacaoRegistro(entradaAtual) : undefined;
+  const guiasAtrasadas = historicoCliente.filter((h) => h.competencia !== relCompetenciaEfetiva && situacaoRegistro(h) === "Atrasado");
+
+  const tributosAtuais = useMemo(() => {
+    if (!entradaAtual?.tributos) return [];
+    return Object.entries(entradaAtual.tributos)
+      .filter((entry): entry is [string, number] => (entry[1] ?? 0) > 0)
+      .map(([chave, valor]) => ({ name: TRIBUTO_LABELS[chave] ?? chave.toUpperCase(), value: valor }))
+      .sort((a, b) => b.value - a.value);
+  }, [entradaAtual]);
+
   const pontosDeAtencao: string[] = [];
   if (rbaAno > ALERTA_SUBLIMITE) {
     pontosDeAtencao.push(
@@ -306,7 +390,7 @@ export default function FaturamentoPage() {
   }
   if (cargaAnterior !== undefined && cargaAtual - cargaAnterior >= 10) {
     pontosDeAtencao.push(
-      `O percentual de imposto sobre o faturamento subiu de ${cargaAnterior.toFixed(1)}% pra ${cargaAtual.toFixed(1)}% em relação ao mês anterior.`
+      `O percentual de imposto sobre o faturamento subiu de ${formatPercentBR(cargaAnterior)} pra ${formatPercentBR(cargaAtual)} em relação ao mês anterior.`
     );
   }
 
@@ -315,18 +399,27 @@ export default function FaturamentoPage() {
     return `${MESES.find((m) => m.value === mesComp)?.label ?? mesComp}/${ano}`;
   }
 
+  function marcarCompetenciaPaga(h: FaturamentoMensal, data: string) {
+    updateFaturamentoMensal(h.clienteId, h.competencia, { dataPagamento: data });
+  }
+
+  function reabrirCompetencia(h: FaturamentoMensal) {
+    updateFaturamentoMensal(h.clienteId, h.competencia, { dataPagamento: undefined });
+  }
+
   function montarResumoTexto(): string {
-    if (!relCliente || !entradaAtual) return "";
+    if (!relCliente || !entradaAtual || !vencimentoAtual) return "";
     const nome = relCliente.dados.nomeFantasia ?? relCliente.dados.razaoSocial;
     const partes = [
-      `*Relatório fiscal mensal — ${nome}*`,
-      `Competência: ${competenciaLabel(relCompetenciaEfetiva)}`,
-      `Faturamento: ${formatCurrency(entradaAtual.faturamento ?? 0)}`,
-      `Imposto (DAS): ${formatCurrency(entradaAtual.imposto ?? 0)}`,
-      `Carga tributária: ${cargaAtual.toFixed(1)}%`,
+      `Olá! Segue o resumo fiscal da *${nome}* - competência ${competenciaNumero(relCompetenciaEfetiva)}:`,
+      "",
+      `- Faturamento do mês: ${formatCurrency(entradaAtual.faturamento ?? 0)}`,
+      `- Imposto do Simples (DAS): ${formatCurrency(entradaAtual.imposto ?? 0)} - vence em ${formatDataBR(vencimentoAtual)}`,
+      `- Percentual de imposto: ${formatPercentBR(cargaAtual, 2)} do faturamento`,
     ];
-    if (entradaAtual.observacao?.trim()) partes.push("", entradaAtual.observacao.trim());
-    if (pontosDeAtencao.length > 0) partes.push("", "Pontos de atenção:", ...pontosDeAtencao.map((p) => `• ${p}`));
+    if (rbt12Efetivo !== undefined) partes.push(`- Faturamento dos últimos 12 meses (RBT12): ${formatCurrency(rbt12Efetivo)}`);
+    partes.push(`- Impostos anteriores: ${guiasAtrasadas.length === 0 ? "em dia" : "com pendência"}`);
+    partes.push("", "O relatório completo segue em PDF. ", "Qualquer dúvida, estou à disposição.", "", `*${dadosEscritorio.razaoSocial}*`);
     return partes.join("\n");
   }
 
@@ -349,6 +442,38 @@ export default function FaturamentoPage() {
     } catch {
       alert("Não foi possível copiar automaticamente — copie o resumo manualmente.");
     }
+  }
+
+  /** window.print() direto na página inteira sai bagunçado (o app tem
+   * sidebar, cabeçalho fixo etc., e os gráficos recalculam a medição no
+   * meio da impressão). Em vez disso, clona o relatório já renderizado
+   * (com os gráficos SVG prontos, sem precisar remedir nada) pra uma janela
+   * nova só com ele + o CSS da página, e imprime só essa janela. */
+  function imprimirRelatorio() {
+    const node = document.getElementById("relatorio-mensal-conteudo");
+    if (!node) return;
+    const janela = window.open("", "_blank");
+    if (!janela) {
+      alert("Seu navegador bloqueou a janela de impressão — permita pop-ups pra esse site e tente de novo.");
+      return;
+    }
+    const estilos = [...document.styleSheets]
+      .map((sheet) => {
+        try {
+          return [...sheet.cssRules].map((r) => r.cssText).join("\n");
+        } catch {
+          return "";
+        }
+      })
+      .join("\n");
+    janela.document.write(
+      `<!doctype html><html><head><meta charset="utf-8"><title>Relatório fiscal mensal</title><style>${estilos} body{margin:0;padding:24px;background:#fff;}</style></head><body>${node.outerHTML}</body></html>`
+    );
+    janela.document.close();
+    janela.onload = () => {
+      janela.focus();
+      janela.print();
+    };
   }
 
   return (
@@ -653,20 +778,27 @@ export default function FaturamentoPage() {
               </CardContent>
             </Card>
           ) : (
-            <article className="space-y-4 rounded-2xl border border-sand-200 bg-sand-50 p-4 sm:p-6 print:space-y-3 print:border-0 print:bg-white print:p-0">
-              <div className="flex flex-col gap-2 border-b border-sand-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-wine-700">
-                    <FileText className="size-3.5" /> Relatório fiscal mensal · {relCliente.dados.regimeTributario}
+            <article id="relatorio-mensal-conteudo" className="overflow-hidden rounded-2xl border border-sand-200 bg-sand-50 print:border-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-wine-950 px-5 py-4 sm:px-6">
+                <EleveLogo variant="cream" markClassName="h-8 w-8" showTagline />
+                <div className="text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cream-300">
+                    Relatório fiscal mensal · {relCliente.dados.regimeTributario}
                   </p>
-                  <h2 className="font-display text-xl font-semibold text-sand-900">{competenciaLabel(relCompetenciaEfetiva)}</h2>
-                  <p className="text-xs text-sand-500">
-                    {relCliente.dados.nomeFantasia ?? relCliente.dados.razaoSocial} · CNPJ {relCliente.dados.cnpj} ·{" "}
-                    {relCliente.dados.municipio}/{relCliente.dados.estado} · Emitido em {new Date().toLocaleDateString("pt-BR")}
-                  </p>
+                  <p className="font-display text-xl font-semibold text-cream-50">{competenciaLabel(relCompetenciaEfetiva)}</p>
                 </div>
-                <div className="flex flex-wrap gap-2 print:hidden">
-                  <Button type="button" size="sm" variant="outline" onClick={() => window.print()}>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-wine-800 px-5 py-2.5 text-[11px] font-medium text-cream-100 sm:px-6">
+                <span className="font-semibold">{relCliente.dados.nomeFantasia ?? relCliente.dados.razaoSocial}</span>
+                <span>CNPJ {relCliente.dados.cnpj}</span>
+                <span>{relCliente.dados.municipio}/{relCliente.dados.estado}</span>
+                {entradaAtual.anexo && <span>Anexo {entradaAtual.anexo}</span>}
+                <span>Emitido em {new Date().toLocaleDateString("pt-BR")}</span>
+              </div>
+
+              <div className="space-y-4 p-4 sm:p-6">
+                <div className="flex flex-wrap justify-end gap-2 print:hidden">
+                  <Button type="button" size="sm" variant="outline" onClick={imprimirRelatorio}>
                     <Printer className="size-3.5" /> Imprimir / salvar PDF
                   </Button>
                   <a href={linkWhatsappRelatorio()} target="_blank" rel="noopener noreferrer">
@@ -679,132 +811,258 @@ export default function FaturamentoPage() {
                     {resumoCopiado ? "Copiado" : "Copiar resumo"}
                   </Button>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <MetricCard label="Faturamento do mês" value={formatCurrency(entradaAtual.faturamento ?? 0)} icon={TrendingUp} tone="wine" />
-                <MetricCard label="Imposto (DAS)" value={formatCurrency(entradaAtual.imposto ?? 0)} icon={Receipt} tone="danger" />
-                <MetricCard
-                  label="Carga tributária"
-                  value={`${cargaAtual.toFixed(1)}%`}
-                  icon={Percent}
-                  tone="warning"
-                  hint={cargaAnterior !== undefined ? `Mês anterior: ${cargaAnterior.toFixed(1)}%` : undefined}
-                />
-                <MetricCard label="Faturamento acumulado no ano" value={formatCurrency(rbaAno)} icon={FileText} tone="neutral" />
-              </div>
-
-              {pontosDeAtencao.length > 0 && (
-                <div className="rounded-lg border border-status-warning-bg bg-status-warning-bg/60 p-3">
-                  <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-status-warning">
-                    <AlertTriangle className="size-3.5" /> Pontos de atenção
-                  </p>
-                  <ul className="space-y-1">
-                    {pontosDeAtencao.map((p) => (
-                      <li key={p} className="text-xs text-sand-700">{p}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-sand-200 bg-white p-4">
-                  <p className="mb-2 text-xs font-semibold text-sand-700">Faturamento mensal</p>
-                  <div className="h-48 print:h-32">
-                    <ResponsiveContainer>
-                      <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0, atual: h.competencia === relCompetenciaEfetiva }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                        <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                        <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
-                        {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
-                        <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                          {ultimos13.map((h) => (
-                            <Cell key={h.competencia} fill={h.competencia === relCompetenciaEfetiva ? GOLD : WINE} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <MetricCard label="Faturamento do mês" value={formatCurrency(entradaAtual.faturamento ?? 0)} icon={TrendingUp} tone="wine" />
+                  <div className="rounded-xl bg-wine-700 p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[11px] font-medium leading-tight text-cream-200/80">Imposto (DAS)</p>
+                      <Receipt className="size-3.5 shrink-0 text-cream-300" />
+                    </div>
+                    <p className="mt-2 font-display text-2xl font-semibold text-cream-50">{formatCurrency(entradaAtual.imposto ?? 0)}</p>
+                    {vencimentoAtual && (
+                      <p className="mt-0.5 text-[11px] text-cream-200/80">
+                        {situacaoAtual === "Pago"
+                          ? `Pago em ${formatDataBR(entradaAtual.dataPagamento!)}`
+                          : situacaoAtual === "Atrasado"
+                            ? `Venceu em ${formatDataBR(vencimentoAtual)}`
+                            : `Vence em ${formatDataBR(vencimentoAtual)}`}
+                      </p>
+                    )}
                   </div>
-                  <p className="mt-1 text-[11px] text-sand-500">
-                    Em dourado, o mês do relatório.{mediaUltimos12 !== undefined && ` Linha tracejada: média dos meses anteriores (${formatCurrency(mediaUltimos12)}).`}
-                  </p>
+                  <MetricCard
+                    label="Imposto sobre o faturamento"
+                    value={formatPercentBR(cargaAtual, 2)}
+                    icon={Percent}
+                    tone="warning"
+                    hint={cargaAnterior !== undefined ? `Mês anterior: ${formatPercentBR(cargaAnterior, 2)}` : undefined}
+                  />
+                  <MetricCard
+                    label="RBT12"
+                    value={rbt12Efetivo !== undefined ? formatCurrency(rbt12Efetivo) : "—"}
+                    icon={FileText}
+                    tone="neutral"
+                    hint="Faturamento dos últimos 12 meses"
+                  />
                 </div>
 
-                <div className="rounded-xl border border-sand-200 bg-white p-4">
-                  <p className="mb-2 text-xs font-semibold text-sand-700">Imposto pago por mês</p>
-                  <div className="h-48 print:h-32">
-                    <ResponsiveContainer>
-                      <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.imposto ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                        <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                        <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
-                        <Bar dataKey="valor" fill={WINE} radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                <div
+                  className={cn(
+                    "flex items-start gap-2 rounded-lg p-3",
+                    guiasAtrasadas.length === 0 ? "bg-status-success-bg" : "bg-status-danger-bg"
+                  )}
+                >
+                  {guiasAtrasadas.length === 0 ? (
+                    <CircleCheck className="mt-0.5 size-4 shrink-0 text-status-success" />
+                  ) : (
+                    <CircleAlert className="mt-0.5 size-4 shrink-0 text-status-danger" />
+                  )}
+                  <div>
+                    <p className={cn("text-xs font-semibold", guiasAtrasadas.length === 0 ? "text-status-success" : "text-status-danger")}>
+                      {guiasAtrasadas.length === 0
+                        ? "Impostos anteriores em dia"
+                        : `${guiasAtrasadas.length} guia(s) vencida(s) sem pagamento confirmado`}
+                    </p>
+                    <p className="text-[11px] text-sand-600">
+                      {guiasAtrasadas.length === 0
+                        ? `Todas as guias vencidas das competências lançadas constam como pagas. O DAS de ${competenciaLabel(relCompetenciaEfetiva)} ${situacaoAtual === "Pago" ? "já foi pago" : `vence em ${vencimentoAtual ? formatDataBR(vencimentoAtual) : "—"}`}.`
+                        : `Competências em atraso: ${guiasAtrasadas.map((h) => competenciaLabel(h.competencia)).join(", ")}. Regularize o quanto antes pra evitar multa, juros e risco de exclusão do Simples.`}
+                    </p>
                   </div>
                 </div>
-              </div>
 
-              {ultimos13.length > 1 && (
-                <div className="rounded-xl border border-sand-200 bg-white p-4">
-                  <p className="mb-2 text-xs font-semibold text-sand-700">Evolução do faturamento</p>
-                  <div className="h-48 print:h-32">
-                    <ResponsiveContainer>
-                      <LineChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                        <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                        <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                        {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
-                        <Line type="monotone" dataKey="valor" stroke={WINE} strokeWidth={2.5} dot={{ r: 3, fill: WINE }} />
-                      </LineChart>
-                    </ResponsiveContainer>
+                {pontosDeAtencao.length > 0 && (
+                  <div className="rounded-lg border border-status-warning-bg bg-status-warning-bg/60 p-3">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-status-warning">
+                      <AlertTriangle className="size-3.5" /> Pontos de atenção
+                    </p>
+                    <ul className="space-y-1">
+                      {pontosDeAtencao.map((p) => (
+                        <li key={p} className="text-xs text-sand-700">{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                    <p className="mb-2 text-xs font-semibold text-sand-700">Faturamento mensal</p>
+                    <div className="h-48 print:h-40">
+                      <ResponsiveContainer>
+                        <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
+                          {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
+                          <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                            {ultimos13.map((h) => (
+                              <Cell key={h.competencia} fill={h.competencia === relCompetenciaEfetiva ? GOLD : WINE} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <p className="mt-1 text-[11px] text-sand-500">
+                      Em dourado, o mês do relatório.{mediaUltimos12 !== undefined && ` Linha tracejada: média dos meses anteriores (${formatCurrency(mediaUltimos12)}).`}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                    <p className="mb-2 text-xs font-semibold text-sand-700">Evolução do faturamento</p>
+                    {ultimos13.length > 1 ? (
+                      <div className="h-48 print:h-40">
+                        <ResponsiveContainer>
+                          <LineChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                            <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                            <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                            {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
+                            <Line type="monotone" dataKey="valor" stroke={WINE} strokeWidth={2.5} dot={{ r: 3, fill: WINE }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <p className="py-10 text-center text-xs text-sand-400">Histórico insuficiente pra mostrar a evolução.</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                    <p className="mb-2 text-xs font-semibold text-sand-700">Para onde vai o imposto</p>
+                    {tributosAtuais.length > 0 ? (
+                      <div className="flex items-center gap-3">
+                        <div className="h-36 w-36 shrink-0">
+                          <ResponsiveContainer>
+                            <PieChart>
+                              <Pie data={tributosAtuais} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="95%" paddingAngle={1}>
+                                {tributosAtuais.map((t, i) => (
+                                  <Cell key={t.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <table className="w-full whitespace-nowrap text-[11px]">
+                          <tbody>
+                            {tributosAtuais.map((t, i) => (
+                              <tr key={t.name} className="border-b border-sand-100 last:border-0">
+                                <td className="py-1">
+                                  <span className="mr-1.5 inline-block size-2.5 rounded-sm align-middle" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                                  {t.name}
+                                </td>
+                                <td className="py-1 text-right tabular-nums">{formatCurrency(t.value)}</td>
+                                <td className="py-1 text-right tabular-nums text-sand-500">
+                                  {entradaAtual.imposto ? formatPercentBR((t.value / entradaAtual.imposto) * 100) : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="py-10 text-center text-xs text-sand-400">Sem detalhamento por tributo disponível pra essa competência.</p>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                    <p className="mb-2 text-xs font-semibold text-sand-700">Imposto pago por mês</p>
+                    <div className="h-48 print:h-40">
+                      <ResponsiveContainer>
+                        <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.imposto ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
+                          <Bar dataKey="valor" fill={WINE} radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <div className="rounded-xl border border-sand-200 bg-white p-4">
-                <p className="mb-2 text-xs font-semibold text-sand-700">Histórico de faturamento e impostos</p>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Competência</TableHead>
-                      <TableHead>Faturamento</TableHead>
-                      <TableHead>Imposto</TableHead>
-                      <TableHead>Carga</TableHead>
-                      <TableHead>Observação</TableHead>
-                      <TableHead className="w-10 print:hidden" />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {[...historicoCliente].reverse().map((h) => {
-                      const carga = h.faturamento ? ((h.imposto ?? 0) / h.faturamento) * 100 : 0;
-                      return (
-                        <TableRow key={h.competencia} className={cn(h.competencia === relCompetenciaEfetiva && "bg-gold-50")}>
-                          <TableCell className="font-medium text-sand-800">{competenciaLabel(h.competencia)}</TableCell>
-                          <TableCell>{formatCurrency(h.faturamento ?? 0)}</TableCell>
-                          <TableCell>{formatCurrency(h.imposto ?? 0)}</TableCell>
-                          <TableCell className="text-sand-500">{h.faturamento ? `${carga.toFixed(1)}%` : "—"}</TableCell>
-                          <TableCell className="text-sand-500">{h.observacao || "—"}</TableCell>
-                          <TableCell className="print:hidden">
-                            {h.pgdasUrl && (
-                              <a href={h.pgdasUrl} target="_blank" rel="noopener noreferrer" title="Ver PGDAS" className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700">
-                                <Eye className="size-3.5" />
-                              </a>
-                            )}
-                          </TableCell>
+                <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                  <p className="mb-2 text-xs font-semibold text-sand-700">Histórico de apurações e pagamentos</p>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[760px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Competência</TableHead>
+                          <TableHead>Faturamento</TableHead>
+                          <TableHead>Imposto</TableHead>
+                          <TableHead>Carga</TableHead>
+                          <TableHead>Vencimento</TableHead>
+                          <TableHead>Situação</TableHead>
+                          <TableHead>Observação</TableHead>
+                          <TableHead className="w-10 print:hidden" />
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {[...historicoCliente].reverse().map((h) => {
+                          const carga = h.faturamento ? ((h.imposto ?? 0) / h.faturamento) * 100 : 0;
+                          const vencimento = vencimentoEfetivo(h);
+                          const situacao = situacaoRegistro(h);
+                          return (
+                            <TableRow key={h.competencia} className={cn(h.competencia === relCompetenciaEfetiva && "bg-cream-200/60")}>
+                              <TableCell className="font-medium text-sand-800">{competenciaLabel(h.competencia)}</TableCell>
+                              <TableCell>{formatCurrency(h.faturamento ?? 0)}</TableCell>
+                              <TableCell>{formatCurrency(h.imposto ?? 0)}</TableCell>
+                              <TableCell className="text-sand-500">{h.faturamento ? formatPercentBR(carga) : "—"}</TableCell>
+                              <TableCell className="text-sand-500">{formatDataBR(vencimento)}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <StatusBadge status={situacao === "Pago" ? `Pago em ${formatDataBR(h.dataPagamento!)}` : situacao} />
+                                  <button
+                                    type="button"
+                                    onClick={() => (situacao === "Pago" ? reabrirCompetencia(h) : marcarCompetenciaPaga(h, new Date().toISOString().slice(0, 10)))}
+                                    title={situacao === "Pago" ? "Reabrir (marcar como não pago)" : "Marcar como pago"}
+                                    className="rounded-md p-1 text-sand-400 transition-colors hover:bg-sand-100 hover:text-wine-700 print:hidden"
+                                  >
+                                    {situacao === "Pago" ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
+                                  </button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sand-500">{h.observacao || "—"}</TableCell>
+                              <TableCell className="print:hidden">
+                                {h.pgdasUrl && (
+                                  <a href={h.pgdasUrl} target="_blank" rel="noopener noreferrer" title="Ver PGDAS" className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700">
+                                    <Eye className="size-3.5" />
+                                  </a>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
+                  <p className="mb-2 text-xs font-semibold text-sand-700">Observações da contabilidade</p>
+                  <Input
+                    value={entradaAtual.observacao ?? ""}
+                    onChange={(e) => updateFaturamentoMensal(entradaAtual.clienteId, entradaAtual.competencia, { observacao: e.target.value })}
+                    placeholder="Escreva aqui uma orientação para o cliente (aparece no relatório impresso)."
+                    className="print:hidden"
+                  />
+                  {entradaAtual.observacao?.trim() && <p className="hidden whitespace-pre-line text-sm text-sand-700 print:block">{entradaAtual.observacao}</p>}
+                </div>
+
+                <p className="text-[11px] text-sand-400">
+                  Fonte: lançamentos de faturamento e imposto do próprio Eleven Hub (manuais ou lidos do PGDAS-D). Esse relatório não inclui débitos ou pendências da Situação Fiscal (e-CAC) — confira isso direto no portal da Receita.
+                </p>
               </div>
 
-              <p className="text-[11px] text-sand-400">
-                Fonte: lançamentos de faturamento e imposto do próprio Eleven Hub (manuais ou lidos do PGDAS-D). Esse relatório não inclui débitos ou pendências da Situação Fiscal (e-CAC) — confira isso direto no portal da Receita.
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-wine-900 px-5 py-3 text-[11px] text-cream-200/80 sm:px-6">
+                <span>Contador(a) responsável: {colaboradorAtual?.nome ?? dadosEscritorio.razaoSocial}</span>
+                <div className="flex flex-wrap gap-3">
+                  {dadosEscritorio.telefone && <span>Tel: {dadosEscritorio.telefone}</span>}
+                  {dadosEscritorio.email && <span>Email: {dadosEscritorio.email}</span>}
+                  {dadosEscritorio.instagram && <span>{dadosEscritorio.instagram}</span>}
+                </div>
+              </div>
             </article>
           )}
         </div>

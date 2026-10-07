@@ -383,7 +383,9 @@ interface AppState {
   updateFaturamentoMensal: (
     clienteId: string,
     competencia: string,
-    patch: Partial<Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao" | "pgdasUrl">>
+    patch: Partial<
+      Pick<FaturamentoMensal, "faturamento" | "imposto" | "observacao" | "pgdasUrl" | "vencimento" | "dataPagamento" | "rbt12" | "anexo" | "tributos">
+    >
   ) => void;
   deleteFaturamentoMensal: (clienteId: string, competencia: string) => void;
   addGuiaFiscal: (guia: GuiaFiscal) => void;

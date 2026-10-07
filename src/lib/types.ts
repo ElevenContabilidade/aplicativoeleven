@@ -844,6 +844,29 @@ export interface FaturamentoMensal {
   /** Link do PGDAS/guia lido automaticamente que gerou este lançamento —
    * fica salvo no Drive do cliente (categoria Guias) pra conferência depois. */
   pgdasUrl?: string;
+  /** Vencimento do DAS dessa competência ("YYYY-MM-DD") — lido do Extrato
+   * quando disponível, ou estimado (dia 20 do mês seguinte) quando não. */
+  vencimento?: string;
+  /** Preenchida quando o pagamento é confirmado (manual ou lido do Extrato)
+   * — a situação exibida ("Pago"/"A vencer"/"Atrasado") deriva dela. */
+  dataPagamento?: string;
+  /** Anexo do Simples Nacional dessa apuração (I a V). */
+  anexo?: string;
+  /** RBT12 declarado nessa apuração (receita bruta dos 12 meses anteriores
+   * ao PA) — vem direto do PGDAS/Extrato quando disponível. */
+  rbt12?: number;
+  /** Quebra do DAS por tributo, quando o PGDAS/Extrato traz o detalhamento —
+   * alimenta o gráfico "Para onde vai o imposto". */
+  tributos?: {
+    irpj?: number;
+    csll?: number;
+    cofins?: number;
+    pis?: number;
+    inss?: number;
+    icms?: number;
+    ipi?: number;
+    iss?: number;
+  };
 }
 
 // ---------- Guias fiscais (DARF, GPS, DAS) ----------

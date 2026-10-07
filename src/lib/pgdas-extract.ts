@@ -117,13 +117,61 @@ function findExtratoImposto(text: string): number | undefined {
 /** "6.2) Informações da Arrecadação do DAS" — quando já foi pago, traz a
  * data de pagamento antes do rótulo "Não foi reconhecido pagamento..."
  * (presente só quando ainda está em aberto). */
-function findExtratoObservacaoPagamento(text: string): string | undefined {
+function findExtratoDataPagamento(text: string): string | undefined {
   const idx = text.toLowerCase().indexOf("informações da arrecadação do das");
   if (idx === -1) return undefined;
   const slice = text.slice(idx, idx + 200);
   if (/não foi reconhecido pagamento/i.test(slice)) return undefined;
   const data = slice.match(DATE_RE);
-  return data ? `DAS pago em ${data[0]}.` : undefined;
+  if (!data) return undefined;
+  const [, dd, mm, yyyy] = data;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** "Número: ... Data de Vencimento: 20/10/2026 Data limite para acolhimento: ..." */
+function findExtratoVencimento(text: string): string | undefined {
+  const idx = text.toLowerCase().indexOf("data de vencimento");
+  if (idx === -1) return undefined;
+  const match = text.slice(idx, idx + 40).match(DATE_RE);
+  if (!match) return undefined;
+  const [, dd, mm, yyyy] = match;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+/** RBT12 — "Receita bruta acumulada nos doze meses anteriores ao PA (RBT12)
+ * 120.696,45 0,00 120.696,45" (Interno, Externo, Total nessa ordem). Cuidado
+ * pra não casar com "(RBT12p)" — a proporcionalizada, que é outro campo. */
+function findExtratoRbt12(text: string): number | undefined {
+  const idx = text.toLowerCase().indexOf("(rbt12)");
+  if (idx === -1) return undefined;
+  const slice = text.slice(idx, idx + 100);
+  const valores = [...slice.matchAll(new RegExp(CURRENCY_RE.source, "g"))].map((m) => parseBRLNumber(m[0]));
+  if (valores.length === 0) return undefined;
+  return valores.length >= 3 ? valores[2] : valores[valores.length - 1];
+}
+
+/** "...tributados pelo Anexo III..." ou "Fator r = 0,29 - Anexo III". A
+ * ordem dos ramos do regex importa: "I{1,3}" precisa vir depois de "IV",
+ * senão "IV" nunca é tentado (o motor já teria casado só o "I" de "IV"). */
+function findExtratoAnexo(text: string): string | undefined {
+  const match = text.match(/anexo\s+(IV|I{1,3}|V)\b/i);
+  return match ? match[1].toUpperCase() : undefined;
+}
+
+/** A seção "Informações sobre DAS Gerado" sempre lista, nessa ordem, os 8
+ * valores de tributo (IRPJ, CSLL, COFINS, PIS/Pasep, INSS/CPP, ICMS, IPI,
+ * ISS) antes do rótulo "Principal" — mesma janela usada por
+ * findExtratoImposto, só que pegando os valores ANTES dela em vez de depois. */
+function findExtratoTributos(text: string): NonNullable<ExtractedPgdas["tributos"]> | undefined {
+  const idxSecao = text.toLowerCase().indexOf("informações sobre das gerado");
+  if (idxSecao === -1) return undefined;
+  const idxPrincipal = text.toLowerCase().indexOf("principal", idxSecao);
+  if (idxPrincipal === -1) return undefined;
+  const slice = text.slice(idxSecao, idxPrincipal);
+  const valores = [...slice.matchAll(new RegExp(CURRENCY_RE.source, "g"))].map((m) => parseBRLNumber(m[0]));
+  if (valores.length < 8) return undefined;
+  const [irpj, csll, cofins, pis, inss, icms, ipi, iss] = valores.slice(-8);
+  return { irpj, csll, cofins, pis, inss, icms, ipi, iss };
 }
 
 export interface ExtractedPgdas {
@@ -131,15 +179,29 @@ export interface ExtractedPgdas {
   competencia?: string; // "YYYY-MM"
   faturamento?: number;
   imposto?: number;
-  /** Nota pronta pra ir no campo "Observação" — hoje só traz a data de
-   * pagamento do DAS, quando o Extrato confirma que já foi pago. */
-  observacaoSugerida?: string;
+  /** Só vêm do Extrato — a Declaração não traz nenhum desses campos. */
+  vencimento?: string; // "YYYY-MM-DD"
+  dataPagamento?: string; // "YYYY-MM-DD"
+  rbt12?: number;
+  anexo?: string;
+  tributos?: {
+    irpj?: number;
+    csll?: number;
+    cofins?: number;
+    pis?: number;
+    inss?: number;
+    icms?: number;
+    ipi?: number;
+    iss?: number;
+  };
 }
 
 /** Best-effort: lê CNPJ, competência, faturamento e imposto total a partir
  * do texto de um PGDAS-D — tanto da Declaração (Resumo da Declaração) quanto
  * do Extrato do Simples Nacional (recibo do DAS gerado/pago), que trazem os
- * mesmos dados em seções com rótulos diferentes. */
+ * mesmos dados em seções com rótulos diferentes. O Extrato ainda traz alguns
+ * campos extras (vencimento, pagamento, RBT12, anexo, quebra por tributo)
+ * que a Declaração não tem — ficam undefined quando o PDF é uma Declaração. */
 export function extractPgdasValores(rawText: string): ExtractedPgdas {
   // O gerador do PGDAS-D desenha cada palavra como um item de texto separado
   // (às vezes já com espaço embutido), então juntar os itens sempre com um
@@ -155,6 +217,10 @@ export function extractPgdasValores(rawText: string): ExtractedPgdas {
     competencia: findCompetencia(text),
     faturamento,
     imposto,
-    observacaoSugerida: findExtratoObservacaoPagamento(text),
+    vencimento: findExtratoVencimento(text),
+    dataPagamento: findExtratoDataPagamento(text),
+    rbt12: findExtratoRbt12(text),
+    anexo: findExtratoAnexo(text),
+    tributos: findExtratoTributos(text),
   };
 }
