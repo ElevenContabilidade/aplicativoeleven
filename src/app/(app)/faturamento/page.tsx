@@ -55,6 +55,7 @@ interface PgdasPreviewItem {
   competencia: string;
   faturamento: number;
   imposto: number;
+  observacao: string;
   cnpjNaoEncontrado?: string;
   /** Quando a extração automática falhou pra esse arquivo — a linha continua
    * na lista (não trava os outros PDFs do lote), mas pede preenchimento
@@ -129,6 +130,7 @@ export default function FaturamentoPage() {
             competencia: extraido.competencia ?? competencia,
             faturamento: extraido.faturamento ?? 0,
             imposto: extraido.imposto ?? 0,
+            observacao: extraido.observacaoSugerida ?? "",
             cnpjNaoEncontrado: !cliente ? extraido.cnpj : undefined,
             erro: faltouLer
               ? `Não consegui ler "${file.name}" automaticamente — confira se é um PGDAS-D digital (não digitalizado/foto) e preencha os valores manualmente abaixo.`
@@ -142,6 +144,7 @@ export default function FaturamentoPage() {
             competencia,
             faturamento: 0,
             imposto: 0,
+            observacao: "",
             erro: `Não consegui ler o arquivo "${file.name}" — confira se não está corrompido.`,
           });
         }
@@ -181,6 +184,7 @@ export default function FaturamentoPage() {
       faturamento: item.faturamento,
       imposto: item.imposto,
       pgdasUrl,
+      ...(item.observacao.trim() ? { observacao: item.observacao.trim() } : {}),
     });
   }
 
@@ -461,6 +465,15 @@ export default function FaturamentoPage() {
                     className="h-8 text-xs"
                   />
                 </div>
+              </div>
+              <div>
+                <p className="mb-1 text-[11px] text-sand-500">Observação</p>
+                <Input
+                  value={item.observacao}
+                  onChange={(e) => atualizarPreview(item.idTemp, { observacao: e.target.value })}
+                  placeholder="Ex: data de pagamento do DAS"
+                  className="h-8 text-xs"
+                />
               </div>
               {item.cnpjNaoEncontrado && (
                 <p className="text-xs text-status-warning">
