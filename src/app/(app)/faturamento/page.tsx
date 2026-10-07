@@ -48,6 +48,20 @@ const MESES = [
   { value: "10", label: "Out" }, { value: "11", label: "Nov" }, { value: "12", label: "Dez" },
 ];
 
+interface PgdasPreviewItem {
+  idTemp: string;
+  file: File;
+  clienteId: string;
+  competencia: string;
+  faturamento: number;
+  imposto: number;
+  cnpjNaoEncontrado?: string;
+  /** Quando a extração automática falhou pra esse arquivo — a linha continua
+   * na lista (não trava os outros PDFs do lote), mas pede preenchimento
+   * manual de competência/valores antes de poder salvar. */
+  erro?: string;
+}
+
 function PeriodChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -78,15 +92,8 @@ export default function FaturamentoPage() {
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
   const [lendoPgdas, setLendoPgdas] = useState(false);
   const [salvandoPgdas, setSalvandoPgdas] = useState(false);
-  const [pgdasErro, setPgdasErro] = useState<string | null>(null);
-  const [pgdasPreview, setPgdasPreview] = useState<{
-    file: File;
-    clienteId: string;
-    competencia: string;
-    faturamento: number;
-    imposto: number;
-    cnpjNaoEncontrado?: string;
-  } | null>(null);
+  const [arrastandoPgdas, setArrastandoPgdas] = useState(false);
+  const [pgdasPreviews, setPgdasPreviews] = useState<PgdasPreviewItem[]>([]);
 
   const clientesAtendidos = useMemo(
     () =>
@@ -96,67 +103,112 @@ export default function FaturamentoPage() {
     [clients]
   );
 
-  async function lerPgdas(file: File) {
+  /** Processa um lote de PDFs de uma vez (seleção múltipla ou arrastar vários
+   * juntos) — cada arquivo vira uma linha de preview independente, então um
+   * PDF que falhe na leitura automática não trava os outros do lote; essa
+   * linha fica pedindo preenchimento manual em vez de travar tudo. */
+  async function processarArquivosPgdas(arquivos: FileList | File[]) {
+    const lista = Array.from(arquivos).filter((f) => f.type === "application/pdf");
+    if (lista.length === 0) return;
     setLendoPgdas(true);
-    setPgdasErro(null);
-    setPgdasPreview(null);
     try {
-      const texto = await extractPdfText(file);
-      const extraido = extractPgdasValores(texto);
-      if (!extraido.competencia || extraido.faturamento === undefined || extraido.imposto === undefined) {
-        setPgdasErro(
-          "Não consegui ler os valores desse PDF automaticamente. Confira se é um PGDAS-D digital (não digitalizado/foto) e lance manualmente na tabela abaixo."
-        );
-        return;
+      const novos: PgdasPreviewItem[] = [];
+      for (const file of lista) {
+        const idTemp = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        try {
+          const texto = await extractPdfText(file);
+          const extraido = extractPgdasValores(texto);
+          const cliente = extraido.cnpj
+            ? clientesAtendidos.find((c) => onlyDigits(c.dados.cnpj) === onlyDigits(extraido.cnpj!))
+            : undefined;
+          const faltouLer = !extraido.competencia || extraido.faturamento === undefined || extraido.imposto === undefined;
+          novos.push({
+            idTemp,
+            file,
+            clienteId: cliente?.id ?? "",
+            competencia: extraido.competencia ?? competencia,
+            faturamento: extraido.faturamento ?? 0,
+            imposto: extraido.imposto ?? 0,
+            cnpjNaoEncontrado: !cliente ? extraido.cnpj : undefined,
+            erro: faltouLer
+              ? `Não consegui ler "${file.name}" automaticamente — confira se é um PGDAS-D digital (não digitalizado/foto) e preencha os valores manualmente abaixo.`
+              : undefined,
+          });
+        } catch {
+          novos.push({
+            idTemp,
+            file,
+            clienteId: "",
+            competencia,
+            faturamento: 0,
+            imposto: 0,
+            erro: `Não consegui ler o arquivo "${file.name}" — confira se não está corrompido.`,
+          });
+        }
       }
-      const cliente = extraido.cnpj
-        ? clientesAtendidos.find((c) => onlyDigits(c.dados.cnpj) === onlyDigits(extraido.cnpj!))
-        : undefined;
-      setPgdasPreview({
-        file,
-        clienteId: cliente?.id ?? "",
-        competencia: extraido.competencia,
-        faturamento: extraido.faturamento,
-        imposto: extraido.imposto,
-        cnpjNaoEncontrado: !cliente ? extraido.cnpj : undefined,
-      });
-    } catch {
-      setPgdasErro("Não consegui ler esse PDF. Confira se o arquivo não está corrompido.");
+      setPgdasPreviews((atual) => [...atual, ...novos]);
     } finally {
       setLendoPgdas(false);
     }
   }
 
-  async function confirmarPgdas() {
-    if (!pgdasPreview || !pgdasPreview.clienteId) return;
+  function atualizarPreview(idTemp: string, patch: Partial<PgdasPreviewItem>) {
+    setPgdasPreviews((atual) => atual.map((p) => (p.idTemp === idTemp ? { ...p, ...patch } : p)));
+  }
+
+  function removerPreview(idTemp: string) {
+    setPgdasPreviews((atual) => atual.filter((p) => p.idTemp !== idTemp));
+  }
+
+  async function salvarPreview(item: PgdasPreviewItem) {
+    const cliente = clientesAtendidos.find((c) => c.id === item.clienteId);
+    let pgdasUrl: string | undefined;
+    if (cliente) {
+      try {
+        const documento = await uploadDocumento({
+          file: item.file,
+          clienteId: cliente.id,
+          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          categoria: "Guias",
+          responsavelId: userId ?? undefined,
+        });
+        pgdasUrl = documento.url;
+      } catch {
+        // Segue sem o PDF anexado — o lançamento não deixa de ser salvo por isso.
+      }
+    }
+    updateFaturamentoMensal(item.clienteId, item.competencia, {
+      faturamento: item.faturamento,
+      imposto: item.imposto,
+      pgdasUrl,
+    });
+  }
+
+  async function confirmarPreviewUnico(idTemp: string) {
+    const item = pgdasPreviews.find((p) => p.idTemp === idTemp);
+    if (!item || !item.clienteId || !item.competencia) return;
     setSalvandoPgdas(true);
     try {
-      const cliente = clientesAtendidos.find((c) => c.id === pgdasPreview.clienteId);
-      let pgdasUrl: string | undefined;
-      if (cliente) {
-        try {
-          const documento = await uploadDocumento({
-            file: pgdasPreview.file,
-            clienteId: cliente.id,
-            clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
-            categoria: "Guias",
-            responsavelId: userId ?? undefined,
-          });
-          pgdasUrl = documento.url;
-        } catch (err) {
-          setPgdasErro(
-            `Lançamento salvo, mas não consegui guardar o PDF no Drive: ${err instanceof Error ? err.message : "erro desconhecido"}`
-          );
-        }
-      }
-      updateFaturamentoMensal(pgdasPreview.clienteId, pgdasPreview.competencia, {
-        faturamento: pgdasPreview.faturamento,
-        imposto: pgdasPreview.imposto,
-        pgdasUrl,
-      });
-      setYear(pgdasPreview.competencia.slice(0, 4));
-      setMes(pgdasPreview.competencia.slice(5, 7));
-      setPgdasPreview(null);
+      await salvarPreview(item);
+      setYear(item.competencia.slice(0, 4));
+      setMes(item.competencia.slice(5, 7));
+      removerPreview(idTemp);
+    } finally {
+      setSalvandoPgdas(false);
+    }
+  }
+
+  async function confirmarTodosPreviews() {
+    const prontos = pgdasPreviews.filter((p) => p.clienteId && p.competencia);
+    if (prontos.length === 0) return;
+    setSalvandoPgdas(true);
+    try {
+      for (const item of prontos) await salvarPreview(item);
+      const ultima = prontos[prontos.length - 1];
+      setYear(ultima.competencia.slice(0, 4));
+      setMes(ultima.competencia.slice(5, 7));
+      const idsProntos = new Set(prontos.map((p) => p.idTemp));
+      setPgdasPreviews((atual) => atual.filter((p) => !idsProntos.has(p.idTemp)));
     } finally {
       setSalvandoPgdas(false);
     }
@@ -317,33 +369,61 @@ export default function FaturamentoPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
-          <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-sand-300 bg-sand-50 px-4 py-4 text-center hover:border-wine-400 hover:bg-wine-50">
-            <FileUp className="size-4 text-wine-500" />
-            <span className="text-xs font-medium text-sand-700">{lendoPgdas ? "Lendo PDF..." : "Clique pra selecionar o PGDAS-D em PDF"}</span>
+          <label
+            className={cn(
+              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-6 text-center transition-colors",
+              arrastandoPgdas ? "border-wine-500 bg-wine-50" : "border-sand-300 bg-sand-50 hover:border-wine-400 hover:bg-wine-50"
+            )}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setArrastandoPgdas(true);
+            }}
+            onDragLeave={() => setArrastandoPgdas(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setArrastandoPgdas(false);
+              if (e.dataTransfer.files.length > 0) void processarArquivosPgdas(e.dataTransfer.files);
+            }}
+          >
+            {lendoPgdas ? <Loader2 className="size-5 animate-spin text-wine-500" /> : <FileUp className="size-5 text-wine-500" />}
+            <span className="text-xs font-medium text-sand-700">
+              {lendoPgdas ? "Lendo PDFs..." : "Arraste um ou mais PDFs do PGDAS-D aqui, ou clique pra selecionar"}
+            </span>
             <input
               type="file"
               accept="application/pdf"
+              multiple
               className="hidden"
               disabled={lendoPgdas}
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void lerPgdas(file);
+                if (e.target.files && e.target.files.length > 0) void processarArquivosPgdas(e.target.files);
                 e.target.value = "";
               }}
             />
           </label>
 
-          {pgdasErro && <p className="text-xs text-status-danger">{pgdasErro}</p>}
+          {pgdasPreviews.length > 1 && (
+            <div className="flex items-center justify-between rounded-lg bg-sand-100 px-3 py-2 text-xs text-sand-600">
+              <span>{pgdasPreviews.length} arquivo{pgdasPreviews.length === 1 ? "" : "s"} no lote</span>
+              <Button
+                type="button"
+                size="sm"
+                disabled={salvandoPgdas || pgdasPreviews.every((p) => !p.clienteId || !p.competencia)}
+                onClick={() => void confirmarTodosPreviews()}
+              >
+                {salvandoPgdas ? <><Loader2 className="size-3.5 animate-spin" /> Salvando...</> : "Salvar todos os prontos"}
+              </Button>
+            </div>
+          )}
 
-          {pgdasPreview && (
-            <div className="space-y-3 rounded-lg border border-sand-200 p-3">
+          {pgdasPreviews.map((item) => (
+            <div key={item.idTemp} className="space-y-3 rounded-lg border border-sand-200 p-3">
+              <p className="text-[11px] font-medium text-sand-400">{item.file.name}</p>
+              {item.erro && <p className="text-xs text-status-danger">{item.erro}</p>}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div>
                   <p className="mb-1 text-[11px] text-sand-500">Cliente</p>
-                  <Select
-                    value={pgdasPreview.clienteId}
-                    onValueChange={(v) => setPgdasPreview((p) => (p ? { ...p, clienteId: v } : p))}
-                  >
+                  <Select value={item.clienteId} onValueChange={(v) => atualizarPreview(item.idTemp, { clienteId: v })}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
                     <SelectContent>
                       {clientesAtendidos.map((c) => (
@@ -354,15 +434,20 @@ export default function FaturamentoPage() {
                 </div>
                 <div>
                   <p className="mb-1 text-[11px] text-sand-500">Competência</p>
-                  <p className="mt-1.5 text-sm font-medium text-sand-900">{pgdasPreview.competencia}</p>
+                  <Input
+                    type="month"
+                    value={item.competencia}
+                    onChange={(e) => atualizarPreview(item.idTemp, { competencia: e.target.value })}
+                    className="h-8 text-xs"
+                  />
                 </div>
                 <div>
                   <p className="mb-1 text-[11px] text-sand-500">Faturamento</p>
                   <Input
                     type="number"
                     step="0.01"
-                    value={pgdasPreview.faturamento}
-                    onChange={(e) => setPgdasPreview((p) => (p ? { ...p, faturamento: Number(e.target.value) || 0 } : p))}
+                    value={item.faturamento}
+                    onChange={(e) => atualizarPreview(item.idTemp, { faturamento: Number(e.target.value) || 0 })}
                     className="h-8 text-xs"
                   />
                 </div>
@@ -371,25 +456,32 @@ export default function FaturamentoPage() {
                   <Input
                     type="number"
                     step="0.01"
-                    value={pgdasPreview.imposto}
-                    onChange={(e) => setPgdasPreview((p) => (p ? { ...p, imposto: Number(e.target.value) || 0 } : p))}
+                    value={item.imposto}
+                    onChange={(e) => atualizarPreview(item.idTemp, { imposto: Number(e.target.value) || 0 })}
                     className="h-8 text-xs"
                   />
                 </div>
               </div>
-              {pgdasPreview.cnpjNaoEncontrado && (
+              {item.cnpjNaoEncontrado && (
                 <p className="text-xs text-status-warning">
-                  CNPJ {pgdasPreview.cnpjNaoEncontrado} não bate com nenhum cliente cadastrado — selecione manualmente acima.
+                  CNPJ {item.cnpjNaoEncontrado} não bate com nenhum cliente cadastrado — selecione manualmente acima.
                 </p>
               )}
               <div className="flex gap-2">
-                <Button type="button" size="sm" disabled={!pgdasPreview.clienteId || salvandoPgdas} onClick={() => void confirmarPgdas()}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!item.clienteId || !item.competencia || salvandoPgdas}
+                  onClick={() => void confirmarPreviewUnico(item.idTemp)}
+                >
                   {salvandoPgdas ? <><Loader2 className="size-3.5 animate-spin" /> Salvando...</> : "Salvar lançamento"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" disabled={salvandoPgdas} onClick={() => setPgdasPreview(null)}>Cancelar</Button>
+                <Button type="button" size="sm" variant="outline" disabled={salvandoPgdas} onClick={() => removerPreview(item.idTemp)}>
+                  Remover
+                </Button>
               </div>
             </div>
-          )}
+          ))}
         </CardContent>
       </Card>
 
