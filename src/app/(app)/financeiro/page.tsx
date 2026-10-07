@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
 import { DespesaFormDialog } from "@/components/financial/despesa-form-dialog";
@@ -67,6 +68,7 @@ export default function FinanceiroPage() {
   const [despesaFormOpen, setDespesaFormOpen] = useState(false);
   const [editingDespesa, setEditingDespesa] = useState<DespesaAvulsa | null>(null);
   const [despesaFormOpenKey, setDespesaFormOpenKey] = useState(0);
+  const [despesasSelecionadas, setDespesasSelecionadas] = useState<Set<string>>(new Set());
   const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
   const [sistemaFormOpen, setSistemaFormOpen] = useState(false);
   const [sistemaFormOpenKey, setSistemaFormOpenKey] = useState(0);
@@ -413,6 +415,19 @@ export default function FinanceiroPage() {
       })
     : contasAPagar;
 
+  // Só despesa avulsa pode ser excluída daqui (sistema do escritório é uma
+  // assinatura recorrente, não um lançamento solto) — a seleção em massa
+  // segue a mesma regra do botão de excluir que já existia por linha.
+  const idsAvulsasVisiveis = contasAPagarOrdenadas.filter((l) => l.origem === "avulsa").map((l) => l.refId);
+  const todasAvulsasSelecionadas = idsAvulsasVisiveis.length > 0 && idsAvulsasVisiveis.every((id) => despesasSelecionadas.has(id));
+
+  function toggleTodasAvulsas() {
+    setDespesasSelecionadas((atual) => {
+      if (todasAvulsasSelecionadas) return new Set([...atual].filter((id) => !idsAvulsasVisiveis.includes(id)));
+      return new Set([...atual, ...idsAvulsasVisiveis]);
+    });
+  }
+
   function handleDeleteRecebimento(id: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
   }
@@ -452,6 +467,22 @@ export default function FinanceiroPage() {
 
   function handleDeleteDespesa(id: string, descricao: string) {
     if (confirm(`Excluir a despesa "${descricao}"?`)) deleteDespesaAvulsa(id);
+  }
+
+  function handleDeleteSelecionadas() {
+    const ids = [...despesasSelecionadas];
+    if (ids.length === 0) return;
+    if (!confirm(`Excluir ${ids.length} despesa${ids.length === 1 ? "" : "s"} selecionada${ids.length === 1 ? "" : "s"}? Essa ação não pode ser desfeita.`)) return;
+    for (const id of ids) deleteDespesaAvulsa(id);
+    setDespesasSelecionadas(new Set());
+  }
+
+  function toggleDespesaSelecionada(id: string) {
+    setDespesasSelecionadas((atual) => {
+      const next = new Set(atual);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   }
 
   /** Copia as despesas avulsas do mês anterior pro mês selecionado — não
@@ -691,6 +722,11 @@ export default function FinanceiroPage() {
         <CardHeader className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2"><TrendingDown className="size-4 text-status-danger" /> Contas a pagar — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
           <div className="flex gap-2">
+            {despesasSelecionadas.size > 0 && (
+              <Button size="sm" variant="outline" onClick={handleDeleteSelecionadas} className="text-status-danger hover:bg-status-danger-bg">
+                <Trash2 className="size-3.5" /> Excluir {despesasSelecionadas.size} selecionada{despesasSelecionadas.size === 1 ? "" : "s"}
+              </Button>
+            )}
             {mes !== "anual" && (
               <Button size="sm" variant="outline" onClick={handleRepetirMesAnterior}>
                 <RotateCcw className="size-3.5" /> Repetir despesas do mês anterior
@@ -718,6 +754,11 @@ export default function FinanceiroPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-9">
+                  {idsAvulsasVisiveis.length > 0 && (
+                    <Checkbox checked={todasAvulsasSelecionadas} onCheckedChange={toggleTodasAvulsas} title="Selecionar todas as despesas avulsas" />
+                  )}
+                </TableHead>
                 <SortableHead field="descricao" label="Descrição" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
                 <SortableHead field="competencia" label="Competência" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
                 <SortableHead field="vencimento" label="Vencimento" sortField={sortFieldContas} sortDir={sortDirContas} onClick={toggleSortContas} />
@@ -729,6 +770,14 @@ export default function FinanceiroPage() {
             <TableBody>
               {contasAPagarOrdenadas.map((linha) => (
                 <TableRow key={linha.key}>
+                  <TableCell>
+                    {linha.origem === "avulsa" && (
+                      <Checkbox
+                        checked={despesasSelecionadas.has(linha.refId)}
+                        onCheckedChange={() => toggleDespesaSelecionada(linha.refId)}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell className="font-medium text-sand-800">{linha.descricao}</TableCell>
                   <TableCell className="text-sand-500">{linha.competencia}</TableCell>
                   <TableCell className="text-sand-500">{formatDate(linha.vencimento)}</TableCell>
@@ -778,7 +827,7 @@ export default function FinanceiroPage() {
                 </TableRow>
               ))}
               {contasAPagar.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="py-8 text-center text-sand-400">Nenhuma conta a pagar no período.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-8 text-center text-sand-400">Nenhuma conta a pagar no período.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
