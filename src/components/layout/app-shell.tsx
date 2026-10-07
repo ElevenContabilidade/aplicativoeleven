@@ -11,8 +11,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-sand-50">
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <div className="flex min-h-screen bg-sand-50 print:block print:bg-white">
+      <div className="print:hidden">
+        <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      </div>
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="flex w-72 flex-col p-0">
@@ -24,9 +26,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenMobileNav={() => setMobileOpen(true)} />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <div className="flex min-w-0 flex-1 flex-col print:block">
+        <div className="print:hidden">
+          <Topbar onOpenMobileNav={() => setMobileOpen(true)} />
+        </div>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 print:p-0">{children}</main>
       </div>
     </div>
   );

@@ -21,7 +21,7 @@ import {
   CircleCheck,
   CircleAlert,
 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ReferenceLine, Tooltip, XAxis, YAxis } from "recharts";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -444,44 +444,14 @@ export default function FaturamentoPage() {
     }
   }
 
-  /** window.print() direto na página inteira sai bagunçado (o app tem
-   * sidebar, cabeçalho fixo etc., e os gráficos recalculam a medição no
-   * meio da impressão). Em vez disso, clona o relatório já renderizado
-   * (com os gráficos SVG prontos, sem precisar remedir nada) pra uma janela
-   * nova só com ele + o CSS da página, e imprime só essa janela. */
-  function imprimirRelatorio() {
-    const node = document.getElementById("relatorio-mensal-conteudo");
-    if (!node) return;
-    const janela = window.open("", "_blank");
-    if (!janela) {
-      alert("Seu navegador bloqueou a janela de impressão — permita pop-ups pra esse site e tente de novo.");
-      return;
-    }
-    const estilos = [...document.styleSheets]
-      .map((sheet) => {
-        try {
-          return [...sheet.cssRules].map((r) => r.cssText).join("\n");
-        } catch {
-          return "";
-        }
-      })
-      .join("\n");
-    janela.document.write(
-      `<!doctype html><html><head><meta charset="utf-8"><title>Relatório fiscal mensal</title><style>${estilos} body{margin:0;padding:24px;background:#fff;}</style></head><body>${node.outerHTML}</body></html>`
-    );
-    janela.document.close();
-    janela.onload = () => {
-      janela.focus();
-      janela.print();
-    };
-  }
-
   return (
     <div>
-      <PageHeader
-        title="Faturamento"
-        description="Faturamento e imposto pago por cliente em cada competência — lançado a partir da guia do mês (PGDAS, DAS etc). Alimenta o dashboard que o cliente vê no Portal."
-      />
+      <div className="print:hidden">
+        <PageHeader
+          title="Faturamento"
+          description="Faturamento e imposto pago por cliente em cada competência — lançado a partir da guia do mês (PGDAS, DAS etc). Alimenta o dashboard que o cliente vê no Portal."
+        />
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-1.5 print:hidden">
         <PeriodChip label="Lançamentos" active={aba === "lancamentos"} onClick={() => setAba("lancamentos")} />
@@ -778,7 +748,7 @@ export default function FaturamentoPage() {
               </CardContent>
             </Card>
           ) : (
-            <article id="relatorio-mensal-conteudo" className="overflow-hidden rounded-2xl border border-sand-200 bg-sand-50 print:border-0">
+            <article className="overflow-hidden rounded-2xl border border-sand-200 bg-sand-50 print:border-0">
               <div className="flex flex-wrap items-center justify-between gap-3 bg-wine-950 px-5 py-4 sm:px-6">
                 <EleveLogo variant="cream" markClassName="h-8 w-8" showTagline />
                 <div className="text-right">
@@ -798,7 +768,7 @@ export default function FaturamentoPage() {
 
               <div className="space-y-4 p-4 sm:p-6">
                 <div className="flex flex-wrap justify-end gap-2 print:hidden">
-                  <Button type="button" size="sm" variant="outline" onClick={imprimirRelatorio}>
+                  <Button type="button" size="sm" variant="outline" onClick={() => window.print()}>
                     <Printer className="size-3.5" /> Imprimir / salvar PDF
                   </Button>
                   <a href={linkWhatsappRelatorio()} target="_blank" rel="noopener noreferrer">
@@ -887,21 +857,19 @@ export default function FaturamentoPage() {
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
                     <p className="mb-2 text-xs font-semibold text-sand-700">Faturamento mensal</p>
-                    <div className="h-48 print:h-40">
-                      <ResponsiveContainer>
-                        <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                          <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
-                          {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
-                          <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                            {ultimos13.map((h) => (
-                              <Cell key={h.competencia} fill={h.competencia === relCompetenciaEfetiva ? GOLD : WINE} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="flex justify-center overflow-x-auto">
+                      <BarChart width={320} height={180} data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                        <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                        <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
+                        {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
+                        <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                          {ultimos13.map((h) => (
+                            <Cell key={h.competencia} fill={h.competencia === relCompetenciaEfetiva ? GOLD : WINE} />
+                          ))}
+                        </Bar>
+                      </BarChart>
                     </div>
                     <p className="mt-1 text-[11px] text-sand-500">
                       Em dourado, o mês do relatório.{mediaUltimos12 !== undefined && ` Linha tracejada: média dos meses anteriores (${formatCurrency(mediaUltimos12)}).`}
@@ -911,17 +879,15 @@ export default function FaturamentoPage() {
                   <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
                     <p className="mb-2 text-xs font-semibold text-sand-700">Evolução do faturamento</p>
                     {ultimos13.length > 1 ? (
-                      <div className="h-48 print:h-40">
-                        <ResponsiveContainer>
-                          <LineChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                            <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                            <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                            <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                            {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
-                            <Line type="monotone" dataKey="valor" stroke={WINE} strokeWidth={2.5} dot={{ r: 3, fill: WINE }} />
-                          </LineChart>
-                        </ResponsiveContainer>
+                      <div className="flex justify-center overflow-x-auto">
+                        <LineChart width={320} height={180} data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.faturamento ?? 0 }))} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                          <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                          {mediaUltimos12 !== undefined && <ReferenceLine y={mediaUltimos12} stroke={GOLD} strokeDasharray="4 4" />}
+                          <Line type="monotone" dataKey="valor" stroke={WINE} strokeWidth={2.5} dot={{ r: 3, fill: WINE }} />
+                        </LineChart>
                       </div>
                     ) : (
                       <p className="py-10 text-center text-xs text-sand-400">Histórico insuficiente pra mostrar a evolução.</p>
@@ -932,18 +898,14 @@ export default function FaturamentoPage() {
                     <p className="mb-2 text-xs font-semibold text-sand-700">Para onde vai o imposto</p>
                     {tributosAtuais.length > 0 ? (
                       <div className="flex items-center gap-3">
-                        <div className="h-36 w-36 shrink-0">
-                          <ResponsiveContainer>
-                            <PieChart>
-                              <Pie data={tributosAtuais} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="95%" paddingAngle={1}>
-                                {tributosAtuais.map((t, i) => (
-                                  <Cell key={t.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                                ))}
-                              </Pie>
-                              <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                            </PieChart>
-                          </ResponsiveContainer>
-                        </div>
+                        <PieChart width={130} height={130} className="shrink-0">
+                          <Pie data={tributosAtuais} dataKey="value" nameKey="name" innerRadius={38} outerRadius={64} paddingAngle={1}>
+                            {tributosAtuais.map((t, i) => (
+                              <Cell key={t.name} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+                        </PieChart>
                         <table className="w-full whitespace-nowrap text-[11px]">
                           <tbody>
                             {tributosAtuais.map((t, i) => (
@@ -968,16 +930,14 @@ export default function FaturamentoPage() {
 
                   <div className="rounded-xl border border-sand-200 bg-white p-4 print:break-inside-avoid">
                     <p className="mb-2 text-xs font-semibold text-sand-700">Imposto pago por mês</p>
-                    <div className="h-48 print:h-40">
-                      <ResponsiveContainer>
-                        <BarChart data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.imposto ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                          <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
-                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
-                          <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
-                          <Bar dataKey="valor" fill={WINE} radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="flex justify-center overflow-x-auto">
+                      <BarChart width={320} height={180} data={ultimos13.map((h) => ({ mes: competenciaLabel(h.competencia), valor: h.imposto ?? 0 }))} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+                        <XAxis dataKey="mes" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={40} />
+                        <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => formatCurrency(v)} width={60} />
+                        <Tooltip formatter={(v) => formatCurrency(Number(v))} cursor={{ fill: "#F5F0E6" }} />
+                        <Bar dataKey="valor" fill={WINE} radius={[4, 4, 0, 0]} />
+                      </BarChart>
                     </div>
                   </div>
                 </div>
