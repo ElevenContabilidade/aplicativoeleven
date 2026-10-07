@@ -21,7 +21,6 @@ export const MODULO_POR_ROTA: Record<string, string> = {
   "/financeiro": "Financeiro",
   "/boletos": "Boletos",
   "/nfse": "NFSe",
-  "/guias-fiscais": "Guias Fiscais",
   "/rentabilidade": "Rentabilidade",
   "/produtividade": "Produtividade",
   "/parceiros": "Parceiros",
@@ -43,7 +42,7 @@ export function moduloDaRota(pathname: string): string | undefined {
 }
 
 export const MODULOS_OPERACAO = [
-  "Dados do Escritório", "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Obrigações", "Fiscal", "Guias Fiscais", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
+  "Dados do Escritório", "Comercial", "Leads", "Clientes", "Onboarding", "Tarefas", "Obrigações", "Fiscal", "MEI", "Parcelamentos", "Contábil", "Departamento Pessoal", "Societário", "Certificados", "Documentos",
 ];
 export const MODULOS_GESTAO = [
   "Senhas", "Financeiro", "Boletos", "NFSe", "Rentabilidade", "Produtividade", "Parceiros", "Portfólio", "Atendimento", "Relatórios", "Equipe", "Auditoria", "Gestão do CRC", "Scripts", "Controle de Conteúdo", "Eleven IA", "Configurações",
