@@ -6,10 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
+import { cn } from "@/lib/utils";
+import type { Client } from "@/lib/types";
 
 const SOMENTE_PROPRIOS = "__proprios__";
+
+function GrupoChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
+        active ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+      )}
+    >
+      {label}
+    </button>
+  );
+}
 
 /** Escolhe quais clientes usam um sistema/despesa — usado em Rentabilidade
  * pra ratear o custo só entre quem de fato usa, em vez de todo mundo.
@@ -67,15 +83,27 @@ export function ClientesUsuariosField({
     onChange(todosSelecionados ? [] : clients.map((c) => c.id));
   }
 
-  /** Atalho: escolher um parceiro marca só os clientes dele; escolher
-   * "nenhum parceiro" marca só os clientes próprios da Eleven (sem
-   * nenhum cliente de parceiro junto). */
-  function selecionarPorParceiro(escolha: string) {
-    if (escolha === SOMENTE_PROPRIOS) {
-      onChange(clients.filter((c) => !c.dados.clienteParceiro).map((c) => c.id));
-    } else {
-      onChange(clients.filter((c) => c.dados.nomeParceiro === escolha).map((c) => c.id));
-    }
+  // Atalho: marca quais grupos (parceiros, ou "só Eleven") estão ativos —
+  // pode marcar vários de uma vez, e a seleção final é a união dos clientes
+  // de todos os grupos ativos no momento.
+  const [gruposAtivos, setGruposAtivos] = useState<Set<string>>(new Set());
+
+  function clientesDoGrupo(grupo: string): Client[] {
+    return grupo === SOMENTE_PROPRIOS
+      ? clients.filter((c) => !c.dados.clienteParceiro)
+      : clients.filter((c) => c.dados.nomeParceiro === grupo);
+  }
+
+  function toggleGrupo(grupo: string) {
+    setGruposAtivos((atual) => {
+      const next = new Set(atual);
+      if (next.has(grupo)) next.delete(grupo);
+      else next.add(grupo);
+      const idsUniao = new Set<string>();
+      for (const g of next) for (const c of clientesDoGrupo(g)) idsUniao.add(c.id);
+      onChange([...idsUniao]);
+      return next;
+    });
   }
 
   return (
@@ -91,17 +119,14 @@ export function ClientesUsuariosField({
       </div>
       {!modoTodos && (
         <>
-          <div className="mb-2 flex items-center gap-2">
-            <span className="shrink-0 text-[11px] text-sand-500">Selecionar por grupo:</span>
-            <Select onValueChange={selecionarPorParceiro}>
-              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolher parceiro ou só a Eleven..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SOMENTE_PROPRIOS}>Nenhum parceiro — só clientes próprios da Eleven</SelectItem>
-                {parceiros.map((p) => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mb-2">
+            <p className="mb-1 text-[11px] text-sand-500">Selecionar por grupo (pode marcar mais de um):</p>
+            <div className="flex flex-wrap gap-1.5">
+              <GrupoChip label="Nenhum parceiro — só Eleven" active={gruposAtivos.has(SOMENTE_PROPRIOS)} onClick={() => toggleGrupo(SOMENTE_PROPRIOS)} />
+              {parceiros.map((p) => (
+                <GrupoChip key={p} label={p} active={gruposAtivos.has(p)} onClick={() => toggleGrupo(p)} />
+              ))}
+            </div>
           </div>
           <div className="relative mb-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
