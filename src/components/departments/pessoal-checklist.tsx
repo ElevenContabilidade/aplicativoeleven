@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Copy, Eraser } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy, Eraser } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import {
   CHECKLIST_STATUS,
@@ -360,6 +360,30 @@ function RotinaTable({
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const todosSelecionados = clients.length > 0 && clients.every((c) => selecionados.has(c.id));
 
+  const [ordem, setOrdem] = useState<{ campo: "nome" | "pct"; dir: "asc" | "desc" } | null>(null);
+
+  function toggleOrdem(campo: "nome" | "pct") {
+    setOrdem((atual) => {
+      if (!atual || atual.campo !== campo) return { campo, dir: "asc" };
+      return atual.dir === "asc" ? { campo, dir: "desc" } : null;
+    });
+  }
+
+  const clientsOrdenados = useMemo(() => {
+    if (!ordem) return clients;
+    const dir = ordem.dir === "asc" ? 1 : -1;
+    if (ordem.campo === "pct") {
+      return [...clients].sort((a, b) => (pctForClient(a) - pctForClient(b)) * dir);
+    }
+    return [...clients].sort(
+      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+    );
+    // pctForClient muda de referência toda vez que o checklist muda no pai
+    // (é uma arrow nova a cada render) — precisa entrar na lista de
+    // dependências pra reordenar depois de marcar uma célula, senão a
+    // ordenação por "% concluído" fica desatualizada até outra coisa mudar.
+  }, [clients, ordem, pctForClient]);
+
   function toggleCliente(id: string) {
     setSelecionados((atual) => {
       const next = new Set(atual);
@@ -405,7 +429,14 @@ function RotinaTable({
               {clients.length > 0 && <Checkbox checked={todosSelecionados} onCheckedChange={toggleTodos} title="Selecionar todos" />}
             </th>
             <th className="sticky left-9 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-              Cliente
+              <button type="button" onClick={() => toggleOrdem("nome")} className="flex items-center gap-1 hover:text-cream-50/80">
+                Cliente
+                {ordem?.campo === "nome" ? (
+                  ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                ) : (
+                  <ArrowUpDown className="size-3 text-cream-50/50" />
+                )}
+              </button>
             </th>
             {columns.map((r) => (
               <th key={r} className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
@@ -413,12 +444,19 @@ function RotinaTable({
               </th>
             ))}
             <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-              % concluído
+              <button type="button" onClick={() => toggleOrdem("pct")} className="flex items-center gap-1 hover:text-cream-50/80">
+                % concluído
+                {ordem?.campo === "pct" ? (
+                  ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                ) : (
+                  <ArrowUpDown className="size-3 text-cream-50/50" />
+                )}
+              </button>
             </th>
           </tr>
         </thead>
         <tbody>
-          {clients.map((c) => {
+          {clientsOrdenados.map((c) => {
             const pct = pctForClient(c);
             const applicable = applicableFor?.(c);
             return (

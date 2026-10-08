@@ -1276,8 +1276,8 @@ export const ROTINAS_PESSOAL_FIXAS = [
 export const ROTINAS_PESSOAL_VARIAVEIS = [
   "Classificar",
   "Lançar no sistema",
-  "Conciliar Banco",
   "Importar DP",
+  "Conciliar Banco",
   "Validar balanço com cliente",
 ] as const;
 

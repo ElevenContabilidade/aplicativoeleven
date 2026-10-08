@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_MEI, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,14 @@ export function MeiChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [ordem, setOrdem] = useState<{ campo: "nome" | "pct"; dir: "asc" | "desc" } | null>(null);
+
+  function toggleOrdem(campo: "nome" | "pct") {
+    setOrdem((atual) => {
+      if (!atual || atual.campo !== campo) return { campo, dir: "asc" };
+      return atual.dir === "asc" ? { campo, dir: "desc" } : null;
+    });
+  }
 
   const rotinas = ROTINAS_MEI;
   const competencia = `${year}-${mes}`;
@@ -81,6 +89,18 @@ export function MeiChecklist() {
     const done = rotinas.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
     return Math.round((done / rotinas.length) * 100);
   }
+
+  const myClientsOrdenados = useMemo(() => {
+    if (!ordem) return myClients;
+    const dir = ordem.dir === "asc" ? 1 : -1;
+    if (ordem.campo === "pct") {
+      return [...myClients].sort((a, b) => (pctFor(a.id, competencia) - pctFor(b.id, competencia)) * dir);
+    }
+    return [...myClients].sort(
+      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myClients, ordem, competencia, checklist]);
 
   const totalCells = myClients.length * rotinas.length;
   const okCells = myClients.reduce((sum, c) => sum + rotinas.filter((r) => isDone(statusFor(c.id, competencia, r))).length, 0);
@@ -252,7 +272,14 @@ export function MeiChecklist() {
               <thead>
                 <tr>
                   <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                    Cliente
+                    <button type="button" onClick={() => toggleOrdem("nome")} className="flex items-center gap-1 hover:text-cream-50/80">
+                      Cliente
+                      {ordem?.campo === "nome" ? (
+                        ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                      ) : (
+                        <ArrowUpDown className="size-3 text-cream-50/50" />
+                      )}
+                    </button>
                   </th>
                   {rotinas.map((r) => (
                     <th key={r} className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
@@ -260,12 +287,19 @@ export function MeiChecklist() {
                     </th>
                   ))}
                   <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                    % concluído
+                    <button type="button" onClick={() => toggleOrdem("pct")} className="flex items-center gap-1 hover:text-cream-50/80">
+                      % concluído
+                      {ordem?.campo === "pct" ? (
+                        ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                      ) : (
+                        <ArrowUpDown className="size-3 text-cream-50/50" />
+                      )}
+                    </button>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {myClients.map((c) => (
+                {myClientsOrdenados.map((c) => (
                   <ClientRow
                     key={c.id}
                     client={c}

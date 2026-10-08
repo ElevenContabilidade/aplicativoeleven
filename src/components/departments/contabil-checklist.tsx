@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,14 @@ export function ContabilChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [ordem, setOrdem] = useState<{ campo: "nome" | "pct"; dir: "asc" | "desc" } | null>(null);
+
+  function toggleOrdem(campo: "nome" | "pct") {
+    setOrdem((atual) => {
+      if (!atual || atual.campo !== campo) return { campo, dir: "asc" };
+      return atual.dir === "asc" ? { campo, dir: "desc" } : null;
+    });
+  }
 
   const clientesDoSetor = useMemo(
     () =>
@@ -78,6 +86,20 @@ export function ContabilChecklist() {
     const done = list.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
     return Math.round((done / list.length) * 100);
   }
+
+  const myClientsOrdenados = useMemo(() => {
+    if (!ordem) return myClients;
+    const dir = ordem.dir === "asc" ? 1 : -1;
+    if (ordem.campo === "pct") {
+      return [...myClients].sort(
+        (a, b) => (pctFor(a.id, competencia, rotinasContabeisFor(a, rotinas)) - pctFor(b.id, competencia, rotinasContabeisFor(b, rotinas))) * dir
+      );
+    }
+    return [...myClients].sort(
+      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myClients, ordem, competencia, checklist, rotinas]);
 
   const totalCells = myClients.reduce((sum, c) => sum + rotinasContabeisFor(c, rotinas).length, 0);
   const okCells = myClients.reduce((sum, c) => sum + rotinasContabeisFor(c, rotinas).filter((r) => isDone(statusFor(c.id, competencia, r))).length, 0);
@@ -259,7 +281,14 @@ export function ContabilChecklist() {
               <thead>
                 <tr>
                   <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                    Cliente
+                    <button type="button" onClick={() => toggleOrdem("nome")} className="flex items-center gap-1 hover:text-cream-50/80">
+                      Cliente
+                      {ordem?.campo === "nome" ? (
+                        ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                      ) : (
+                        <ArrowUpDown className="size-3 text-cream-50/50" />
+                      )}
+                    </button>
                   </th>
                   {rotinas.map((r) => (
                     <th key={r} className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
@@ -267,12 +296,19 @@ export function ContabilChecklist() {
                     </th>
                   ))}
                   <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                    % concluído
+                    <button type="button" onClick={() => toggleOrdem("pct")} className="flex items-center gap-1 hover:text-cream-50/80">
+                      % concluído
+                      {ordem?.campo === "pct" ? (
+                        ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                      ) : (
+                        <ArrowUpDown className="size-3 text-cream-50/50" />
+                      )}
+                    </button>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {myClients.map((c) => (
+                {myClientsOrdenados.map((c) => (
                   <ClientRow
                     key={c.id}
                     client={c}
