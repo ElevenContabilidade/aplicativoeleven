@@ -174,6 +174,12 @@ export function CadastroForm({ client }: { client: Client }) {
               </button>
             </div>
           </Field>
+          <Field label="Código de acesso Simples Nacional/MEI">
+            <Input
+              value={form.codigoAcessoSimplesNacional ?? ""}
+              onChange={(e) => set("codigoAcessoSimplesNacional", e.target.value)}
+            />
+          </Field>
           <Field label="Link da pasta no Drive" className="sm:col-span-2 lg:col-span-3">
             <Input
               type="url"

@@ -7,108 +7,98 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MetricCard } from "@/components/dashboard/metric-card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
+import type { Client } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-type TipoAcesso = "Portal Nacional / Prefeitura" | "gov.br" | "Certificado digital" | "Portal do escritório";
-
-const TIPOS: TipoAcesso[] = ["Portal Nacional / Prefeitura", "gov.br", "Certificado digital", "Portal do escritório"];
-
-interface AcessoSenha {
-  id: string;
-  /** Ausente pros acessos que não são de um cliente específico (senhas de
-   * portal do escritório) — nesse caso o link de edição vai pra Dados do
-   * escritório em vez do cadastro do cliente. */
-  clienteId?: string;
-  clienteNome: string;
-  tipo: TipoAcesso;
-  usuario?: string;
-  senha: string;
-  detalhe?: string;
+/** Sócio cujo CPF/gov.br faz sentido usar como login principal da empresa
+ * — prioriza o administrador, depois o representante legal, senão o
+ * primeiro sócio cadastrado. Mesma regra do checklist Fiscal. */
+function socioResponsavel(client: Client) {
+  return client.socios?.find((s) => s.administrador) ?? client.socios?.find((s) => s.representanteLegal) ?? client.socios?.[0];
 }
 
-function useAcessos(): AcessoSenha[] {
+interface LinhaAcesso {
+  clienteId: string;
+  clienteNome: string;
+  cnpj: string;
+  socioNome?: string;
+  cpf?: string;
+  senhaGov?: string;
+  senhaPrefeitura?: string;
+  codigoAcessoSn?: string;
+  senhaCertificado?: string;
+  tipoCertificado?: string;
+}
+
+function useAcessosPorCliente(): LinhaAcesso[] {
   const clients = useAppStore((s) => s.clients);
   const certificados = useAppStore((s) => s.certificados);
-  const senhasPortais = useAppStore((s) => s.senhasPortais);
 
   return useMemo(() => {
-    const linhas: AcessoSenha[] = [];
-
-    for (const sp of senhasPortais) {
-      linhas.push({
-        id: `portal-escritorio-${sp.id}`,
-        clienteNome: sp.nomePortal,
-        tipo: "Portal do escritório",
-        usuario: sp.usuario,
-        senha: sp.senha,
-        detalhe: sp.observacoes,
-      });
-    }
-
-    for (const c of clients) {
-      const nome = c.dados.nomeFantasia || c.dados.razaoSocial;
-
-      if (c.dados.senhaPrefeituraPortalNacional) {
-        linhas.push({
-          id: `portal-${c.id}`,
+    return clients
+      .map((c) => {
+        const socio = socioResponsavel(c);
+        const cert = certificados.find((cf) => cf.clienteId === c.id && cf.senha);
+        return {
           clienteId: c.id,
-          clienteNome: nome,
-          tipo: "Portal Nacional / Prefeitura",
-          usuario: c.dados.cnpj,
-          senha: c.dados.senhaPrefeituraPortalNacional,
-        });
-      }
+          clienteNome: c.dados.nomeFantasia || c.dados.razaoSocial,
+          cnpj: c.dados.cnpj,
+          socioNome: socio?.nome,
+          cpf: socio?.cpf,
+          senhaGov: socio?.senhaGovBr,
+          senhaPrefeitura: c.dados.senhaPrefeituraPortalNacional,
+          codigoAcessoSn: c.dados.codigoAcessoSimplesNacional,
+          senhaCertificado: cert?.senha,
+          tipoCertificado: cert?.tipo,
+        };
+      })
+      .filter((l) => l.senhaGov || l.senhaPrefeitura || l.codigoAcessoSn || l.senhaCertificado)
+      .sort((a, b) => a.clienteNome.localeCompare(b.clienteNome, "pt-BR"));
+  }, [clients, certificados]);
+}
 
-      for (const socio of c.socios) {
-        if (socio.senhaGovBr) {
-          linhas.push({
-            id: `govbr-${socio.id}`,
-            clienteId: c.id,
-            clienteNome: nome,
-            tipo: "gov.br",
-            usuario: socio.cpf,
-            senha: socio.senhaGovBr,
-            detalhe: socio.nome,
-          });
-        }
-      }
-    }
-
-    for (const cert of certificados) {
-      if (!cert.senha) continue;
-      const cliente = clients.find((c) => c.id === cert.clienteId);
-      linhas.push({
-        id: `cert-${cert.id}`,
-        clienteId: cert.clienteId,
-        clienteNome: cliente ? cliente.dados.nomeFantasia || cliente.dados.razaoSocial : "—",
-        tipo: "Certificado digital",
-        usuario: cert.documento,
-        senha: cert.senha,
-        detalhe: cert.tipo,
-      });
-    }
-
-    return linhas.sort((a, b) => a.clienteNome.localeCompare(b.clienteNome));
-  }, [clients, certificados, senhasPortais]);
+function SenhaCell({ id, valor, visivel, onToggle, onCopiar, copiado }: {
+  id: string;
+  valor?: string;
+  visivel: boolean;
+  onToggle: (id: string) => void;
+  onCopiar: (id: string, valor: string) => void;
+  copiado: boolean;
+}) {
+  if (!valor) return <span className="text-sand-300">—</span>;
+  return (
+    <div className="flex items-center gap-1">
+      <span className="font-mono text-[11px]">{visivel ? valor : "•".repeat(Math.min(valor.length, 10))}</span>
+      <button type="button" onClick={() => onToggle(id)} title={visivel ? "Ocultar" : "Mostrar"} className="rounded p-0.5 text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+        {visivel ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
+      </button>
+      <button type="button" onClick={() => onCopiar(id, valor)} title="Copiar" className="rounded p-0.5 text-sand-400 hover:bg-sand-100 hover:text-wine-700">
+        {copiado ? <Check className="size-3 text-status-success" /> : <Copy className="size-3" />}
+      </button>
+    </div>
+  );
 }
 
 export default function SenhasPage() {
-  const acessos = useAcessos();
+  const linhas = useAcessosPorCliente();
+  const senhasPortais = useAppStore((s) => s.senhasPortais);
   const [busca, setBusca] = useState("");
-  const [tipoFiltro, setTipoFiltro] = useState<TipoAcesso | "Todos">("Todos");
   const [visiveis, setVisiveis] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
 
-  const linhas = useMemo(() => {
-    return acessos.filter((a) => {
-      if (tipoFiltro !== "Todos" && a.tipo !== tipoFiltro) return false;
-      if (!busca.trim()) return true;
-      const termo = busca.trim().toLowerCase();
-      return a.clienteNome.toLowerCase().includes(termo) || (a.detalhe ?? "").toLowerCase().includes(termo);
-    });
-  }, [acessos, busca, tipoFiltro]);
+  const filtradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return linhas;
+    return linhas.filter(
+      (l) =>
+        l.clienteNome.toLowerCase().includes(termo) ||
+        l.cnpj.toLowerCase().includes(termo) ||
+        (l.socioNome ?? "").toLowerCase().includes(termo) ||
+        (l.cpf ?? "").toLowerCase().includes(termo)
+    );
+  }, [linhas, busca]);
 
   function toggleVisivel(id: string) {
     setVisiveis((cur) => {
@@ -119,123 +109,157 @@ export default function SenhasPage() {
     });
   }
 
-  async function copiar(id: string, senha: string) {
+  async function copiar(id: string, valor: string) {
     try {
-      await navigator.clipboard.writeText(senha);
+      await navigator.clipboard.writeText(valor);
       setCopiadoId(id);
       setTimeout(() => setCopiadoId((cur) => (cur === id ? null : cur)), 2000);
     } catch {
-      // clipboard indisponível — usuário copia manualmente pela senha revelada
+      // clipboard indisponível — usuário copia manualmente pelo valor revelado
     }
   }
 
-  const clientesComAcesso = new Set(acessos.filter((a) => a.clienteId).map((a) => a.clienteId)).size;
+  const totalAcessos = linhas.reduce(
+    (a, l) => a + [l.senhaGov, l.senhaPrefeitura, l.codigoAcessoSn, l.senhaCertificado].filter(Boolean).length,
+    0
+  );
 
   return (
     <div>
       <PageHeader
         title="Senhas"
-        description="Cofre com os acessos de cada cliente (gov.br, Portal Nacional/Prefeitura, certificado digital) reunidos num só lugar pra consulta rápida."
+        description="Cofre com os acessos de cada cliente (CPF, gov.br, Portal Nacional/Prefeitura, código de acesso SN/MEI e certificado digital) reunidos numa linha por empresa."
       />
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <MetricCard label="Acessos cadastrados" value={acessos.length} icon={KeyRound} tone="wine" />
-        <MetricCard label="Clientes com ao menos 1 acesso" value={clientesComAcesso} icon={KeyRound} tone="neutral" />
-        <MetricCard label="Certificados com senha salva" value={acessos.filter((a) => a.tipo === "Certificado digital").length} icon={KeyRound} tone="success" />
+        <MetricCard label="Clientes com ao menos 1 acesso" value={linhas.length} icon={KeyRound} tone="wine" />
+        <MetricCard label="Acessos cadastrados" value={totalAcessos} icon={KeyRound} tone="neutral" />
+        <MetricCard label="Certificados com senha salva" value={linhas.filter((l) => l.senhaCertificado).length} icon={KeyRound} tone="success" />
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por cliente ou sócio" className="pl-8" />
-        </div>
-        <Select value={tipoFiltro} onValueChange={(v) => setTipoFiltro(v as TipoAcesso | "Todos")}>
-          <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Todos">Todos os tipos</SelectItem>
-            {TIPOS.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
-          </SelectContent>
-        </Select>
+      <div className="mb-4 relative w-full max-w-xs">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+        <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por cliente, CNPJ, sócio ou CPF" className="pl-8" />
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Acessos ({linhas.length})</CardTitle>
+          <CardTitle>Acessos ({filtradas.length})</CardTitle>
           <p className="mt-1 text-xs text-sand-500">
-            As senhas aqui vêm do cadastro de cada cliente (Sócios &amp; contatos, Dados cadastrais, Certificados) e
-            dos portais do escritório (Dados do escritório) — pra alterar, edite lá.
+            As senhas aqui vêm do cadastro de cada cliente (Sócios &amp; contatos, Dados cadastrais, Certificados) — pra alterar, edite lá.
+            CPF e senha gov.br são os do sócio administrador (ou representante legal/primeiro cadastrado, quando não há administrador marcado).
           </p>
         </CardHeader>
         <CardContent className="pt-4">
-          <Table className="min-w-[820px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="w-48">Tipo de acesso</TableHead>
-                <TableHead>Usuário / CPF-CNPJ</TableHead>
-                <TableHead className="w-56">Senha</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {linhas.map((a) => {
-                const visivel = visiveis.has(a.id);
-                return (
-                  <TableRow key={a.id}>
+          <div className="overflow-x-auto">
+            <Table className="min-w-[1080px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>CNPJ</TableHead>
+                  <TableHead>CPF</TableHead>
+                  <TableHead>Senha gov.br</TableHead>
+                  <TableHead>Senha prefeitura/Portal Nacional</TableHead>
+                  <TableHead>Código de acesso SN/MEI</TableHead>
+                  <TableHead>Certificado digital</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtradas.map((l) => (
+                  <TableRow key={l.clienteId}>
                     <TableCell className="font-medium">
-                      {a.clienteId ? (
-                        <Link href={`/clientes/${a.clienteId}`} className="hover:text-wine-700 hover:underline">
-                          {a.clienteNome}
-                        </Link>
-                      ) : (
-                        a.clienteNome
-                      )}
+                      <Link href={`/clientes/${l.clienteId}`} className="hover:text-wine-700 hover:underline">
+                        {l.clienteNome}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-[11px] text-sand-600">{l.cnpj || "—"}</TableCell>
+                    <TableCell>
+                      <span className="font-mono text-[11px] text-sand-600">{l.cpf || "—"}</span>
+                      {l.socioNome && <span className="block text-[10px] text-sand-400">{l.socioNome}</span>}
                     </TableCell>
                     <TableCell>
-                      {a.tipo}
-                      {a.detalhe && <span className="block text-[11px] text-sand-400">{a.detalhe}</span>}
-                    </TableCell>
-                    <TableCell className="font-mono text-[11px]">{a.usuario || "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs">{visivel ? a.senha : "•".repeat(Math.min(a.senha.length, 10))}</span>
-                        <button
-                          type="button"
-                          onClick={() => toggleVisivel(a.id)}
-                          title={visivel ? "Ocultar senha" : "Mostrar senha"}
-                          className="rounded-md p-1 text-sand-400 hover:bg-sand-100 hover:text-sand-700"
-                        >
-                          {visivel ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void copiar(a.id, a.senha)}
-                          title="Copiar senha"
-                          className="rounded-md p-1 text-sand-400 hover:bg-sand-100 hover:text-wine-700"
-                        >
-                          {copiadoId === a.id ? <Check className="size-3.5 text-status-success" /> : <Copy className="size-3.5" />}
-                        </button>
-                      </div>
+                      <SenhaCell id={`${l.clienteId}-gov`} valor={l.senhaGov} visivel={visiveis.has(`${l.clienteId}-gov`)} onToggle={toggleVisivel} onCopiar={copiar} copiado={copiadoId === `${l.clienteId}-gov`} />
                     </TableCell>
                     <TableCell>
-                      <Link
-                        href={a.clienteId ? `/clientes/${a.clienteId}` : "/dados-escritorio"}
-                        title={a.clienteId ? "Editar no cadastro do cliente" : "Editar em Dados do escritório"}
-                        className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700"
-                      >
+                      <SenhaCell id={`${l.clienteId}-prefeitura`} valor={l.senhaPrefeitura} visivel={visiveis.has(`${l.clienteId}-prefeitura`)} onToggle={toggleVisivel} onCopiar={copiar} copiado={copiadoId === `${l.clienteId}-prefeitura`} />
+                    </TableCell>
+                    <TableCell>
+                      <SenhaCell id={`${l.clienteId}-sn`} valor={l.codigoAcessoSn} visivel={visiveis.has(`${l.clienteId}-sn`)} onToggle={toggleVisivel} onCopiar={copiar} copiado={copiadoId === `${l.clienteId}-sn`} />
+                    </TableCell>
+                    <TableCell>
+                      <SenhaCell id={`${l.clienteId}-cert`} valor={l.senhaCertificado} visivel={visiveis.has(`${l.clienteId}-cert`)} onToggle={toggleVisivel} onCopiar={copiar} copiado={copiadoId === `${l.clienteId}-cert`} />
+                      {l.tipoCertificado && <span className="block text-[10px] text-sand-400">{l.tipoCertificado}</span>}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/clientes/${l.clienteId}`} title="Editar no cadastro do cliente" className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700">
                         <ExternalLink className="size-3.5" />
                       </Link>
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {linhas.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-10 text-center text-sand-400">Nenhum acesso cadastrado ainda.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
+                ))}
+                {filtradas.length === 0 && (
+                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum acesso cadastrado ainda.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      {senhasPortais.length > 0 && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Portais do escritório</CardTitle>
+            <p className="mt-1 text-xs text-sand-500">
+              Acessos que não são de um cliente específico (ex: portal do contabilista) — pra alterar, edite em Dados do escritório.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Portal</TableHead>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Senha</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {senhasPortais.map((sp) => {
+                  const id = `portal-${sp.id}`;
+                  const visivel = visiveis.has(id);
+                  return (
+                    <TableRow key={sp.id}>
+                      <TableCell className="font-medium">
+                        {sp.nomePortal}
+                        {sp.observacoes && <span className="block text-[11px] text-sand-400">{sp.observacoes}</span>}
+                      </TableCell>
+                      <TableCell className="font-mono text-[11px]">{sp.usuario || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs">{visivel ? sp.senha : "•".repeat(Math.min(sp.senha.length, 10))}</span>
+                          <button type="button" onClick={() => toggleVisivel(id)} title={visivel ? "Ocultar senha" : "Mostrar senha"} className="rounded-md p-1 text-sand-400 hover:bg-sand-100 hover:text-sand-700">
+                            {visivel ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                          </button>
+                          <button type="button" onClick={() => void copiar(id, sp.senha)} title="Copiar senha" className={cn("rounded-md p-1 text-sand-400 hover:bg-sand-100 hover:text-wine-700")}>
+                            {copiadoId === id ? <Check className="size-3.5 text-status-success" /> : <Copy className="size-3.5" />}
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Link href="/dados-escritorio" title="Editar em Dados do escritório" className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-wine-700">
+                          <ExternalLink className="size-3.5" />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

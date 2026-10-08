@@ -382,6 +382,10 @@ export interface DadosCadastrais {
   inscricaoMunicipal?: string;
   nire?: string;
   senhaPrefeituraPortalNacional?: string;
+  /** Código de acesso do Simples Nacional/MEI (gera no site do SN sem
+   * certificado digital nem gov.br) — login diferente da senha da
+   * prefeitura/portal nacional acima e do gov.br dos sócios. */
+  codigoAcessoSimplesNacional?: string;
   linkDrive?: string;
   cnaePrincipal: string;
   cnaesSecundarios: string[];
