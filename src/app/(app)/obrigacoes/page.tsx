@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp, List, Calendar as CalendarIcon } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ export default function ObrigacoesPage() {
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState<"Pendentes" | "Concluídas" | "Todas">("Pendentes");
   const [ordenar, setOrdenar] = useState<"cliente" | "vencimento" | "setor" | "status">("cliente");
+  const [visao, setVisao] = useState<"lista" | "calendario">("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Obligation | null>(null);
 
@@ -154,6 +155,33 @@ export default function ObrigacoesPage() {
         }
       });
   }, [linhas, clients, query, clienteFiltro, statusFiltro, ordenar]);
+
+  // Visão calendário: só obrigações avulsas entram (rotinas de departamento
+  // não têm data própria) — organizadas por dia do mês selecionado. Respeita
+  // os mesmos filtros de busca/cliente/status da lista.
+  const semanas = useMemo(() => {
+    const ano_ = Number(ano);
+    const mesIdx = Number(mes) - 1;
+    const porDia = new Map<string, typeof filtered>();
+    for (const item of filtered) {
+      if (item.linha.kind !== "manual" || !item.linha.vencimento) continue;
+      const atual = porDia.get(item.linha.vencimento) ?? [];
+      atual.push(item);
+      porDia.set(item.linha.vencimento, atual);
+    }
+    const primeiroDiaSemana = new Date(ano_, mesIdx, 1).getDay();
+    const totalDias = new Date(ano_, mesIdx + 1, 0).getDate();
+    const celulas: ({ dia: number; iso: string; itens: typeof filtered } | null)[] = [];
+    for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
+    for (let dia = 1; dia <= totalDias; dia++) {
+      const iso = `${ano}-${mes}-${String(dia).padStart(2, "0")}`;
+      celulas.push({ dia, iso, itens: porDia.get(iso) ?? [] });
+    }
+    while (celulas.length % 7 !== 0) celulas.push(null);
+    const semanas_: typeof celulas[] = [];
+    for (let i = 0; i < celulas.length; i += 7) semanas_.push(celulas.slice(i, i + 7));
+    return semanas_;
+  }, [filtered, ano, mes]);
 
   const totalPendentes = linhas.filter((l) => l.pendente).length;
   const totalAtrasadas = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento && l.vencimento < hojeIso).length;
@@ -279,17 +307,98 @@ export default function ObrigacoesPage() {
             <SelectItem value="Todas">Todos os status</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={ordenar} onValueChange={(v) => setOrdenar(v as typeof ordenar)}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="cliente">Ordenar: Cliente (A-Z)</SelectItem>
-            <SelectItem value="vencimento">Ordenar: Vencimento</SelectItem>
-            <SelectItem value="setor">Ordenar: Setor</SelectItem>
-            <SelectItem value="status">Ordenar: Status</SelectItem>
-          </SelectContent>
-        </Select>
+        {visao === "lista" && (
+          <Select value={ordenar} onValueChange={(v) => setOrdenar(v as typeof ordenar)}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cliente">Ordenar: Cliente (A-Z)</SelectItem>
+              <SelectItem value="vencimento">Ordenar: Vencimento</SelectItem>
+              <SelectItem value="setor">Ordenar: Setor</SelectItem>
+              <SelectItem value="status">Ordenar: Status</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border border-sand-200 bg-white p-0.5">
+          <button
+            type="button"
+            onClick={() => setVisao("lista")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              visao === "lista" ? "bg-wine-700 text-cream-50" : "text-sand-500 hover:bg-sand-100"
+            )}
+          >
+            <List className="size-3.5" /> Lista
+          </button>
+          <button
+            type="button"
+            onClick={() => setVisao("calendario")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              visao === "calendario" ? "bg-wine-700 text-cream-50" : "text-sand-500 hover:bg-sand-100"
+            )}
+          >
+            <CalendarIcon className="size-3.5" /> Calendário
+          </button>
+        </div>
       </div>
 
+      {visao === "calendario" ? (
+        <Card>
+          <CardContent className="p-3 sm:p-4">
+            <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-sand-400">
+              {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (<div key={d}>{d}</div>))}
+            </div>
+            <div className="mt-1.5 space-y-1.5">
+              {semanas.map((semana, i) => (
+                <div key={i} className="grid grid-cols-7 gap-1.5">
+                  {semana.map((cel, j) =>
+                    cel ? (
+                      <div
+                        key={cel.iso}
+                        className={cn(
+                          "min-h-20 rounded-lg border p-1.5",
+                          cel.iso === hojeIso ? "border-wine-400 bg-wine-50" : "border-sand-200 bg-white"
+                        )}
+                      >
+                        <p className={cn("text-[11px] font-semibold", cel.iso === hojeIso ? "text-wine-700" : "text-sand-500")}>{cel.dia}</p>
+                        <div className="mt-1 space-y-1">
+                          {cel.itens.slice(0, 3).map(({ linha: l, cliente }) => {
+                            const concluida = !l.pendente;
+                            const atrasada = l.pendente && l.vencimento! < hojeIso;
+                            return (
+                              <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => l.kind === "manual" && abrirEdicao(l.obligation)}
+                                title={`${l.tipo} — ${cliente?.dados.nomeFantasia ?? cliente?.dados.razaoSocial ?? ""}`}
+                                className={cn(
+                                  "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium",
+                                  concluida
+                                    ? "bg-status-success-bg text-status-success"
+                                    : atrasada
+                                      ? "bg-status-danger-bg text-status-danger"
+                                      : "bg-wine-100 text-wine-700"
+                                )}
+                              >
+                                {l.tipo}
+                              </button>
+                            );
+                          })}
+                          {cel.itens.length > 3 && (
+                            <p className="px-1 text-[10px] text-sand-400">+{cel.itens.length - 3} mais</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div key={`vazio-${i}-${j}`} />
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -372,6 +481,7 @@ export default function ObrigacoesPage() {
           )}
         </TableBody>
       </Table>
+      )}
 
       <ObligationFormDialog open={formOpen} onOpenChange={setFormOpen} obligation={editing} />
     </div>
