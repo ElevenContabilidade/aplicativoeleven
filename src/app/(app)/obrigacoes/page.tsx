@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ObligationFormDialog } from "@/components/obligations/obligation-form-dialog";
@@ -55,6 +57,7 @@ export default function ObrigacoesPage() {
   const setChecklistMei = useAppStore((s) => s.setChecklistMei);
 
   const hoje = new Date();
+  const hojeMeiaNoite = new Date(hoje).setHours(0, 0, 0, 0);
   const [ano, setAno] = useState(String(hoje.getFullYear()));
   const [mes, setMes] = useState(String(hoje.getMonth() + 1).padStart(2, "0"));
   const [query, setQuery] = useState("");
@@ -155,6 +158,34 @@ export default function ObrigacoesPage() {
   const totalPendentes = linhas.filter((l) => l.pendente).length;
   const totalAtrasadas = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento && l.vencimento < hojeIso).length;
 
+  // "Ciclo do mês": visão geral de tudo que esse mês exige (rotinas de
+  // departamento + obrigações avulsas), igual um placar de progresso.
+  const totalRotinas = linhas.length;
+  const totalConcluidas = linhas.filter((l) => !l.pendente).length;
+  const totalVencemHoje = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento === hojeIso).length;
+  const progressoGeral = totalRotinas > 0 ? Math.round((totalConcluidas / totalRotinas) * 100) : 0;
+
+  // "Próximos prazos": só as obrigações avulsas têm vencimento próprio (as
+  // rotinas de departamento são só um checklist mensal, sem data) —
+  // agrupadas por tipo pra mostrar quantos clientes já concluíram cada uma.
+  const proximosPrazos = useMemo(() => {
+    const porTipo = new Map<string, { tipo: string; total: number; concluidas: number; menorVencimentoPendente: string | null }>();
+    for (const l of linhas) {
+      if (l.kind !== "manual") continue;
+      const atual = porTipo.get(l.tipo) ?? { tipo: l.tipo, total: 0, concluidas: 0, menorVencimentoPendente: null };
+      atual.total += 1;
+      if (!l.pendente) atual.concluidas += 1;
+      else if (l.vencimento && (!atual.menorVencimentoPendente || l.vencimento < atual.menorVencimentoPendente)) {
+        atual.menorVencimentoPendente = l.vencimento;
+      }
+      porTipo.set(l.tipo, atual);
+    }
+    return [...porTipo.values()]
+      .filter((g) => g.menorVencimentoPendente !== null)
+      .sort((a, b) => a.menorVencimentoPendente!.localeCompare(b.menorVencimentoPendente!))
+      .slice(0, 4);
+  }, [linhas]);
+
   return (
     <div>
       <PageHeader
@@ -162,6 +193,48 @@ export default function ObrigacoesPage() {
         description="Visão geral do que está pendente de cada cliente — junta as rotinas de Fiscal, Contábil, Departamento Pessoal e MEI com obrigações avulsas."
         actions={<Button onClick={abrirNova}><Plus className="size-3.5" /> Nova obrigação</Button>}
       />
+
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">
+        Ciclo do mês — {MESES.find((m) => m.value === mes)?.label}/{ano}
+      </p>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <MetricCard label="Rotinas no mês" value={totalRotinas} icon={ListChecks} tone="wine" />
+        <MetricCard label="Concluídas" value={totalConcluidas} icon={CheckCircle2} tone="success" />
+        <MetricCard label="Vencem hoje" value={totalVencemHoje} icon={Clock} tone="warning" />
+        <MetricCard label="Fora do prazo" value={totalAtrasadas} icon={AlertTriangle} tone="danger" />
+        <MetricCard label="Progresso geral" value={`${progressoGeral}%`} icon={TrendingUp} tone="neutral" />
+      </div>
+
+      {proximosPrazos.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">Próximos prazos</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {proximosPrazos.map((g) => {
+              const dias = Math.round((new Date(g.menorVencimentoPendente! + "T00:00:00").getTime() - hojeMeiaNoite) / 86400000);
+              const atrasado = dias < 0;
+              const urgente = !atrasado && dias <= 3;
+              const tone = atrasado ? "danger" : urgente ? "warning" : "wine";
+              const toneClasses: Record<string, string> = {
+                danger: "border-l-status-danger bg-status-danger-bg/40",
+                warning: "border-l-status-warning bg-status-warning-bg/40",
+                wine: "border-l-wine-400 bg-wine-50",
+              };
+              return (
+                <Card key={g.tipo} className={cn("border-l-4 py-0", toneClasses[tone])}>
+                  <CardContent className="p-3">
+                    <p className="text-[10px] font-medium text-sand-500">{formatDate(g.menorVencimentoPendente!)}</p>
+                    <p className="mt-0.5 truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
+                    <p className={cn("mt-1 text-xs font-semibold", atrasado ? "text-status-danger" : urgente ? "text-status-warning" : "text-wine-700")}>
+                      {atrasado ? `Atrasada há ${Math.abs(dias)}d` : dias === 0 ? "Vence hoje" : `Vence em ${dias}d`}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-sand-500">{g.concluidas}/{g.total} clientes</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap items-center gap-3 text-xs">
         <span className="rounded-full bg-status-warning-bg px-3 py-1 font-medium text-status-warning">
