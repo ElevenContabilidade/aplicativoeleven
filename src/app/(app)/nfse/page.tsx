@@ -72,8 +72,12 @@ export default function NfsePage() {
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [soEleven, setSoEleven] = useState(false);
 
-  const clientesMensais = useMemo(() => clients.filter((c) => c.financeiro.valorMensal > 0), [clients]);
+  const clientesMensais = useMemo(
+    () => clients.filter((c) => c.financeiro.valorMensal > 0 && (!soEleven || !c.dados.clienteParceiro)),
+    [clients, soEleven]
+  );
 
   function toggleSort(column: SortColumn) {
     setSort((s) => (s?.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));
@@ -166,11 +170,13 @@ export default function NfsePage() {
         </Select>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
         {MESES.map((m) => (
           <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
         ))}
+        <span className="mx-1 h-4 w-px bg-sand-200" />
+        <PeriodChip label="Só da Eleven" active={soEleven} onClick={() => setSoEleven((v) => !v)} />
       </div>
 
       <Card>

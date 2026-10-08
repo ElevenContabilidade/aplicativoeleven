@@ -42,6 +42,11 @@ export default function RentabilidadePage() {
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
   const [detalheClienteId, setDetalheClienteId] = useState<string | null>(null);
+  const [soEleven, setSoEleven] = useState(false);
+
+  // Mapa à parte pra filtrar só a exibição sem afetar o rateio de custos em
+  // calcularRentabilidade, que precisa considerar todos os clientes ativos.
+  const parceiroPorCliente = useMemo(() => new Map(clients.map((c) => [c.id, !!c.dados.clienteParceiro])), [clients]);
 
   const competencia = `${year}-${mes}`;
 
@@ -54,8 +59,9 @@ export default function RentabilidadePage() {
     const calculadas = calcularRentabilidade(clients, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competencia);
     return calculadas
       .filter((l) => !busca.trim() || l.nome.toLowerCase().includes(busca.trim().toLowerCase()))
+      .filter((l) => !soEleven || !parceiroPorCliente.get(l.clienteId))
       .sort((a, b) => a.margemPercentual - b.margemPercentual);
-  }, [clients, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competencia, busca]);
+  }, [clients, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competencia, busca, soEleven, parceiroPorCliente]);
 
   const receitaTotal = linhas.reduce((a, l) => a + l.receita, 0);
   const custoTotal = linhas.reduce((a, l) => a + l.custo, 0);
@@ -129,6 +135,16 @@ export default function RentabilidadePage() {
               {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
             </SelectContent>
           </Select>
+          <button
+            type="button"
+            onClick={() => setSoEleven((v) => !v)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+              soEleven ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+            )}
+          >
+            Só da Eleven
+          </button>
         </div>
       </div>
 

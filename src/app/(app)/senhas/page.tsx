@@ -31,6 +31,7 @@ interface LinhaAcesso {
   codigoAcessoSn?: string;
   senhaCertificado?: string;
   tipoCertificado?: string;
+  clienteParceiro?: boolean;
 }
 
 function useAcessosPorCliente(): LinhaAcesso[] {
@@ -53,6 +54,7 @@ function useAcessosPorCliente(): LinhaAcesso[] {
           codigoAcessoSn: c.dados.codigoAcessoSimplesNacional,
           senhaCertificado: cert?.senha,
           tipoCertificado: cert?.tipo,
+          clienteParceiro: c.dados.clienteParceiro,
         };
       })
       .filter((l) => l.senhaGov || l.senhaPrefeitura || l.codigoAcessoSn || l.senhaCertificado)
@@ -89,22 +91,24 @@ export default function SenhasPage() {
   const [visiveis, setVisiveis] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [ordemDesc, setOrdemDesc] = useState(false);
+  const [soEleven, setSoEleven] = useState(false);
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    const base = !termo
-      ? linhas
-      : linhas.filter(
-          (l) =>
-            l.clienteNome.toLowerCase().includes(termo) ||
-            l.cnpj.toLowerCase().includes(termo) ||
-            (l.socioNome ?? "").toLowerCase().includes(termo) ||
-            (l.cpf ?? "").toLowerCase().includes(termo)
-        );
+    const base = linhas
+      .filter((l) => !soEleven || !l.clienteParceiro)
+      .filter(
+        (l) =>
+          !termo ||
+          l.clienteNome.toLowerCase().includes(termo) ||
+          l.cnpj.toLowerCase().includes(termo) ||
+          (l.socioNome ?? "").toLowerCase().includes(termo) ||
+          (l.cpf ?? "").toLowerCase().includes(termo)
+      );
     // "linhas" já vem em ordem alfabética crescente (useAcessosPorCliente) —
     // só precisa inverter quando o usuário pede decrescente.
     return ordemDesc ? [...base].reverse() : base;
-  }, [linhas, busca, ordemDesc]);
+  }, [linhas, busca, ordemDesc, soEleven]);
 
   function toggleVisivel(id: string) {
     setVisiveis((cur) => {
@@ -143,9 +147,21 @@ export default function SenhasPage() {
         <MetricCard label="Certificados com senha salva" value={linhas.filter((l) => l.senhaCertificado).length} icon={KeyRound} tone="success" />
       </div>
 
-      <div className="mb-4 relative w-full max-w-xs">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
-        <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por cliente, CNPJ, sócio ou CPF" className="pl-8" />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+          <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por cliente, CNPJ, sócio ou CPF" className="pl-8" />
+        </div>
+        <button
+          type="button"
+          onClick={() => setSoEleven((v) => !v)}
+          className={cn(
+            "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+            soEleven ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
+          )}
+        >
+          Só da Eleven
+        </button>
       </div>
 
       <Card>
