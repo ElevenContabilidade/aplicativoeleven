@@ -184,6 +184,39 @@ export function PessoalChecklist() {
     await aplicarChecklist(destino, `pra "${nomeDestino}"`);
   }
 
+  // Copia fixas + variáveis de uma vez só (aplicarChecklist já cobre as
+  // duas) — repetida acima de cada tabela pra não precisar rolar a tela
+  // de volta pro topo quando se está mexendo nas Variáveis.
+  const copiarChecklistControls = (
+    <div className="mb-3 flex flex-wrap items-center gap-2">
+      <span className="text-[11px] text-sand-500">Copiar checklist de:</span>
+      <Select value={origemId} onValueChange={(v) => { setOrigemId(v); if (v === destinoId) setDestinoId(""); }}>
+        <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
+        <SelectContent>
+          {myClients.map((c) => (
+            <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-[11px] text-sand-500">para:</span>
+      <Select value={destinoId} onValueChange={setDestinoId}>
+        <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
+        <SelectContent>
+          {myClients.filter((c) => c.id !== origemId).map((c) => (
+            <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button type="button" size="sm" variant="outline" disabled={!origemId || !destinoId} onClick={handleCopiarParaUm}>
+        <Copy className="size-3.5" /> Copiar só pra esse
+      </Button>
+      <Button type="button" size="sm" variant="outline" disabled={!origemId} onClick={handleAplicarParaTodos}>
+        <Copy className="size-3.5" /> Aplicar pros demais clientes do mês
+      </Button>
+      <span className="text-[11px] text-sand-400">preenche só quem ainda está em branco</span>
+    </div>
+  );
+
   return (
     <>
       <Card className="mt-4">
@@ -251,33 +284,7 @@ export function PessoalChecklist() {
             <PeriodChip label="Só clientes próprios da Eleven" active={somenteProprios} onClick={() => setSomenteProprios((v) => !v)} />
           </div>
 
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-sand-500">Copiar checklist de:</span>
-            <Select value={origemId} onValueChange={(v) => { setOrigemId(v); if (v === destinoId) setDestinoId(""); }}>
-              <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
-              <SelectContent>
-                {myClients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <span className="text-[11px] text-sand-500">para:</span>
-            <Select value={destinoId} onValueChange={setDestinoId}>
-              <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
-              <SelectContent>
-                {myClients.filter((c) => c.id !== origemId).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button type="button" size="sm" variant="outline" disabled={!origemId || !destinoId} onClick={handleCopiarParaUm}>
-              <Copy className="size-3.5" /> Copiar só pra esse
-            </Button>
-            <Button type="button" size="sm" variant="outline" disabled={!origemId} onClick={handleAplicarParaTodos}>
-              <Copy className="size-3.5" /> Aplicar pros demais clientes do mês
-            </Button>
-            <span className="text-[11px] text-sand-400">preenche só quem ainda está em branco</span>
-          </div>
+          {period !== "anual" && copiarChecklistControls}
 
           {period === "anual" ? (
             <div>
@@ -313,6 +320,7 @@ export function PessoalChecklist() {
               </div>
               <div>
                 <p className="mb-2 text-xs font-semibold text-sand-700">Rotinas Variáveis Departamento Pessoal</p>
+                {copiarChecklistControls}
                 <RotinaTable
                   clients={myClients}
                   columns={[...ROTINAS_PESSOAL_VARIAVEIS]}
