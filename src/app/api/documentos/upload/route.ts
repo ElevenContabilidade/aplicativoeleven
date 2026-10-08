@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ensureCategoriaFolder, getClienteLinkDrive, uploadFileToDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
+import { ensureCategoriaFolder, ensureClienteFolder, getClienteLinkDrive, uploadFileToDrive, GoogleDriveNaoConectadoError } from "@/lib/google-drive";
 import type { DocumentoCategoria } from "@/lib/types";
 import { formatBytes } from "@/lib/utils";
 
@@ -18,7 +18,13 @@ export async function POST(request: Request) {
 
   try {
     const linkDrive = await getClienteLinkDrive(clienteId);
-    const folderId = await ensureCategoriaFolder(clienteId, clienteNome, categoria as DocumentoCategoria, linkDrive);
+    // Certificado digital (.pfx/.p12) fica solto na raiz da pasta do
+    // cliente, junto do contrato — não dentro de "DOCS SÓCIO" como as
+    // demais categorias dessa pasta (ex: procurações).
+    const folderId =
+      categoria === "Certificados"
+        ? await ensureClienteFolder(clienteId, clienteNome, linkDrive)
+        : await ensureCategoriaFolder(clienteId, clienteNome, categoria as DocumentoCategoria, linkDrive);
     const bytes = await file.arrayBuffer();
     const drive = await uploadFileToDrive(folderId, file.name, file.type || "application/octet-stream", bytes);
 
