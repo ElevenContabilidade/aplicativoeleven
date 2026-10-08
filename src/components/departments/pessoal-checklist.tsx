@@ -6,7 +6,8 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Copy } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Copy, Eraser } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import {
   CHECKLIST_STATUS,
@@ -356,12 +357,54 @@ function RotinaTable({
   setChecklist: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   pctForClient: (client: Client) => number;
 }) {
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const todosSelecionados = clients.length > 0 && clients.every((c) => selecionados.has(c.id));
+
+  function toggleCliente(id: string) {
+    setSelecionados((atual) => {
+      const next = new Set(atual);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleTodos() {
+    setSelecionados(todosSelecionados ? new Set() : new Set(clients.map((c) => c.id)));
+  }
+
+  function zerarSelecionados() {
+    if (selecionados.size === 0) return;
+    if (
+      !confirm(
+        `Zerar o checklist de ${selecionados.size} cliente${selecionados.size === 1 ? "" : "s"} nesta tabela (${competencia})?\n\nApaga as marcações já feitas nessas colunas — não dá pra desfazer.`
+      )
+    )
+      return;
+    for (const c of clients) {
+      if (!selecionados.has(c.id)) continue;
+      const aplicaveis = applicableFor?.(c) ?? columns;
+      for (const r of aplicaveis) setChecklist(c.id, competencia, r, null);
+    }
+    setSelecionados(new Set());
+  }
+
   return (
-    <div className="overflow-auto max-h-[70vh]">
+    <div>
+      {selecionados.size > 0 && (
+        <div className="mb-2 flex items-center gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={zerarSelecionados} className="text-status-danger hover:bg-status-danger-bg">
+            <Eraser className="size-3.5" /> Zerar {selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}
+          </Button>
+        </div>
+      )}
+      <div className="overflow-auto max-h-[70vh]">
       <table className="w-full min-w-[900px] border-separate border-spacing-0 text-xs">
         <thead>
           <tr>
-            <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+            <th className="sticky left-0 top-0 z-20 w-9 bg-wine-800 px-2 py-2">
+              {clients.length > 0 && <Checkbox checked={todosSelecionados} onCheckedChange={toggleTodos} title="Selecionar todos" />}
+            </th>
+            <th className="sticky left-9 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
               Cliente
             </th>
             {columns.map((r) => (
@@ -380,7 +423,10 @@ function RotinaTable({
             const applicable = applicableFor?.(c);
             return (
               <tr key={c.id} className="bg-white odd:bg-sand-50">
-                <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
+                <td className="sticky left-0 z-10 border-b border-sand-200 bg-inherit px-2 py-2">
+                  <Checkbox checked={selecionados.has(c.id)} onCheckedChange={() => toggleCliente(c.id)} />
+                </td>
+                <td className="sticky left-9 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
                   <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
                     {c.dados.nomeFantasia ?? c.dados.razaoSocial}
                   </Link>
@@ -429,13 +475,14 @@ function RotinaTable({
           })}
           {clients.length === 0 && (
             <tr>
-              <td colSpan={columns.length + 2} className="py-8 text-center text-sand-400">
+              <td colSpan={columns.length + 3} className="py-8 text-center text-sand-400">
                 Nenhum cliente atribuído ao setor Pessoal.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
