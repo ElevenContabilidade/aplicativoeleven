@@ -78,6 +78,7 @@ export default function ClientesPage() {
 
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"Todos" | ClientStatus>("Todos");
+  const [soEleven, setSoEleven] = useState(false);
   const [view, setView] = useState<ViewMode>("quadro");
 
   const searchParams = useSearchParams();
@@ -105,9 +106,10 @@ export default function ClientesPage() {
         (c.dados.nomeFantasia ?? "").toLowerCase().includes(query.toLowerCase()) ||
         c.dados.cnpj.includes(query);
       const matchesStatus = status === "Todos" || c.status === status;
-      return matchesQuery && matchesStatus;
+      const matchesEleven = !soEleven || !c.dados.clienteParceiro;
+      return matchesQuery && matchesStatus && matchesEleven;
     });
-  }, [clients, query, status]);
+  }, [clients, query, status, soEleven]);
 
   const groups = useMemo(() => {
     if (view === "quadro") return null;
@@ -197,11 +199,17 @@ export default function ClientesPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <StatusChip label={`Todos (${statusCounts.Todos})`} active={status === "Todos"} onClick={() => setStatus("Todos")} />
         {CLIENT_STATUS.filter((s) => statusCounts[s] > 0).map((s) => (
           <StatusChip key={s} label={`${s} (${statusCounts[s]})`} active={status === s} onClick={() => setStatus(s)} />
         ))}
+        <span className="mx-1 h-4 w-px bg-sand-200" />
+        <StatusChip
+          label={`Só da Eleven (${clients.filter((c) => !c.dados.clienteParceiro).length})`}
+          active={soEleven}
+          onClick={() => setSoEleven((v) => !v)}
+        />
       </div>
 
       {view === "quadro" ? (
