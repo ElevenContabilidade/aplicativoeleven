@@ -66,10 +66,13 @@ export function FiscalChecklist() {
   const [mostrarPrefeitura, setMostrarPrefeitura] = useState(false);
   const [senhasReveladas, setSenhasReveladas] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
-  const [ordemNome, setOrdemNome] = useState<"asc" | "desc" | null>(null);
+  const [ordem, setOrdem] = useState<{ campo: "nome" | "pct"; dir: "asc" | "desc" } | null>(null);
 
-  function toggleOrdemNome() {
-    setOrdemNome((atual) => (atual === "asc" ? "desc" : atual === "desc" ? null : "asc"));
+  function toggleOrdem(campo: "nome" | "pct") {
+    setOrdem((atual) => {
+      if (!atual || atual.campo !== campo) return { campo, dir: "asc" };
+      return atual.dir === "asc" ? { campo, dir: "desc" } : null;
+    });
   }
 
   function toggleSenhaRevelada(clienteId: string) {
@@ -115,12 +118,16 @@ export function FiscalChecklist() {
   );
 
   const myClientsOrdenados = useMemo(() => {
-    if (!ordemNome) return myClients;
-    const dir = ordemNome === "asc" ? 1 : -1;
+    if (!ordem) return myClients;
+    const dir = ordem.dir === "asc" ? 1 : -1;
+    if (ordem.campo === "pct") {
+      return [...myClients].sort((a, b) => (pctFor(a, competencia) - pctFor(b, competencia)) * dir);
+    }
     return [...myClients].sort(
       (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
     );
-  }, [myClients, ordemNome]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myClients, ordem, competencia, checklist, period]);
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
@@ -379,12 +386,10 @@ export function FiscalChecklist() {
                 <thead>
                   <tr>
                     <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                      <button type="button" onClick={toggleOrdemNome} className="flex items-center gap-1 hover:text-cream-50/80">
+                      <button type="button" onClick={() => toggleOrdem("nome")} className="flex items-center gap-1 hover:text-cream-50/80">
                         Cliente
-                        {ordemNome === "asc" ? (
-                          <ArrowUp className="size-3" />
-                        ) : ordemNome === "desc" ? (
-                          <ArrowDown className="size-3" />
+                        {ordem?.campo === "nome" ? (
+                          ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
                         ) : (
                           <ArrowUpDown className="size-3 text-cream-50/50" />
                         )}
@@ -402,7 +407,14 @@ export function FiscalChecklist() {
                       </th>
                     ))}
                     <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
-                      % concluído
+                      <button type="button" onClick={() => toggleOrdem("pct")} className="flex items-center gap-1 hover:text-cream-50/80">
+                        % concluído
+                        {ordem?.campo === "pct" ? (
+                          ordem.dir === "asc" ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />
+                        ) : (
+                          <ArrowUpDown className="size-3 text-cream-50/50" />
+                        )}
+                      </button>
                     </th>
                   </tr>
                 </thead>
