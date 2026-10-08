@@ -302,19 +302,19 @@ export function FiscalChecklist() {
                     <p className="mb-2 text-xs font-semibold text-sand-700">
                       {g.label} <span className="font-normal text-sand-400">— {columns.join(" + ")}</span>
                     </p>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-auto max-h-[70vh]">
                       <table className="w-full min-w-[520px] border-separate border-spacing-0 text-xs">
                         <thead>
                           <tr>
-                            <th className="sticky left-0 top-16 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                            <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                               Cliente
                             </th>
                             {columns.map((r) => (
-                              <th key={r} className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                              <th key={r} className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                                 {r}
                               </th>
                             ))}
-                            <th className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                            <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                               % concluído
                             </th>
                           </tr>
@@ -374,11 +374,11 @@ export function FiscalChecklist() {
                   <KeyRound className="size-3.5" /> {mostrarPrefeitura ? "Ocultar" : "Mostrar"} CPF/senha da prefeitura
                 </Button>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[70vh]">
                 <table className="w-full min-w-[1100px] border-separate border-spacing-0 text-xs">
                 <thead>
                   <tr>
-                    <th className="sticky left-0 top-16 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                    <th className="sticky left-0 top-0 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                       <button type="button" onClick={toggleOrdemNome} className="flex items-center gap-1 hover:text-cream-50/80">
                         Cliente
                         {ordemNome === "asc" ? (
@@ -391,17 +391,17 @@ export function FiscalChecklist() {
                       </button>
                     </th>
                     {mostrarPrefeitura && (
-                      <th className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                      <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                         CPF / Senha prefeitura
                       </th>
                     )}
                     {ROTINAS_FISCAIS_MENSAIS.map((r) => (
-                      <th key={r} className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                      <th key={r} className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                         {r}
                         {ROTINA_NOTE[r] && <span className="block normal-case font-normal tracking-normal text-cream-50/60">({ROTINA_NOTE[r]})</span>}
                       </th>
                     ))}
-                    <th className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                    <th className="sticky top-0 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                       % concluído
                     </th>
                   </tr>
