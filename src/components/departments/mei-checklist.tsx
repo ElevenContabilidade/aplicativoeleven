@@ -251,15 +251,15 @@ export function MeiChecklist() {
             <table className="w-full min-w-[900px] border-separate border-spacing-0 text-xs">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-10 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                  <th className="sticky left-0 top-16 z-20 whitespace-nowrap bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                     Cliente
                   </th>
                   {rotinas.map((r) => (
-                    <th key={r} className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                    <th key={r} className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                       {r}
                     </th>
                   ))}
-                  <th className="whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
+                  <th className="sticky top-16 z-20 whitespace-nowrap border-l border-wine-700 bg-wine-800 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-cream-50">
                     % concluído
                   </th>
                 </tr>
