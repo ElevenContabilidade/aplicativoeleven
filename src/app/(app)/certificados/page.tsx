@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search, ArrowUp, ArrowDown, ArrowUpDown, UploadCloud } from "lucide-react";
+import { ShieldAlert, ShieldCheck, ShieldX, Clock, Plus, Eye, EyeOff, Pencil, Download, Search, ArrowUp, ArrowDown, ArrowUpDown, UploadCloud, Trash2 } from "lucide-react";
 import { CertificadoFormDialog } from "@/components/certificates/certificado-form-dialog";
 import { CertificadoBulkImportDialog } from "@/components/certificates/certificado-bulk-import-dialog";
 import { useAppStore } from "@/lib/store/app-store";
@@ -72,6 +72,7 @@ export default function CertificadosPage() {
   const certificados = useAppStore((s) => s.certificados);
   const clients = useAppStore((s) => s.clients);
   const documentos = useAppStore((s) => s.documentos);
+  const deleteCertificado = useAppStore((s) => s.deleteCertificado);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" }>({
     column: "vencimento",
@@ -102,6 +103,14 @@ export default function CertificadosPage() {
 
   function toggleSort(column: SortColumn) {
     setSort((s) => (s.column === column ? { column, direction: s.direction === "asc" ? "desc" : "asc" } : { column, direction: "asc" }));
+  }
+
+  function handleDelete(c: Certificado) {
+    const client = clients.find((cl) => cl.id === c.clienteId);
+    const nome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "este cliente";
+    if (confirm(`Excluir o certificado ${c.tipo} de ${nome} (vence em ${formatDate(c.dataVencimento)})?`)) {
+      deleteCertificado(c.id);
+    }
   }
 
   function toggleRevealed(id: string) {
@@ -284,6 +293,18 @@ export default function CertificadosPage() {
                         <TooltipContent>
                           {arquivo?.url ? `Download do certificado ${c.tipo.includes("A3") ? "A3" : "A1"}` : "Nenhum arquivo anexado nesta sessão"}
                         </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(c)}
+                            className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-status-danger/10 hover:text-status-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Excluir certificado</TooltipContent>
                       </Tooltip>
                     </div>
                   </TableCell>

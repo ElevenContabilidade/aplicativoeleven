@@ -367,6 +367,7 @@ interface AppState {
   deleteEtapaProcesso: (processoId: string, etapaId: string) => void;
   addCertificado: (certificado: Certificado) => void;
   updateCertificado: (id: string, patch: Partial<Certificado>) => void;
+  deleteCertificado: (id: string) => void;
   addRecebimento: (entry: Recebimento) => void;
   updateRecebimento: (id: string, patch: Partial<Recebimento>) => void;
   deleteRecebimento: (id: string) => void;
@@ -1509,6 +1510,14 @@ export const useAppStore = create<AppState>()(
         });
         const certificado = useAppStore.getState().certificados.find((c) => c.id === id);
         if (certificado) pushFinanceiro("certificados", id, certificado.clienteId, certificado);
+      },
+
+      deleteCertificado: (id) => {
+        set((s) => {
+          const certificados = s.certificados.filter((c) => c.id !== id);
+          return { certificados, notifications: syncCertificadoAlerts(s.notifications, certificados, s.clients) };
+        });
+        deleteFinanceiro("certificados", id);
       },
 
       addRecebimento: (entry) => {
