@@ -129,7 +129,10 @@ export async function lookupCnpj(cnpj: string): Promise<CnpjLookupResult> {
       .filter((s) => s.nome_socio)
       .map((s) => ({
         nome: s.nome_socio!,
-        cpf: s.cnpj_cpf_do_socio ?? "",
+        // A Receita às vezes devolve o CPF do sócio só com os dígitos (sem
+        // ponto/traço) — formata aqui pra já salvar padronizado, em vez de
+        // herdar a inconsistência pro cadastro.
+        cpf: s.cnpj_cpf_do_socio ? maskCpf(s.cnpj_cpf_do_socio) : "",
         dataEntrada: s.data_entrada_sociedade ?? "",
         administrador: (s.qualificacao_socio ?? "").toLowerCase().includes("administrador"),
       })),

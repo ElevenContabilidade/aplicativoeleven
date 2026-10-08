@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { maskCpf } from "@/lib/cnpj";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 
@@ -501,7 +502,7 @@ function ClientRow({
         <td className="border-b border-l border-sand-200 px-3 py-2 text-[11px] text-sand-600">
           {socio?.cpf || senha ? (
             <div className="flex items-center gap-2">
-              <span className="whitespace-nowrap">{socio?.cpf || "—"}</span>
+              <span className="whitespace-nowrap">{socio?.cpf ? maskCpf(socio.cpf) : "—"}</span>
               <span className="whitespace-nowrap font-mono">{senha ? (senhaRevelada ? senha : "••••••") : "—"}</span>
               {senha && (
                 <>

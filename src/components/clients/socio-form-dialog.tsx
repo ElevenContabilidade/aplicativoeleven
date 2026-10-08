@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppStore } from "@/lib/store/app-store";
+import { maskCpf } from "@/lib/cnpj";
 import type { Socio } from "@/lib/types";
 
 export function SocioFormDialog({
@@ -74,7 +75,7 @@ export function SocioFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="mb-1 block">CPF *</Label>
-              <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" required />
+              <Input value={cpf} onChange={(e) => setCpf(maskCpf(e.target.value))} placeholder="000.000.000-00" required />
             </div>
             <div>
               <Label className="mb-1 block">% societário</Label>

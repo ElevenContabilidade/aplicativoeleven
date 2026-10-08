@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { KeyRound, Search, Eye, EyeOff, Copy, Check, ExternalLink } from "lucide-react";
+import { KeyRound, Search, Eye, EyeOff, Copy, Check, ExternalLink, ArrowUp, ArrowDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Client } from "@/lib/types";
+import { maskCpf } from "@/lib/cnpj";
 import { cn } from "@/lib/utils";
 
 /** Sócio cujo CPF/gov.br faz sentido usar como login principal da empresa
@@ -87,18 +88,23 @@ export default function SenhasPage() {
   const [busca, setBusca] = useState("");
   const [visiveis, setVisiveis] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
+  const [ordemDesc, setOrdemDesc] = useState(false);
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    if (!termo) return linhas;
-    return linhas.filter(
-      (l) =>
-        l.clienteNome.toLowerCase().includes(termo) ||
-        l.cnpj.toLowerCase().includes(termo) ||
-        (l.socioNome ?? "").toLowerCase().includes(termo) ||
-        (l.cpf ?? "").toLowerCase().includes(termo)
-    );
-  }, [linhas, busca]);
+    const base = !termo
+      ? linhas
+      : linhas.filter(
+          (l) =>
+            l.clienteNome.toLowerCase().includes(termo) ||
+            l.cnpj.toLowerCase().includes(termo) ||
+            (l.socioNome ?? "").toLowerCase().includes(termo) ||
+            (l.cpf ?? "").toLowerCase().includes(termo)
+        );
+    // "linhas" já vem em ordem alfabética crescente (useAcessosPorCliente) —
+    // só precisa inverter quando o usuário pede decrescente.
+    return ordemDesc ? [...base].reverse() : base;
+  }, [linhas, busca, ordemDesc]);
 
   function toggleVisivel(id: string) {
     setVisiveis((cur) => {
@@ -155,7 +161,16 @@ export default function SenhasPage() {
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cliente</TableHead>
+                  <TableHead>
+                    <button
+                      type="button"
+                      onClick={() => setOrdemDesc((v) => !v)}
+                      className="flex items-center gap-1 hover:text-sand-900"
+                    >
+                      Cliente
+                      {ordemDesc ? <ArrowDown className="size-3" /> : <ArrowUp className="size-3" />}
+                    </button>
+                  </TableHead>
                   <TableHead>CNPJ</TableHead>
                   <TableHead>CPF</TableHead>
                   <TableHead>Senha gov.br</TableHead>
@@ -173,9 +188,9 @@ export default function SenhasPage() {
                         {l.clienteNome}
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-[11px] text-sand-600">{l.cnpj || "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-[11px] text-sand-600">{l.cnpj || "—"}</TableCell>
                     <TableCell>
-                      <span className="font-mono text-[11px] text-sand-600">{l.cpf || "—"}</span>
+                      <span className="whitespace-nowrap font-mono text-[11px] text-sand-600">{l.cpf ? maskCpf(l.cpf) : "—"}</span>
                       {l.socioNome && <span className="block text-[10px] text-sand-400">{l.socioNome}</span>}
                     </TableCell>
                     <TableCell>
