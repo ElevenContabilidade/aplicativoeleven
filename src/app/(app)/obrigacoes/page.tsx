@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -249,18 +249,15 @@ export default function ObrigacoesPage() {
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: "Rotinas no mês", value: totalRotinas, icon: ListChecks },
-          { label: "Concluídas", value: totalConcluidas, icon: CheckCircle2 },
-          { label: "Vencem hoje", value: totalVencemHoje, icon: Clock },
-          { label: "Fora do prazo", value: totalAtrasadas, icon: AlertTriangle },
-          { label: "Progresso geral", value: `${progressoGeral}%`, icon: TrendingUp },
-        ].map(({ label, value, icon: Icon }) => (
+          { label: "Rotinas no mês", value: totalRotinas },
+          { label: "Concluídas", value: totalConcluidas },
+          { label: "Vencem hoje", value: totalVencemHoje },
+          { label: "Fora do prazo", value: totalAtrasadas },
+          { label: "Progresso geral", value: `${progressoGeral}%` },
+        ].map(({ label, value }) => (
           <Card key={label} className="border-sand-800 bg-sand-900 py-0">
             <CardContent className="p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-sand-400">{label}</p>
-                <Icon className="size-3.5 shrink-0 text-sand-500" />
-              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-sand-400">{label}</p>
               <p className="mt-2 font-display text-2xl font-semibold text-cream-50">{value}</p>
             </CardContent>
           </Card>
@@ -276,25 +273,29 @@ export default function ObrigacoesPage() {
               const dias = Math.round((venc.getTime() - hojeMeiaNoite) / 86400000);
               const atrasado = dias < 0;
               const urgente = !atrasado && dias <= 3;
-              const anelClasses = atrasado
-                ? "border-status-danger text-status-danger"
+              const paleta = atrasado
+                ? { card: "bg-status-danger-bg", badge: "bg-status-danger", texto: "text-status-danger", barra: "bg-status-danger" }
                 : urgente
-                  ? "border-status-warning text-status-warning"
-                  : "border-wine-400 text-wine-700";
+                  ? { card: "bg-status-warning-bg", badge: "bg-status-warning", texto: "text-status-warning", barra: "bg-status-warning" }
+                  : { card: "bg-wine-50", badge: "bg-wine-600", texto: "text-wine-700", barra: "bg-wine-600" };
               const MESES_ABREV = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
+              const pct = g.total > 0 ? Math.round((g.concluidas / g.total) * 100) : 0;
               return (
-                <Card key={g.tipo} className="py-0">
-                  <CardContent className="flex items-center gap-3 p-3">
-                    <div className={cn("flex size-12 shrink-0 flex-col items-center justify-center rounded-full border-2 leading-none", anelClasses)}>
-                      <span className="text-base font-bold">{venc.getDate()}</span>
+                <Card key={g.tipo} className={cn("overflow-hidden py-0", paleta.card)}>
+                  <CardContent className="flex items-start gap-0 p-0">
+                    <div className={cn("flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch py-3 leading-none text-cream-50", paleta.badge)}>
+                      <span className="text-lg font-bold">{venc.getDate()}</span>
                       <span className="text-[9px] font-semibold">{MESES_ABREV[venc.getMonth()]}</span>
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1 p-3">
                       <p className="truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
-                      <p className={cn("text-xs font-semibold", atrasado ? "text-status-danger" : urgente ? "text-status-warning" : "text-wine-700")}>
+                      <p className={cn("text-xs font-semibold", paleta.texto)}>
                         {atrasado ? `Atrasada há ${Math.abs(dias)}d` : dias === 0 ? "Vence hoje" : `Vence em ${dias}d`}
-                        <span className="font-normal text-sand-400"> · {g.concluidas}/{g.total} clientes</span>
+                        <span className="font-normal text-sand-500"> · {g.concluidas}/{g.total} clientes</span>
                       </p>
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/60">
+                        <div className={cn("h-full rounded-full", paleta.barra)} style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -388,7 +389,14 @@ export default function ObrigacoesPage() {
                           cel.iso === hojeIso ? "border-wine-400 bg-wine-50" : "border-sand-200 bg-white"
                         )}
                       >
-                        <p className={cn("text-[11px] font-semibold", cel.iso === hojeIso ? "text-wine-700" : "text-sand-500")}>{cel.dia}</p>
+                        <div className="flex items-center justify-between">
+                          <p className={cn("text-[11px] font-semibold", cel.iso === hojeIso ? "text-wine-700" : "text-sand-500")}>{cel.dia}</p>
+                          {cel.itens.length > 0 && (
+                            <span className="flex size-4 items-center justify-center rounded bg-sand-100 text-[9px] font-semibold text-sand-500">
+                              {cel.itens.length}
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-1 space-y-1">
                           {cel.itens.slice(0, 3).map(({ linha: l, cliente }) => {
                             const concluida = !l.pendente;
@@ -400,12 +408,8 @@ export default function ObrigacoesPage() {
                                 onClick={() => l.kind === "manual" && abrirEdicao(l.obligation)}
                                 title={`${l.tipo} — ${cliente?.dados.nomeFantasia ?? cliente?.dados.razaoSocial ?? ""}`}
                                 className={cn(
-                                  "block w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium",
-                                  concluida
-                                    ? "bg-status-success-bg text-status-success"
-                                    : atrasada
-                                      ? "bg-status-danger-bg text-status-danger"
-                                      : "bg-wine-100 text-wine-700"
+                                  "block w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-semibold text-cream-50 shadow-sm",
+                                  concluida ? "bg-status-success" : atrasada ? "bg-status-danger" : "bg-wine-600"
                                 )}
                               >
                                 {l.tipo}
@@ -413,7 +417,7 @@ export default function ObrigacoesPage() {
                             );
                           })}
                           {cel.itens.length > 3 && (
-                            <p className="px-1 text-[10px] text-sand-400">+{cel.itens.length - 3} mais</p>
+                            <p className="px-1 text-[10px] text-sand-400">+{cel.itens.length - 3}</p>
                           )}
                         </div>
                       </div>
