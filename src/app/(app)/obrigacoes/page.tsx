@@ -2,13 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp, List, Calendar as CalendarIcon } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, ListChecks, CheckCircle2, Clock, TrendingUp, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MetricCard } from "@/components/dashboard/metric-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ObligationFormDialog } from "@/components/obligations/obligation-form-dialog";
@@ -28,8 +27,6 @@ const MESES = [
   { value: "07", label: "Julho" }, { value: "08", label: "Agosto" }, { value: "09", label: "Setembro" },
   { value: "10", label: "Outubro" }, { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
 ];
-const YEARS = Array.from({ length: 2034 - 2024 + 1 }, (_, i) => String(2024 + i)).reverse();
-
 const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
   Fiscal: "wine",
   Contábil: "info",
@@ -86,6 +83,12 @@ export default function ObrigacoesPage() {
   }
   function excluir(o: Obligation) {
     if (confirm(`Excluir a obrigação "${o.tipo}"?`)) deleteObligation(o.id);
+  }
+
+  function mudarMes(delta: number) {
+    const d = new Date(Number(ano), Number(mes) - 1 + delta, 1);
+    setAno(String(d.getFullYear()));
+    setMes(String(d.getMonth() + 1).padStart(2, "0"));
   }
 
   function setStatusChecklist(setor: SetorRotina, clienteId: string, comp: string, rotina: string, status: ChecklistStatus) {
@@ -222,15 +225,46 @@ export default function ObrigacoesPage() {
         actions={<Button onClick={abrirNova}><Plus className="size-3.5" /> Nova obrigação</Button>}
       />
 
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">
-        Ciclo do mês — {MESES.find((m) => m.value === mes)?.label}/{ano}
-      </p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-sand-400">Ciclo do mês</p>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => mudarMes(-1)}
+            className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700"
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <span className="w-36 text-center font-display text-sm font-semibold text-sand-900">
+            {MESES.find((m) => m.value === mes)?.label} {ano}
+          </span>
+          <button
+            type="button"
+            onClick={() => mudarMes(1)}
+            className="flex size-7 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100 hover:text-sand-700"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <MetricCard label="Rotinas no mês" value={totalRotinas} icon={ListChecks} tone="wine" />
-        <MetricCard label="Concluídas" value={totalConcluidas} icon={CheckCircle2} tone="success" />
-        <MetricCard label="Vencem hoje" value={totalVencemHoje} icon={Clock} tone="warning" />
-        <MetricCard label="Fora do prazo" value={totalAtrasadas} icon={AlertTriangle} tone="danger" />
-        <MetricCard label="Progresso geral" value={`${progressoGeral}%`} icon={TrendingUp} tone="neutral" />
+        {[
+          { label: "Rotinas no mês", value: totalRotinas, icon: ListChecks },
+          { label: "Concluídas", value: totalConcluidas, icon: CheckCircle2 },
+          { label: "Vencem hoje", value: totalVencemHoje, icon: Clock },
+          { label: "Fora do prazo", value: totalAtrasadas, icon: AlertTriangle },
+          { label: "Progresso geral", value: `${progressoGeral}%`, icon: TrendingUp },
+        ].map(({ label, value, icon: Icon }) => (
+          <Card key={label} className="border-sand-800 bg-sand-900 py-0">
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-sand-400">{label}</p>
+                <Icon className="size-3.5 shrink-0 text-sand-500" />
+              </div>
+              <p className="mt-2 font-display text-2xl font-semibold text-cream-50">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {proximosPrazos.length > 0 && (
@@ -238,24 +272,30 @@ export default function ObrigacoesPage() {
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">Próximos prazos</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {proximosPrazos.map((g) => {
-              const dias = Math.round((new Date(g.menorVencimentoPendente! + "T00:00:00").getTime() - hojeMeiaNoite) / 86400000);
+              const venc = new Date(g.menorVencimentoPendente! + "T00:00:00");
+              const dias = Math.round((venc.getTime() - hojeMeiaNoite) / 86400000);
               const atrasado = dias < 0;
               const urgente = !atrasado && dias <= 3;
-              const tone = atrasado ? "danger" : urgente ? "warning" : "wine";
-              const toneClasses: Record<string, string> = {
-                danger: "border-l-status-danger bg-status-danger-bg/40",
-                warning: "border-l-status-warning bg-status-warning-bg/40",
-                wine: "border-l-wine-400 bg-wine-50",
-              };
+              const anelClasses = atrasado
+                ? "border-status-danger text-status-danger"
+                : urgente
+                  ? "border-status-warning text-status-warning"
+                  : "border-wine-400 text-wine-700";
+              const MESES_ABREV = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
               return (
-                <Card key={g.tipo} className={cn("border-l-4 py-0", toneClasses[tone])}>
-                  <CardContent className="p-3">
-                    <p className="text-[10px] font-medium text-sand-500">{formatDate(g.menorVencimentoPendente!)}</p>
-                    <p className="mt-0.5 truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
-                    <p className={cn("mt-1 text-xs font-semibold", atrasado ? "text-status-danger" : urgente ? "text-status-warning" : "text-wine-700")}>
-                      {atrasado ? `Atrasada há ${Math.abs(dias)}d` : dias === 0 ? "Vence hoje" : `Vence em ${dias}d`}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-sand-500">{g.concluidas}/{g.total} clientes</p>
+                <Card key={g.tipo} className="py-0">
+                  <CardContent className="flex items-center gap-3 p-3">
+                    <div className={cn("flex size-12 shrink-0 flex-col items-center justify-center rounded-full border-2 leading-none", anelClasses)}>
+                      <span className="text-base font-bold">{venc.getDate()}</span>
+                      <span className="text-[9px] font-semibold">{MESES_ABREV[venc.getMonth()]}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
+                      <p className={cn("text-xs font-semibold", atrasado ? "text-status-danger" : urgente ? "text-status-warning" : "text-wine-700")}>
+                        {atrasado ? `Atrasada há ${Math.abs(dias)}d` : dias === 0 ? "Vence hoje" : `Vence em ${dias}d`}
+                        <span className="font-normal text-sand-400"> · {g.concluidas}/{g.total} clientes</span>
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -280,18 +320,6 @@ export default function ObrigacoesPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
           <Input placeholder="Buscar obrigação ou cliente" className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <Select value={mes} onValueChange={setMes}>
-          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {MESES.map((m) => (<SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>))}
-          </SelectContent>
-        </Select>
-        <Select value={ano} onValueChange={setAno}>
-          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
-          </SelectContent>
-        </Select>
         <Select value={clienteFiltro} onValueChange={setClienteFiltro}>
           <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
