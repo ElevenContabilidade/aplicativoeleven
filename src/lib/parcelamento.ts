@@ -1,4 +1,5 @@
 import { pertenceAoCliente, type ClienteRef } from "@/lib/cliente-match";
+import { diaUtilAnterior } from "@/lib/feriados";
 import type { Parcelamento } from "@/lib/types";
 
 /** Um parcelamento existe (e precisa ser enviado) em uma competência por mês,
@@ -10,6 +11,18 @@ export function competenciasDoPlano(p: Parcelamento): string[] {
     const d = new Date(ano, mes - 1 + i, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
+}
+
+/** Vencimento ("YYYY-MM-DD") da parcela de uma competência — dia 30, ou o
+ * dia útil anterior quando cai em fim de semana/feriado nacional. */
+export function vencimentoParcela(competencia: string): string {
+  const [anoStr, mesStr] = competencia.split("-");
+  const ano = Number(anoStr);
+  const mesIdx = Number(mesStr) - 1;
+  const ultimoDiaDoMes = new Date(ano, mesIdx + 1, 0).getDate();
+  const base = new Date(ano, mesIdx, Math.min(30, ultimoDiaDoMes));
+  const ajustada = diaUtilAnterior(base);
+  return `${ajustada.getFullYear()}-${String(ajustada.getMonth() + 1).padStart(2, "0")}-${String(ajustada.getDate()).padStart(2, "0")}`;
 }
 
 /** Um parcelamento está ativo enquanto o mês atual ainda estiver dentro da

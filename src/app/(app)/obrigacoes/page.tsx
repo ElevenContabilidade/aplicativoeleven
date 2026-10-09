@@ -37,7 +37,7 @@ const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
 
 type Linha =
   | { kind: "manual"; id: string; clienteId: string; tipo: string; setor: "Manual"; vencimento: string; responsavelId: string; status: string; pendente: boolean; obligation: Obligation }
-  | { kind: "departamento"; id: string; clienteId: string; tipo: string; setor: SetorRotina; vencimento: null; responsavelId: null; status: string; pendente: boolean; rotina: RotinaDepartamento };
+  | { kind: "departamento"; id: string; clienteId: string; tipo: string; setor: SetorRotina; vencimento: string | null; responsavelId: null; status: string; pendente: boolean; rotina: RotinaDepartamento };
 
 export default function ObrigacoesPage() {
   const obligations = useAppStore((s) => s.obligations);
@@ -119,7 +119,7 @@ export default function ObrigacoesPage() {
       clienteId: r.clienteId,
       tipo: r.tipo,
       setor: r.setor,
-      vencimento: null,
+      vencimento: r.vencimento ?? null,
       responsavelId: null,
       status: r.status,
       pendente: PENDENTES_DEPTO.includes(r.status),
@@ -159,15 +159,16 @@ export default function ObrigacoesPage() {
       });
   }, [linhas, clients, query, clienteFiltro, statusFiltro, ordenar]);
 
-  // Visão calendário: só obrigações avulsas entram (rotinas de departamento
-  // não têm data própria) — organizadas por dia do mês selecionado. Respeita
-  // os mesmos filtros de busca/cliente/status da lista.
+  // Visão calendário: entram as obrigações avulsas e as rotinas de
+  // departamento com regra de vencimento conhecida (ver
+  // REGRAS_VENCIMENTO_ROTINA) — organizadas por dia do mês selecionado.
+  // Respeita os mesmos filtros de busca/cliente/status da lista.
   const semanas = useMemo(() => {
     const ano_ = Number(ano);
     const mesIdx = Number(mes) - 1;
     const porDia = new Map<string, typeof filtered>();
     for (const item of filtered) {
-      if (item.linha.kind !== "manual" || !item.linha.vencimento) continue;
+      if (!item.linha.vencimento) continue;
       const atual = porDia.get(item.linha.vencimento) ?? [];
       atual.push(item);
       porDia.set(item.linha.vencimento, atual);
@@ -187,22 +188,22 @@ export default function ObrigacoesPage() {
   }, [filtered, ano, mes]);
 
   const totalPendentes = linhas.filter((l) => l.pendente).length;
-  const totalAtrasadas = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento && l.vencimento < hojeIso).length;
+  const totalAtrasadas = linhas.filter((l) => l.pendente && l.vencimento && l.vencimento < hojeIso).length;
 
   // "Ciclo do mês": visão geral de tudo que esse mês exige (rotinas de
   // departamento + obrigações avulsas), igual um placar de progresso.
   const totalRotinas = linhas.length;
   const totalConcluidas = linhas.filter((l) => !l.pendente).length;
-  const totalVencemHoje = linhas.filter((l) => l.kind === "manual" && l.pendente && l.vencimento === hojeIso).length;
+  const totalVencemHoje = linhas.filter((l) => l.pendente && l.vencimento === hojeIso).length;
   const progressoGeral = totalRotinas > 0 ? Math.round((totalConcluidas / totalRotinas) * 100) : 0;
 
-  // "Próximos prazos": só as obrigações avulsas têm vencimento próprio (as
-  // rotinas de departamento são só um checklist mensal, sem data) —
-  // agrupadas por tipo pra mostrar quantos clientes já concluíram cada uma.
+  // "Próximos prazos": obrigações avulsas e rotinas de departamento com
+  // regra de vencimento conhecida — agrupadas por tipo pra mostrar quantos
+  // clientes já concluíram cada uma.
   const proximosPrazos = useMemo(() => {
     const porTipo = new Map<string, { tipo: string; total: number; concluidas: number; menorVencimentoPendente: string | null }>();
     for (const l of linhas) {
-      if (l.kind !== "manual") continue;
+      if (l.kind === "departamento" && !l.vencimento) continue;
       const atual = porTipo.get(l.tipo) ?? { tipo: l.tipo, total: 0, concluidas: 0, menorVencimentoPendente: null };
       atual.total += 1;
       if (!l.pendente) atual.concluidas += 1;
@@ -445,7 +446,7 @@ export default function ObrigacoesPage() {
         </TableHeader>
         <TableBody>
           {filtered.map(({ linha: l, cliente }) => {
-            const atrasada = l.kind === "manual" && l.vencimento !== null && l.vencimento < hojeIso && l.pendente;
+            const atrasada = l.vencimento !== null && l.vencimento < hojeIso && l.pendente;
             return (
               <TableRow key={l.id}>
                 <TableCell>

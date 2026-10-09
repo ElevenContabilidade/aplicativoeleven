@@ -12,8 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ParcelamentoFormDialog } from "@/components/parcelamentos/parcelamento-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import type { Parcelamento, StatusEnvioParcelamento } from "@/lib/types";
-import { competenciasDoPlano } from "@/lib/parcelamento";
-import { cn } from "@/lib/utils";
+import { competenciasDoPlano, vencimentoParcela } from "@/lib/parcelamento";
+import { cn, formatDate } from "@/lib/utils";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -26,12 +26,13 @@ const MESES = [
 interface Ocorrencia {
   parcelamento: Parcelamento;
   competencia: string;
+  vencimento: string;
   parcelaAtual: number;
   totalParcelas: number;
   status: StatusEnvioParcelamento;
 }
 
-type SortColumn = "clienteNome" | "cnpjCpf" | "nome" | "competencia" | "parcelaAtual" | "status";
+type SortColumn = "clienteNome" | "cnpjCpf" | "nome" | "competencia" | "vencimento" | "parcelaAtual" | "status";
 
 function SortableHead({
   label,
@@ -104,6 +105,7 @@ export default function ParcelamentosPage() {
         list.push({
           parcelamento: p,
           competencia,
+          vencimento: vencimentoParcela(competencia),
           parcelaAtual: i + 1,
           totalParcelas: competencias.length,
           status: statusMap.get(`${p.id}__${competencia}`) ?? "Não enviado",
@@ -129,7 +131,7 @@ export default function ParcelamentosPage() {
     return [...filtered].sort((a, b) => {
       const { column } = sort;
       if (column === "parcelaAtual") return (a.parcelaAtual - b.parcelaAtual) * dir;
-      if (column === "competencia" || column === "status") return a[column].localeCompare(b[column], "pt-BR") * dir;
+      if (column === "competencia" || column === "vencimento" || column === "status") return a[column].localeCompare(b[column], "pt-BR") * dir;
       const av = (a.parcelamento[column] ?? "") as string;
       const bv = (b.parcelamento[column] ?? "") as string;
       return av.localeCompare(bv, "pt-BR") * dir;
@@ -199,6 +201,7 @@ export default function ParcelamentosPage() {
                 <SortableHead label="Nome do parcelamento" column="nome" sort={sort} onSort={toggleSort} />
                 <SortableHead label="Parcela" column="parcelaAtual" sort={sort} onSort={toggleSort} className="w-20" />
                 <SortableHead label="Competência" column="competencia" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Vencimento" column="vencimento" sort={sort} onSort={toggleSort} />
                 <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
                 <TableHead className="w-10" />
               </TableRow>
@@ -215,6 +218,7 @@ export default function ParcelamentosPage() {
                   <TableCell>{o.parcelamento.nome}</TableCell>
                   <TableCell className="text-sand-500">{o.parcelaAtual}/{o.totalParcelas}</TableCell>
                   <TableCell className="text-sand-500">{o.competencia}</TableCell>
+                  <TableCell className="text-sand-500">{formatDate(o.vencimento)}</TableCell>
                   <TableCell>
                     <button type="button" onClick={(e) => toggleStatus(e, o)} title="Alternar status de envio deste mês">
                       <StatusBadge status={o.status} className="cursor-pointer" />
@@ -233,7 +237,7 @@ export default function ParcelamentosPage() {
                 </TableRow>
               ))}
               {sorted.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-sand-400">Nenhum parcelamento neste período.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-sand-400">Nenhum parcelamento neste período.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
