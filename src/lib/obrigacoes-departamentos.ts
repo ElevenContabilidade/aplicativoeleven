@@ -44,6 +44,7 @@ const REGRAS_VENCIMENTO_ROTINA: Record<string, { dia: number; ajuste: AjusteVenc
   "EFD-Reinf": { dia: 15, ajuste: "antecipa" },
   "Envio da guia do DAS": { dia: 20, ajuste: "prorroga" },
   "Emissão guia DAE": { dia: 10, ajuste: "nenhum" },
+  "EFD-ICMS": { dia: 20, ajuste: "nenhum" },
   "Encerramento ISS": { dia: 10, ajuste: "nenhum" },
   "Entrega da DCTFWeb": { dia: 30, ajuste: "antecipa" },
 };
