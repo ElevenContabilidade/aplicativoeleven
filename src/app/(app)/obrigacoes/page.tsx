@@ -311,8 +311,8 @@ export default function ObrigacoesPage() {
                           ? { anel: "border-status-warning text-status-warning", pill: "border-status-warning text-status-warning", label: "URGENTE" }
                           : { anel: "border-status-info text-status-info", pill: "border-status-info text-status-info", label: "ABERTO" };
                       return (
-                        <Card key={g.tipo} className="w-52 shrink-0 py-0">
-                          <CardContent className="flex flex-col items-center gap-1.5 p-3 text-center">
+                        <Card key={g.tipo} className="w-56 shrink-0 py-0">
+                          <CardContent className="flex min-w-0 flex-col items-center gap-1.5 p-3 text-center">
                             <div className={cn("flex size-14 shrink-0 flex-col items-center justify-center gap-0 rounded-full border-2 leading-none", paleta.anel)}>
                               <span className="text-[9px] font-semibold">{DIAS_SEMANA[venc.getDay()]}</span>
                               <span className="text-lg font-bold">{venc.getDate()}</span>
@@ -320,11 +320,11 @@ export default function ObrigacoesPage() {
                             <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-wide", paleta.pill)}>
                               {paleta.label}
                             </span>
-                            <p className="truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
-                            <p className="text-[11px] text-sand-400">
+                            <p className="w-full truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
+                            <p className="w-full truncate text-[11px] text-sand-400">
                               Competência {MESES.find((m) => m.value === mes)?.label}/{ano}
                             </p>
-                            <p className="text-[11px]">
+                            <p className="w-full truncate text-[11px]">
                               <span className="font-semibold text-status-success">{g.concluidas} concluídas</span>
                               <span className="text-sand-400"> · </span>
                               <span className="font-semibold text-status-danger">{g.total - g.concluidas} pendentes</span>
