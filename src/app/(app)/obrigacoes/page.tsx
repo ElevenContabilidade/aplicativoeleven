@@ -111,7 +111,7 @@ export default function ObrigacoesPage() {
    * seguintes. Varre os 4 checklists inteiros (todas as competências) e
    * cria a dispensa permanente pra cada combinação cliente+rotina que ainda
    * não tem uma, sem duplicar quem já tem. */
-  function aplicarDispensasRetroativas() {
+  async function aplicarDispensasRetroativas() {
     const checklistsPorSetor: { setor: SetorRotina; entries: typeof checklistFiscal }[] = [
       { setor: "Fiscal", entries: checklistFiscal },
       { setor: "Contábil", entries: checklistContabil },
@@ -140,8 +140,19 @@ export default function ObrigacoesPage() {
       )
     )
       return;
-    for (const { clienteId, setor, rotina } of novas) {
-      addDispensaRotina({ id: `disp-${clienteId}-${setor}-${rotina}`, clienteId, setor, rotina });
+    // Disparar uma gravação por combinação de uma vez só passa do limite de
+    // requisições simultâneas do navegador quando são muitas (ex: centenas
+    // de clientes × rotinas) e algumas falham com "Failed to fetch" — mesmo
+    // problema já visto nas cópias em lote do checklist. Aplica em lotes
+    // pequenos, com uma pausa entre eles.
+    const TAMANHO_LOTE = 15;
+    for (let i = 0; i < novas.length; i += TAMANHO_LOTE) {
+      for (const { clienteId, setor, rotina } of novas.slice(i, i + TAMANHO_LOTE)) {
+        addDispensaRotina({ id: `disp-${clienteId}-${setor}-${rotina}`, clienteId, setor, rotina });
+      }
+      if (i + TAMANHO_LOTE < novas.length) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
     }
     alert(`Pronto — ${novas.length} dispensa(s) permanente(s) aplicada(s).`);
   }
