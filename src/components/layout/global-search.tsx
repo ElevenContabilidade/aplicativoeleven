@@ -58,7 +58,7 @@ export function GlobalSearch() {
               c.socios.some((s) => s.cpf.replace(/\D/g, "").includes(q.replace(/\D/g, "")))
           )
           .slice(0, 6)
-          .map((c) => ({ id: c.id, title: c.dados.nomeFantasia ?? c.dados.razaoSocial, subtitle: c.dados.cnpj, href: `/clientes/${c.id}` })),
+          .map((c) => ({ id: c.id, title: c.dados.razaoSocial, subtitle: c.dados.cnpj, href: `/clientes/${c.id}` })),
       },
       {
         key: "leads",
@@ -81,7 +81,7 @@ export function GlobalSearch() {
         items: tasks
           .filter((t) => t.titulo.toLowerCase().includes(q))
           .slice(0, 6)
-          .map((t) => ({ id: t.id, title: t.titulo, subtitle: t.clienteId ? (clientOf(t.clienteId)?.dados.nomeFantasia ?? "") : t.departamento, href: `/tarefas` })),
+          .map((t) => ({ id: t.id, title: t.titulo, subtitle: t.clienteId ? (clientOf(t.clienteId)?.dados.razaoSocial ?? "") : t.departamento, href: `/tarefas` })),
       },
       {
         key: "certificados",
@@ -90,7 +90,7 @@ export function GlobalSearch() {
         items: certificados
           .filter((c) => c.documento.replace(/\D/g, "").includes(q.replace(/\D/g, "")) || (c.protocolo ?? "").toLowerCase().includes(q))
           .slice(0, 6)
-          .map((c) => ({ id: c.id, title: c.tipo, subtitle: clientOf(c.clienteId)?.dados.nomeFantasia ?? "", href: `/certificados` })),
+          .map((c) => ({ id: c.id, title: c.tipo, subtitle: clientOf(c.clienteId)?.dados.razaoSocial ?? "", href: `/certificados` })),
       },
       {
         key: "documentos",
@@ -99,7 +99,7 @@ export function GlobalSearch() {
         items: documentos
           .filter((d) => d.nome.toLowerCase().includes(q))
           .slice(0, 6)
-          .map((d) => ({ id: d.id, title: d.nome, subtitle: clientOf(d.clienteId)?.dados.nomeFantasia ?? "", href: `/documentos` })),
+          .map((d) => ({ id: d.id, title: d.nome, subtitle: clientOf(d.clienteId)?.dados.razaoSocial ?? "", href: `/documentos` })),
       },
       {
         key: "parcelamentos",

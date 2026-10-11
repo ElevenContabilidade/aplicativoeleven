@@ -16,7 +16,7 @@ export function documentoAlertId(documentoId: string): string {
 
 function clientLabel(clienteId: string, clients: Client[]): string {
   const client = clients.find((c) => c.id === clienteId);
-  return client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "Cliente";
+  return client?.dados.razaoSocial ?? "Cliente";
 }
 
 /** Documentos enviados pela equipe (têm responsavelId) não geram alerta —

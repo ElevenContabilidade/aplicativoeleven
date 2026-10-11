@@ -170,7 +170,7 @@ export function CertificadoBulkImportDialog({ open, onOpenChange }: { open: bool
         const doc = await uploadDocumento({
           file: r.file,
           clienteId: r.clienteId,
-          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          clienteNome: cliente.dados.razaoSocial,
           categoria: "Certificados",
           responsavelId: userId ?? undefined,
         });
@@ -290,7 +290,7 @@ export function CertificadoBulkImportDialog({ open, onOpenChange }: { open: bool
                           }}>
                             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                             <SelectContent>
-                              {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>))}
+                              {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
                             </SelectContent>
                           </Select>
                         </TableCell>

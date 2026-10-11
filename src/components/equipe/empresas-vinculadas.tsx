@@ -10,7 +10,7 @@ import type { Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function clienteLabel(c: Client) {
-  return `${c.dados.nomeFantasia ?? c.dados.razaoSocial} - ${c.dados.cnpj}`;
+  return `${c.dados.razaoSocial} - ${c.dados.cnpj}`;
 }
 
 export function EmpresasVinculadas({ memberId }: { memberId: string }) {

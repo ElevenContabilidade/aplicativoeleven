@@ -47,7 +47,7 @@ export function ClientesUsuariosField({
   const clients = useMemo(
     () =>
       [...clientsRaw].sort((a, b) =>
-        (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR")
+        (a.dados.razaoSocial).localeCompare(b.dados.razaoSocial, "pt-BR")
       ),
     [clientsRaw]
   );
@@ -148,7 +148,7 @@ export function ClientesUsuariosField({
                 className="flex items-center gap-2 border-b border-sand-100 px-3 py-1.5 text-xs last:border-b-0 hover:bg-sand-50"
               >
                 <Checkbox checked={selecionados.has(c.id)} onCheckedChange={() => toggleCliente(c.id)} />
-                <span className="truncate">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                <span className="truncate">{c.dados.razaoSocial}</span>
               </label>
             ))}
             {filtrados.length === 0 && (

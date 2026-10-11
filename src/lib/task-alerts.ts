@@ -3,7 +3,7 @@ import type { AppNotification, Client, Task } from "@/lib/types";
 function clientLabel(clienteId: string | undefined, clients: Client[]): string | undefined {
   if (!clienteId) return undefined;
   const client = clients.find((c) => c.id === clienteId);
-  return client?.dados.nomeFantasia ?? client?.dados.razaoSocial;
+  return client?.dados.razaoSocial;
 }
 
 /** Tarefas são criadas com id `t-<Date.now()>` — reaproveita esse timestamp

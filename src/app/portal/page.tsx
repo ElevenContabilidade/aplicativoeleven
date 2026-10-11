@@ -70,7 +70,7 @@ export default function ClientPortalPage() {
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myFaturamento = faturamentoMensal.filter((f) => f.clienteId === client.id);
   const myGuiasFiscais = guiasFiscais.filter((g) => g.clienteId === client.id);
-  const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
+  const clienteNome = client.dados.razaoSocial;
 
   // Honorários lançados manualmente + boletos emitidos em Boletos — assim que
   // qualquer um deles é marcado como pago, aparece aqui automaticamente,

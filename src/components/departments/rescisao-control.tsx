@@ -63,7 +63,7 @@ export function RescisaoControl() {
             <div key={f.id} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2 text-xs">
               <span>
                 <span className="font-medium text-sand-800">{f.nome}</span>{" "}
-                <span className="text-sand-400">— {cliente!.dados.nomeFantasia || cliente!.dados.razaoSocial}</span>
+                <span className="text-sand-400">— {cliente!.dados.razaoSocial}</span>
               </span>
               <Button size="sm" variant="outline" onClick={() => abrirDesligamento(f.id)}>
                 Desligar
@@ -88,7 +88,7 @@ export function RescisaoControl() {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-medium text-sand-800">
-                      {f.nome} <span className="font-normal text-sand-400">— {cliente!.dados.nomeFantasia || cliente!.dados.razaoSocial}</span>
+                      {f.nome} <span className="font-normal text-sand-400">— {cliente!.dados.razaoSocial}</span>
                     </p>
                     <p className="text-[11px] text-sand-400">
                       Desligado em {formatDate(f.rescisao!.dataDesligamento)}

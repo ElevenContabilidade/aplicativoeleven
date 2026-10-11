@@ -256,7 +256,7 @@ export default function RelatoriosPage() {
                   <TableRow key={cliente.id}>
                     <TableCell className="max-w-[160px] truncate font-medium">
                       <Link href={`/clientes/${cliente.id}`} className="hover:text-wine-700 hover:underline">
-                        {cliente.dados.nomeFantasia || cliente.dados.razaoSocial}
+                        {cliente.dados.razaoSocial}
                       </Link>
                     </TableCell>
                     <TableCell className="text-right font-medium text-status-warning">{meses}</TableCell>

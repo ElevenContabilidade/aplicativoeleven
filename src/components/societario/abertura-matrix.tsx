@@ -83,7 +83,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
     <div className="space-y-3">
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
-        const nomeCliente = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "—";
+        const nomeCliente = client?.dados.razaoSocial ?? "—";
         const total = ETAPAS_ABERTURA_EMPRESA.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;

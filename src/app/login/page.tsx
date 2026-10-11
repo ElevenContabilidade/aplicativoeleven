@@ -253,7 +253,7 @@ export default function LoginPage() {
                       >
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+                            {c.dados.razaoSocial}
                           </option>
                         ))}
                       </select>

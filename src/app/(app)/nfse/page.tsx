@@ -112,7 +112,7 @@ export default function NfsePage() {
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
     if (!q) return linhas;
-    return linhas.filter((l) => (l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial).toLowerCase().includes(q));
+    return linhas.filter((l) => (l.cliente.dados.razaoSocial).toLowerCase().includes(q));
   }, [linhas, busca]);
 
   const sorted = useMemo(() => {
@@ -122,8 +122,8 @@ export default function NfsePage() {
       const { column } = sort;
       if (column === "valor") return (a.valor - b.valor) * dir;
       if (column === "cliente") {
-        const an = a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial;
-        const bn = b.cliente.dados.nomeFantasia ?? b.cliente.dados.razaoSocial;
+        const an = a.cliente.dados.razaoSocial;
+        const bn = b.cliente.dados.razaoSocial;
         return an.localeCompare(bn, "pt-BR") * dir;
       }
       return a[column].localeCompare(b[column], "pt-BR") * dir;
@@ -138,7 +138,7 @@ export default function NfsePage() {
   }
 
   function handleDelete(l: Linha) {
-    const nome = l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial;
+    const nome = l.cliente.dados.razaoSocial;
     if (confirm(`Excluir a NFSe de ${nome} em ${l.competencia}? Ela some da lista deste mês.`)) {
       updateNotaFiscal(l.cliente.id, l.competencia, { removido: true });
     }
@@ -199,7 +199,7 @@ export default function NfsePage() {
             <TableBody>
               {sorted.map((l) => (
                 <TableRow key={`${l.cliente.id}-${l.competencia}`}>
-                  <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
+                  <TableCell className="font-medium">{l.cliente.dados.razaoSocial}</TableCell>
                   <TableCell>
                     <Input
                       type="number"

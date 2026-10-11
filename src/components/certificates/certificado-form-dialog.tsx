@@ -102,7 +102,7 @@ export function CertificadoFormDialog({
         const doc = await uploadDocumento({
           file,
           clienteId: effectiveClienteId,
-          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          clienteNome: cliente.dados.razaoSocial,
           categoria: "Certificados",
           responsavelId: userId ?? undefined,
         });

@@ -99,7 +99,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
             />
             <datalist id="recebimento-clientes">
               {clients.map((c) => (
-                <option key={c.id} value={c.dados.nomeFantasia ?? c.dados.razaoSocial} />
+                <option key={c.id} value={c.dados.razaoSocial} />
               ))}
             </datalist>
           </div>

@@ -109,7 +109,7 @@ export function PessoalChecklist() {
   const overallPct = totalCells > 0 ? Math.round((okCells / totalCells) * 100) : 0;
 
   const clientPcts = useMemo(
-    () => applicableClients.map((c) => ({ cliente: (c.dados.nomeFantasia ?? c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c, competencia) })),
+    () => applicableClients.map((c) => ({ cliente: (c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c, competencia) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [applicableClients, checklist, competencia, period]
   );
@@ -140,7 +140,7 @@ export function PessoalChecklist() {
   async function aplicarChecklist(destino: Client[], confirmLabel: string) {
     const origem = myClients.find((c) => c.id === origemId);
     if (!origem || destino.length === 0) return;
-    const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
+    const nomeOrigem = origem.dados.razaoSocial;
     const periodoLabel = period === "anual" ? year : `${MESES.find((m) => m.value === period)?.label}/${year}`;
     if (
       !confirm(
@@ -181,7 +181,7 @@ export function PessoalChecklist() {
 
   async function handleCopiarParaUm() {
     const destino = myClients.filter((c) => c.id === destinoId);
-    const nomeDestino = destino[0]?.dados.nomeFantasia ?? destino[0]?.dados.razaoSocial ?? "";
+    const nomeDestino = destino[0]?.dados.razaoSocial ?? "";
     await aplicarChecklist(destino, `pra "${nomeDestino}"`);
   }
 
@@ -195,7 +195,7 @@ export function PessoalChecklist() {
         <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
         <SelectContent>
           {myClients.map((c) => (
-            <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+            <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -204,7 +204,7 @@ export function PessoalChecklist() {
         <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
         <SelectContent>
           {myClients.filter((c) => c.id !== origemId).map((c) => (
-            <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+            <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -376,7 +376,7 @@ function RotinaTable({
       return [...clients].sort((a, b) => (pctForClient(a) - pctForClient(b)) * dir);
     }
     return [...clients].sort(
-      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+      (a, b) => (a.dados.razaoSocial).localeCompare(b.dados.razaoSocial, "pt-BR") * dir
     );
     // pctForClient muda de referência toda vez que o checklist muda no pai
     // (é uma arrow nova a cada render) — precisa entrar na lista de
@@ -466,7 +466,7 @@ function RotinaTable({
                 </td>
                 <td className="sticky left-9 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
                   <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
-                    {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+                    {c.dados.razaoSocial}
                   </Link>
                 </td>
                 {columns.map((r) => {

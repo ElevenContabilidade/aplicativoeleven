@@ -111,7 +111,7 @@ export async function enviarLembreteBoleto(clienteId: string, competencia: strin
   const client = await buscarCliente(admin, clienteId);
   if (!client) return { enviado: false, motivo: "Cliente não encontrado." };
 
-  const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
+  const clienteNome = client.dados.razaoSocial;
   const telefone = telefonePrincipalCliente(client);
   if (!telefone) return { enviado: false, motivo: "Cliente sem telefone cadastrado.", clienteNome };
   const telefoneNormalizado = normalizarTelefoneWhatsapp(telefone);

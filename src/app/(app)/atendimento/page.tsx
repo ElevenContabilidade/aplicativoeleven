@@ -86,7 +86,7 @@ export default function AtendimentoPage() {
           <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos os clientes</SelectItem>
-            {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>))}
+            {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
           </SelectContent>
         </Select>
       </div>
@@ -104,7 +104,7 @@ export default function AtendimentoPage() {
                 <div>
                   <p className="text-sm text-sand-800">{t.descricao}</p>
                   <p className="text-[11px] text-sand-400">
-                    {client?.dados.nomeFantasia ?? client?.dados.razaoSocial} • {formatDateTime(t.data)} • {t.autor}
+                    {client?.dados.razaoSocial} • {formatDateTime(t.data)} • {t.autor}
                   </p>
                 </div>
               </div>
@@ -123,7 +123,7 @@ export default function AtendimentoPage() {
               <Select value={effectiveClienteId} onValueChange={setClienteId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>))}
+                  {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>

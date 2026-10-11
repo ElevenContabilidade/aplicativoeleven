@@ -39,7 +39,7 @@ function buildReajusteAlert(client: Client): AppNotification | null {
   const meses = mesesSemReajuste(client);
   if (meses === null || meses < MESES_PARA_ALERTA) return null;
 
-  const nome = client.dados.nomeFantasia || client.dados.razaoSocial;
+  const nome = client.dados.razaoSocial;
   const base = dataBase(client);
   return {
     id: reajusteAlertId(client.id),

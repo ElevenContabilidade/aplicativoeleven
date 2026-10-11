@@ -27,7 +27,7 @@ export function licencaAlertId(licencaId: string): string {
 
 function clientLabel(clienteId: string, clients: Client[]): string {
   const client = clients.find((c) => c.id === clienteId);
-  return client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "Cliente";
+  return client?.dados.razaoSocial ?? "Cliente";
 }
 
 function buildLicencaAlert(licenca: Licenca, clients: Client[]): AppNotification | null {

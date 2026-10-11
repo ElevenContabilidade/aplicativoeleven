@@ -75,7 +75,7 @@ export function ObligationFormDialog({
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

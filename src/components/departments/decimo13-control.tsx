@@ -70,7 +70,7 @@ export function Decimo13Control() {
           <TableBody>
             {linhas.map(({ funcionario: f, cliente, registro }) => (
               <TableRow key={f.id}>
-                <TableCell className="text-sand-500">{cliente!.dados.nomeFantasia || cliente!.dados.razaoSocial}</TableCell>
+                <TableCell className="text-sand-500">{cliente!.dados.razaoSocial}</TableCell>
                 <TableCell className="font-medium text-sand-800">{f.nome}</TableCell>
                 <TableCell>
                   <label className="flex items-center gap-2">

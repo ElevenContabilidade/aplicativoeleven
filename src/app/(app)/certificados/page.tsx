@@ -107,7 +107,7 @@ export default function CertificadosPage() {
 
   function handleDelete(c: Certificado) {
     const client = clients.find((cl) => cl.id === c.clienteId);
-    const nome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "este cliente";
+    const nome = client?.dados.razaoSocial ?? "este cliente";
     if (confirm(`Excluir o certificado ${c.tipo} de ${nome} (vence em ${formatDate(c.dataVencimento)})?`)) {
       deleteCertificado(c.id);
     }
@@ -153,8 +153,8 @@ export default function CertificadosPage() {
         if (sort.column === "cliente") {
           const clientA = clients.find((cl) => cl.id === a.clienteId);
           const clientB = clients.find((cl) => cl.id === b.clienteId);
-          const nameA = clientA?.dados.nomeFantasia ?? clientA?.dados.razaoSocial ?? "";
-          const nameB = clientB?.dados.nomeFantasia ?? clientB?.dados.razaoSocial ?? "";
+          const nameA = clientA?.dados.razaoSocial ?? "";
+          const nameB = clientB?.dados.razaoSocial ?? "";
           cmp = nameA.localeCompare(nameB);
         } else if (sort.column === "vencimento" || sort.column === "alerta") {
           cmp = a.dataVencimento.localeCompare(b.dataVencimento);
@@ -236,7 +236,7 @@ export default function CertificadosPage() {
               const arquivo = documentos.find((d) => d.id === c.documentoId);
               return (
                 <TableRow key={c.id}>
-                  <TableCell className="font-medium">{client?.dados.nomeFantasia ?? client?.dados.razaoSocial}</TableCell>
+                  <TableCell className="font-medium">{client?.dados.razaoSocial}</TableCell>
                   <TableCell>{c.tipo}</TableCell>
                   <TableCell className="text-sand-500">{c.documento}</TableCell>
                   <TableCell>{formatDate(c.dataVencimento)}</TableCell>

@@ -147,7 +147,7 @@ export async function enviarLembreteDocumentos(
   const client = await buscarCliente(admin, clienteId);
   if (!client) return { enviado: false, motivo: "Cliente não encontrado." };
 
-  const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
+  const clienteNome = client.dados.razaoSocial;
   const email = emailPrincipalCliente(client);
   if (!email) return { enviado: false, motivo: "Cliente sem e-mail de contato cadastrado.", clienteNome };
 
@@ -180,7 +180,7 @@ export async function enviarEmailTesteDocumentos(clienteId: string, competencia:
   const client = await buscarCliente(admin, clienteId);
   if (!client) throw new Error("Cliente não encontrado.");
 
-  const clienteNome = client.dados.nomeFantasia ?? client.dados.razaoSocial;
+  const clienteNome = client.dados.razaoSocial;
   const tipos = await buscarTiposAtivos(admin, clienteId);
   if (tipos.length === 0) throw new Error("Nenhum tipo de documento configurado pra esse cliente.");
 

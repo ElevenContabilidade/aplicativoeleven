@@ -72,9 +72,9 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
           <Badge variant="outline">{task.departamento}</Badge>
           {clientesDaTarefa
             ? clientesDaTarefa.map((c) => (
-                <Badge key={c.id} variant="cream">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</Badge>
+                <Badge key={c.id} variant="cream">{c.dados.razaoSocial}</Badge>
               ))
-            : client && <Badge variant="cream">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</Badge>}
+            : client && <Badge variant="cream">{client.dados.razaoSocial}</Badge>}
           <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)} • {teamName(task.responsavelId)}</span>
         </div>
 

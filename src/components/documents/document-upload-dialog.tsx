@@ -131,7 +131,7 @@ export function DocumentUploadDialog({
       const documento = await uploadDocumento({
         file,
         clienteId: targetCliente,
-        clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+        clienteNome: cliente.dados.razaoSocial,
         categoria,
         responsavelId: userId ?? undefined,
       });
@@ -217,7 +217,7 @@ export function DocumentUploadDialog({
                 <SelectContent>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+                      {c.dados.razaoSocial}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -137,7 +137,7 @@ export function MarcarParceiroDialog({ open, onOpenChange }: { open: boolean; on
                   <label key={c.id} className="flex items-center gap-2 border-b border-sand-100 px-3 py-2 text-xs last:border-b-0 hover:bg-sand-50">
                     <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleCliente(c.id)} />
                     <span className="min-w-0 flex-1 truncate">
-                      <span className="font-medium text-sand-800">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                      <span className="font-medium text-sand-800">{c.dados.razaoSocial}</span>
                       <span className="ml-2 text-sand-400">{c.dados.cnpj}</span>
                     </span>
                     {c.dados.clienteParceiro && (

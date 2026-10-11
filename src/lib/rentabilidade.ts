@@ -64,7 +64,7 @@ export function calcularRentabilidade(
     const margem = receita - custo;
     return {
       clienteId: c.id,
-      nome: c.dados.nomeFantasia || c.dados.razaoSocial,
+      nome: c.dados.razaoSocial,
       receita,
       custo,
       margem,

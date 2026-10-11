@@ -50,7 +50,7 @@ export default function ElevenIAPage() {
       if (overdue.length === 0) return "Nenhuma tarefa está atrasada no momento. 🎉";
       const names = overdue.map((t) => {
         const c = clients.find((cl) => cl.id === t.clienteId);
-        return `• ${t.titulo}${c ? ` (${c.dados.nomeFantasia ?? c.dados.razaoSocial})` : ""}`;
+        return `• ${t.titulo}${c ? ` (${c.dados.razaoSocial})` : ""}`;
       });
       return `Encontrei ${overdue.length} tarefa(s) atrasada(s):\n${names.join("\n")}`;
     }
@@ -60,7 +60,7 @@ export default function ElevenIAPage() {
       if (venc.length === 0) return "Nenhum certificado vence nos próximos 30 dias.";
       const lines = venc.map((c) => {
         const cl = clients.find((x) => x.id === c.clienteId);
-        return `• ${c.tipo} — ${cl?.dados.nomeFantasia ?? cl?.dados.razaoSocial} (vence em ${daysFromToday(c.dataVencimento)} dias)`;
+        return `• ${c.tipo} — ${cl?.dados.razaoSocial} (vence em ${daysFromToday(c.dataVencimento)} dias)`;
       });
       return `${venc.length} certificado(s) vencem nos próximos 30 dias:\n${lines.join("\n")}`;
     }
@@ -68,7 +68,7 @@ export default function ElevenIAPage() {
     if (q.includes("inadimplente")) {
       const inad = clients.filter((c) => c.financeiro.statusFinanceiro === "Atrasado");
       if (inad.length === 0) return "Nenhum cliente está inadimplente atualmente.";
-      return `${inad.length} cliente(s) inadimplente(s):\n${inad.map((c) => `• ${c.dados.nomeFantasia ?? c.dados.razaoSocial}`).join("\n")}`;
+      return `${inad.length} cliente(s) inadimplente(s):\n${inad.map((c) => `• ${c.dados.razaoSocial}`).join("\n")}`;
     }
 
     if (q.includes("lead") && (q.includes("contato") || q.includes("sem retorno"))) {
@@ -80,7 +80,7 @@ export default function ElevenIAPage() {
     if (q.includes("fiscal") && q.includes("pend")) {
       const pend = obligations.filter((o) => o.status === "Em atraso" || o.status === "Aguardando informação");
       if (pend.length === 0) return "Nenhuma empresa possui pendências no Fiscal no momento.";
-      const set = new Set(pend.map((o) => clients.find((c) => c.id === o.clienteId)?.dados.nomeFantasia));
+      const set = new Set(pend.map((o) => clients.find((c) => c.id === o.clienteId)?.dados.razaoSocial));
       return `Empresas com pendências no Fiscal:\n${Array.from(set).map((n) => `• ${n}`).join("\n")}`;
     }
 

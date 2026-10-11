@@ -84,7 +84,7 @@ export function LicencaFormDialog({
         const documento = await uploadDocumento({
           file,
           clienteId,
-          clienteNome: cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial,
+          clienteNome: cliente.dados.razaoSocial,
           categoria: "Licenças",
           responsavelId: userId ?? undefined,
         });

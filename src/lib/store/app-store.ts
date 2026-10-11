@@ -726,14 +726,14 @@ export const useAppStore = create<AppState>()(
       addClient: (client) => {
         set((s) => ({ clients: [client, ...s.clients] }));
         pushCliente(client.id);
-        logAuditoria("Cliente cadastrado", "Clientes", client.dados.nomeFantasia || client.dados.razaoSocial);
+        logAuditoria("Cliente cadastrado", "Clientes", client.dados.razaoSocial);
         // Melhor esforço — cria de uma vez a pasta do cliente e as 6
         // subpastas por setor no Drive, mesmo sem Drive conectado o
         // cadastro do cliente não deve travar por isso.
         void fetch("/api/integracoes/google-drive/criar-pastas", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clienteId: client.id, clienteNome: client.dados.nomeFantasia || client.dados.razaoSocial }),
+          body: JSON.stringify({ clienteId: client.id, clienteNome: client.dados.razaoSocial }),
         }).catch((err) => console.error("Erro ao criar pastas no Drive:", err));
       },
       deleteClient: (clientId) => {
@@ -759,7 +759,7 @@ export const useAppStore = create<AppState>()(
         }));
         deleteFinanceiroPorCliente(clientId);
         if (clienteExcluido) {
-          logAuditoria("Cliente excluído", "Clientes", clienteExcluido.dados.nomeFantasia || clienteExcluido.dados.razaoSocial);
+          logAuditoria("Cliente excluído", "Clientes", clienteExcluido.dados.razaoSocial);
         }
       },
       updateClientStatus: (clientId, status) => {
@@ -767,7 +767,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ clients: s.clients.map((c) => (c.id === clientId ? { ...c, status } : c)) }));
         pushCliente(clientId);
         if (cliente) {
-          logAuditoria("Status do cliente alterado", "Clientes", `${cliente.dados.nomeFantasia || cliente.dados.razaoSocial}: ${cliente.status} → ${status}`);
+          logAuditoria("Status do cliente alterado", "Clientes", `${cliente.dados.razaoSocial}: ${cliente.status} → ${status}`);
         }
       },
       updateClientTags: (clientId, tags) => {
@@ -1243,7 +1243,7 @@ export const useAppStore = create<AppState>()(
           logAuditoria(
             "Honorário do cliente alterado",
             "Clientes",
-            `${before.dados.nomeFantasia || before.dados.razaoSocial}: ${formatCurrency(before.financeiro.valorMensal)} → ${formatCurrency(patch.valorMensal)}`
+            `${before.dados.razaoSocial}: ${formatCurrency(before.financeiro.valorMensal)} → ${formatCurrency(patch.valorMensal)}`
           );
         }
       },

@@ -121,7 +121,7 @@ export default function FinanceiroPage() {
   const detalheMrr = [
     ...clientesAssessoriaMensal.map((c) => ({
       key: c.id,
-      nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+      nome: c.dados.razaoSocial,
       cnpj: c.dados.cnpj || "—",
       status: c.status as string,
       valor: c.financeiro.valorMensal,
@@ -130,7 +130,7 @@ export default function FinanceiroPage() {
       const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
       return {
         key: `parceiro-${c.id}`,
-        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+        nome: c.dados.razaoSocial,
         cnpj: c.dados.cnpj || "—",
         status: c.status as string,
         valor: entry?.valor ?? c.financeiro.valorMensal,
@@ -170,7 +170,7 @@ export default function FinanceiroPage() {
       c.historicoFinanceiro.map((h) => ({
         ...h,
         key: `cliente-${c.id}-${h.id}`,
-        nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+        nome: c.dados.razaoSocial,
         banco: undefined as string | undefined,
         tipoPessoa: undefined as "PF" | "PJ" | undefined,
         avulso: false as const,
@@ -194,7 +194,7 @@ export default function FinanceiroPage() {
         return {
           id: b.id,
           key: `boleto-${b.id}`,
-          nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+          nome: c.dados.razaoSocial,
           competencia: b.competencia,
           servico: "Boleto mensal",
           valor,
@@ -231,7 +231,7 @@ export default function FinanceiroPage() {
         return [{
           id: entry?.id ?? `${c.id}-${comp}`,
           key: `parceiro-${c.id}-${comp}`,
-          nome: c.dados.nomeFantasia ?? c.dados.razaoSocial,
+          nome: c.dados.razaoSocial,
           competencia: comp,
           servico: "Recebimento parceiro (PIX)",
           valor,
@@ -848,7 +848,7 @@ export default function FinanceiroPage() {
                     <span className="font-medium text-sand-900">{s.servico}</span>
                     <StatusBadge status={s.status} />
                   </div>
-                  <p className="mt-1 text-sand-500">{client?.dados.nomeFantasia} • {formatCurrency(s.valor)}</p>
+                  <p className="mt-1 text-sand-500">{client?.dados.razaoSocial} • {formatCurrency(s.valor)}</p>
                   <p className="text-[11px] text-sand-400">{teamName(s.responsavelId)} • {formatDate(s.data)}</p>
                 </div>
               );

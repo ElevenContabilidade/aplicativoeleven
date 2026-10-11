@@ -62,7 +62,7 @@ export function FeriasControl() {
           <TableBody>
             {linhas.map(({ funcionario: f, cliente, periodo, status }) => (
               <TableRow key={f.id}>
-                <TableCell className="text-sand-500">{cliente!.dados.nomeFantasia || cliente!.dados.razaoSocial}</TableCell>
+                <TableCell className="text-sand-500">{cliente!.dados.razaoSocial}</TableCell>
                 <TableCell className="font-medium text-sand-800">{f.nome}</TableCell>
                 <TableCell className="whitespace-nowrap">{formatDate(f.dataAdmissao)}</TableCell>
                 <TableCell className="whitespace-nowrap text-xs">

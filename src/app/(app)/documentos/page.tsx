@@ -76,7 +76,7 @@ export default function DocumentosPage() {
     let importados = 0;
     let falhas = 0;
     for (const c of clients) {
-      const nome = c.dados.nomeFantasia || c.dados.razaoSocial;
+      const nome = c.dados.razaoSocial;
       if (!nome) continue;
       try {
         const res = await fetch("/api/documentos/sincronizar-drive", {
@@ -127,8 +127,8 @@ export default function DocumentosPage() {
         case "nome":
           return a.documento.nome.localeCompare(b.documento.nome, "pt-BR") * dir;
         case "cliente": {
-          const an = a.cliente?.dados.nomeFantasia ?? a.cliente?.dados.razaoSocial ?? "";
-          const bn = b.cliente?.dados.nomeFantasia ?? b.cliente?.dados.razaoSocial ?? "";
+          const an = a.cliente?.dados.razaoSocial ?? "";
+          const bn = b.cliente?.dados.razaoSocial ?? "";
           return an.localeCompare(bn, "pt-BR") * dir;
         }
         case "categoria":
@@ -197,7 +197,7 @@ export default function DocumentosPage() {
                   <FileText className="size-3.5 shrink-0 text-wine-500" /> {d.nome}
                 </span>
               </TableCell>
-              <TableCell>{client?.dados.nomeFantasia ?? client?.dados.razaoSocial}</TableCell>
+              <TableCell>{client?.dados.razaoSocial}</TableCell>
               <TableCell><Badge variant="outline">{d.categoria}</Badge></TableCell>
               <TableCell>{formatDate(d.dataArquivo)}</TableCell>
               <TableCell>{teamName(d.responsavelId)}</TableCell>

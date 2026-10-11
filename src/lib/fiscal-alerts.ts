@@ -10,7 +10,7 @@ function isDone(status?: string) {
 
 function clientLabel(clienteId: string, clients: Client[]): string {
   const client = clients.find((c) => c.id === clienteId);
-  return client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "Cliente";
+  return client?.dados.razaoSocial ?? "Cliente";
 }
 
 export function fiscalIssAlertId(clienteId: string, competencia: string): string {

@@ -127,7 +127,7 @@ export default function ParceirosPage() {
     if (!q) return linhas;
     return linhas.filter(
       (l) =>
-        (l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial).toLowerCase().includes(q) ||
+        (l.cliente.dados.razaoSocial).toLowerCase().includes(q) ||
         (l.cliente.dados.nomeParceiro ?? "").toLowerCase().includes(q)
     );
   }, [linhas, busca]);
@@ -190,8 +190,8 @@ export default function ParceirosPage() {
         return {
           parceiro,
           linhas: linhas.sort((a, b) => {
-            const nomeCompare = (a.cliente.dados.nomeFantasia ?? a.cliente.dados.razaoSocial).localeCompare(
-              b.cliente.dados.nomeFantasia ?? b.cliente.dados.razaoSocial,
+            const nomeCompare = (a.cliente.dados.razaoSocial).localeCompare(
+              b.cliente.dados.razaoSocial,
               "pt-BR"
             );
             return nomeCompare !== 0 ? nomeCompare : a.competencia.localeCompare(b.competencia);
@@ -269,7 +269,7 @@ export default function ParceirosPage() {
   }
 
   function handleDeleteLinha(l: Linha) {
-    const nome = l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial;
+    const nome = l.cliente.dados.razaoSocial;
     if (confirm(`Excluir o lançamento de "${nome}" em ${inicioContratoLabel(l.competencia)}?`)) {
       updateRecebimentoParceiro(l.cliente.id, l.competencia, { removido: true });
     }
@@ -408,7 +408,7 @@ export default function ParceirosPage() {
                 </TableRow>
                 {g.linhas.map((l) => (
                   <TableRow key={`${l.cliente.id}-${l.competencia}`}>
-                    <TableCell className="font-medium">{l.cliente.dados.nomeFantasia ?? l.cliente.dados.razaoSocial}</TableCell>
+                    <TableCell className="font-medium">{l.cliente.dados.razaoSocial}</TableCell>
                     {mes === "anual" && (
                       <TableCell className="text-sand-500">{inicioContratoLabel(l.competencia)}</TableCell>
                     )}

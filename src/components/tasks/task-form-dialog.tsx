@@ -43,7 +43,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const clientesFiltrados = useMemo(() => {
     const ordenados = [...clients].sort((a, b) =>
-      (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR")
+      (a.dados.razaoSocial).localeCompare(b.dados.razaoSocial, "pt-BR")
     );
     if (filtroVencimento === TODOS_VENCIMENTOS) return ordenados;
     if (filtroVencimento === SEM_VENCIMENTO) return ordenados.filter((c) => !c.financeiro.vencimentoDia);
@@ -130,7 +130,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               {clientesFiltrados.map((c) => (
                 <label key={c.id} className="flex items-center gap-2 border-b border-sand-100 px-3 py-1.5 text-xs last:border-b-0 hover:bg-sand-50">
                   <Checkbox checked={clienteIds.includes(c.id)} onCheckedChange={() => toggleCliente(c.id)} />
-                  <span className="truncate">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</span>
+                  <span className="truncate">{c.dados.razaoSocial}</span>
                 </label>
               ))}
               {clientesFiltrados.length === 0 && (

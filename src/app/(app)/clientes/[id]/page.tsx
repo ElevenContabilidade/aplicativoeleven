@@ -242,7 +242,7 @@ export default function ClientProfilePage() {
   }
 
   function handleDeleteClient() {
-    const nome = client!.dados.nomeFantasia ?? client!.dados.razaoSocial;
+    const nome = client!.dados.razaoSocial;
     if (!confirm(`Excluir definitivamente o cliente "${nome}"? Isso apaga tarefas, documentos, certificados, licenças, checklist e demais dados vinculados a ele.`)) return;
     if (!confirm(`Confirma mesmo a exclusão de "${nome}"? Essa ação não pode ser desfeita.`)) return;
     deleteClient(client!.id);
@@ -285,10 +285,7 @@ export default function ClientProfilePage() {
                 className="h-6 w-20 rounded-full border-dashed px-2.5 text-[11px]"
               />
             </div>
-            <p className="mt-1 text-sm text-sand-500">
-              {client.dados.nomeFantasia ? `${client.dados.nomeFantasia} • ` : ""}
-              {client.dados.cnpj}
-            </p>
+            <p className="mt-1 text-sm text-sand-500">{client.dados.cnpj}</p>
           </div>
           <div className="flex flex-wrap items-start gap-4">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs sm:grid-cols-4">

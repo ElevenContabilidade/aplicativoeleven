@@ -133,15 +133,15 @@ export default function ObrigacoesPage() {
     return linhas
       .map((l) => ({ linha: l, cliente: clients.find((c) => c.id === l.clienteId) }))
       .filter(({ linha: l, cliente }) => {
-        const nomeCliente = cliente?.dados.nomeFantasia ?? cliente?.dados.razaoSocial ?? "";
+        const nomeCliente = cliente?.dados.razaoSocial ?? "";
         const matchesQuery = q === "" || l.tipo.toLowerCase().includes(q) || nomeCliente.toLowerCase().includes(q);
         const matchesCliente = clienteFiltro === "Todos" || l.clienteId === clienteFiltro;
         const matchesStatus = statusFiltro === "Todas" ? true : statusFiltro === "Pendentes" ? l.pendente : !l.pendente;
         return matchesQuery && matchesCliente && matchesStatus;
       })
       .sort((a, b) => {
-        const an = a.cliente?.dados.nomeFantasia ?? a.cliente?.dados.razaoSocial ?? "";
-        const bn = b.cliente?.dados.nomeFantasia ?? b.cliente?.dados.razaoSocial ?? "";
+        const an = a.cliente?.dados.razaoSocial ?? "";
+        const bn = b.cliente?.dados.razaoSocial ?? "";
         const nomeCliente = () => an.localeCompare(bn, "pt-BR") || a.linha.tipo.localeCompare(b.linha.tipo, "pt-BR");
         switch (ordenar) {
           case "vencimento":
@@ -326,7 +326,7 @@ export default function ObrigacoesPage() {
           <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="Todos">Todos os clientes</SelectItem>
-            {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>))}
+            {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
           </SelectContent>
         </Select>
         <Select value={statusFiltro} onValueChange={(v) => setStatusFiltro(v as typeof statusFiltro)}>
@@ -407,7 +407,7 @@ export default function ObrigacoesPage() {
                                 key={l.id}
                                 type="button"
                                 onClick={() => l.kind === "manual" && abrirEdicao(l.obligation)}
-                                title={`${l.tipo} — ${cliente?.dados.nomeFantasia ?? cliente?.dados.razaoSocial ?? ""}`}
+                                title={`${l.tipo} — ${cliente?.dados.razaoSocial ?? ""}`}
                                 className={cn(
                                   "block w-full truncate rounded px-1.5 py-0.5 text-left text-[10px] font-semibold text-cream-50 shadow-sm",
                                   concluida ? "bg-status-success" : atrasada ? "bg-status-danger" : "bg-wine-600"
@@ -452,7 +452,7 @@ export default function ObrigacoesPage() {
                 <TableCell>
                   {cliente ? (
                     <Link href={`/clientes/${cliente.id}`} className="font-medium text-sand-900 hover:text-wine-700 hover:underline">
-                      {cliente.dados.nomeFantasia ?? cliente.dados.razaoSocial}
+                      {cliente.dados.razaoSocial}
                     </Link>
                   ) : (
                     <span className="text-sand-400">—</span>

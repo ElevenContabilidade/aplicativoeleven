@@ -27,7 +27,7 @@ export function certificadoAlertId(certificadoId: string): string {
 
 function clientLabel(clienteId: string, clients: Client[]): string {
   const client = clients.find((c) => c.id === clienteId);
-  return client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "Cliente";
+  return client?.dados.razaoSocial ?? "Cliente";
 }
 
 function buildCertificadoAlert(certificado: Certificado, clients: Client[]): AppNotification | null {

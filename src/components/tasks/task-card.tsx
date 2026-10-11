@@ -45,7 +45,7 @@ export function TaskCard({ task, onOpen }: { task: Task; onOpen: () => void }) {
       {multiplosClientes ? (
         <p className="mt-0.5 truncate text-xs text-sand-500">{multiplosClientes} clientes</p>
       ) : (
-        client && <p className="mt-0.5 truncate text-xs text-sand-500">{client.dados.nomeFantasia ?? client.dados.razaoSocial}</p>
+        client && <p className="mt-0.5 truncate text-xs text-sand-500">{client.dados.razaoSocial}</p>
       )}
 
       <div className="mt-2 flex flex-wrap gap-1">

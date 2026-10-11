@@ -45,7 +45,7 @@ function useAcessosPorCliente(): LinhaAcesso[] {
         const cert = certificados.find((cf) => cf.clienteId === c.id && cf.senha);
         return {
           clienteId: c.id,
-          clienteNome: c.dados.nomeFantasia || c.dados.razaoSocial,
+          clienteNome: c.dados.razaoSocial,
           cnpj: c.dados.cnpj,
           socioNome: socio?.nome,
           cpf: socio?.cpf,

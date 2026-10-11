@@ -57,7 +57,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{processo.tipoServico}</DialogTitle>
-          {client && <p className="text-xs text-sand-500">{client.dados.nomeFantasia ?? client.dados.razaoSocial} • {client.dados.cnpj}</p>}
+          {client && <p className="text-xs text-sand-500">{client.dados.razaoSocial} • {client.dados.cnpj}</p>}
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">

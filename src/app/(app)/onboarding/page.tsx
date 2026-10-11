@@ -32,7 +32,7 @@ export default function OnboardingPage() {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate font-display text-sm font-semibold text-sand-900">{c.dados.nomeFantasia ?? c.dados.razaoSocial}</p>
+                      <p className="truncate font-display text-sm font-semibold text-sand-900">{c.dados.razaoSocial}</p>
                       <p className="truncate text-[11px] text-sand-400">{c.dados.cnpj}</p>
                     </div>
                     <StatusBadge status={c.status} />

@@ -159,7 +159,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

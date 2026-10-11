@@ -65,7 +65,7 @@ export function FuncionarioFormDialog({ open, onOpenChange }: { open: boolean; o
               <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
               <SelectContent>
                 {clientesComFuncionarios.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia || c.dados.razaoSocial}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

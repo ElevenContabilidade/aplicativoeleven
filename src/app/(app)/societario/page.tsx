@@ -154,7 +154,7 @@ export default function SocietarioPage() {
               <TableBody>
                 {filteredPeriodo.map((p) => {
                   const client = clients.find((c) => c.id === p.clienteId);
-                  const clienteNome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "cliente";
+                  const clienteNome = client?.dados.razaoSocial ?? "cliente";
                   return (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
                       <TableCell className="font-medium">{clienteNome}</TableCell>
@@ -197,7 +197,7 @@ export default function SocietarioPage() {
               <div className="space-y-2">
                 {items.map((p) => {
                   const client = clients.find((c) => c.id === p.clienteId);
-                  const clienteNome = client?.dados.nomeFantasia ?? client?.dados.razaoSocial ?? "cliente";
+                  const clienteNome = client?.dados.razaoSocial ?? "cliente";
                   return (
                     <Card key={p.id} className="cursor-pointer transition-colors hover:border-wine-300" onClick={() => setSelected(p)}>
                       <CardContent className="space-y-1.5 p-3">

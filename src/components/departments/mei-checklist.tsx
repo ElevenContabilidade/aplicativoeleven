@@ -97,7 +97,7 @@ export function MeiChecklist() {
       return [...myClients].sort((a, b) => (pctFor(a.id, competencia) - pctFor(b.id, competencia)) * dir);
     }
     return [...myClients].sort(
-      (a, b) => (a.dados.nomeFantasia ?? a.dados.razaoSocial).localeCompare(b.dados.nomeFantasia ?? b.dados.razaoSocial, "pt-BR") * dir
+      (a, b) => (a.dados.razaoSocial).localeCompare(b.dados.razaoSocial, "pt-BR") * dir
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myClients, ordem, competencia, checklist]);
@@ -107,7 +107,7 @@ export function MeiChecklist() {
   const overallPct = totalCells > 0 ? Math.round((okCells / totalCells) * 100) : 0;
 
   const clientPcts = useMemo(
-    () => myClients.map((c) => ({ cliente: (c.dados.nomeFantasia ?? c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c.id, competencia) })),
+    () => myClients.map((c) => ({ cliente: (c.dados.razaoSocial).split(" ").slice(0, 2).join(" "), pct: pctFor(c.id, competencia) })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [myClients, checklist, competencia]
   );
@@ -132,7 +132,7 @@ export function MeiChecklist() {
   async function aplicarChecklist(destino: Client[], confirmLabel: string) {
     const origem = myClients.find((c) => c.id === origemId);
     if (!origem || destino.length === 0) return;
-    const nomeOrigem = origem.dados.nomeFantasia ?? origem.dados.razaoSocial;
+    const nomeOrigem = origem.dados.razaoSocial;
     if (
       !confirm(
         `Copiar o checklist de "${nomeOrigem}" (${MESES.find((m) => m.value === mes)?.label}/${year}) ${confirmLabel}?\n\nSó preenche as rotinas que ainda estão em branco — não mexe em nada que já foi marcado.`
@@ -169,7 +169,7 @@ export function MeiChecklist() {
 
   async function handleCopiarParaUm() {
     const destino = myClients.filter((c) => c.id === destinoId);
-    const nomeDestino = destino[0]?.dados.nomeFantasia ?? destino[0]?.dados.razaoSocial ?? "";
+    const nomeDestino = destino[0]?.dados.razaoSocial ?? "";
     await aplicarChecklist(destino, `pra "${nomeDestino}"`);
   }
 
@@ -245,7 +245,7 @@ export function MeiChecklist() {
               <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Escolha um cliente" /></SelectTrigger>
               <SelectContent>
                 {myClients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -254,7 +254,7 @@ export function MeiChecklist() {
               <SelectTrigger className="h-8 w-56 text-xs"><SelectValue placeholder="Um cliente específico" /></SelectTrigger>
               <SelectContent>
                 {myClients.filter((c) => c.id !== origemId).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.dados.nomeFantasia ?? c.dados.razaoSocial}</SelectItem>
+                  <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -345,7 +345,7 @@ function ClientRow({
     <tr className="bg-white odd:bg-sand-50">
       <td className="sticky left-0 z-10 whitespace-nowrap border-b border-sand-200 bg-inherit px-3 py-2 font-medium text-sand-800">
         <Link href={`/clientes/${c.id}`} className="hover:text-wine-700 hover:underline">
-          {c.dados.nomeFantasia ?? c.dados.razaoSocial}
+          {c.dados.razaoSocial}
         </Link>
       </td>
       {rotinas.map((r) => {
