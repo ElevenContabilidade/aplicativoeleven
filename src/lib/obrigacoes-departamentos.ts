@@ -10,6 +10,7 @@ import {
   type Client,
   type ChecklistEntry,
   type ChecklistStatus,
+  type DispensaRotina,
 } from "@/lib/types";
 import { diaUtilAnterior, diaUtilPosterior } from "@/lib/feriados";
 
@@ -70,8 +71,21 @@ function clientesAtivosNoSetor(clients: Client[], setor: "fiscal" | "contabil" |
   );
 }
 
-function statusDe(checklist: ChecklistEntry[], clienteId: string, competencia: string, rotina: string): ChecklistStatus {
-  return checklist.find((e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina)?.status ?? "Pendente";
+/** Cliente dispensado permanentemente dessa rotina (ver DispensaRotina) —
+ * só vale enquanto não houver marcação própria naquele mês específico. */
+export function isRotinaDispensada(dispensas: DispensaRotina[], clienteId: string, setor: SetorRotina, rotina: string): boolean {
+  return dispensas.some((d) => d.clienteId === clienteId && d.setor === setor && d.rotina === rotina);
+}
+
+function statusDe(
+  checklist: ChecklistEntry[],
+  clienteId: string,
+  competencia: string,
+  rotina: string,
+  dispensada: boolean
+): ChecklistStatus {
+  const explicito = checklist.find((e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina)?.status;
+  return explicito ?? (dispensada ? "Dispensada" : "Pendente");
 }
 
 /** Todas as rotinas mensais dos 4 departamentos, aplicáveis a cada cliente
@@ -82,7 +96,8 @@ export function rotinasDepartamentosDoMes(
   checklistContabil: ChecklistEntry[],
   checklistPessoal: ChecklistEntry[],
   checklistMei: ChecklistEntry[],
-  competencia: string
+  competencia: string,
+  dispensasRotina: DispensaRotina[] = []
 ): RotinaDepartamento[] {
   const rotinas: RotinaDepartamento[] = [];
 
@@ -94,7 +109,7 @@ export function rotinasDepartamentosDoMes(
         tipo: rotina,
         setor: "Fiscal",
         competencia,
-        status: statusDe(checklistFiscal, c.id, competencia, rotina),
+        status: statusDe(checklistFiscal, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Fiscal", rotina)),
         vencimento: vencimentoRotina(rotina, competencia),
       });
     }
@@ -108,7 +123,7 @@ export function rotinasDepartamentosDoMes(
         tipo: rotina,
         setor: "Contábil",
         competencia,
-        status: statusDe(checklistContabil, c.id, competencia, rotina),
+        status: statusDe(checklistContabil, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Contábil", rotina)),
         vencimento: vencimentoRotina(rotina, competencia),
       });
     }
@@ -122,7 +137,13 @@ export function rotinasDepartamentosDoMes(
         tipo: rotina,
         setor: "Departamento Pessoal",
         competencia,
-        status: statusDe(checklistPessoal, c.id, competencia, rotina),
+        status: statusDe(
+          checklistPessoal,
+          c.id,
+          competencia,
+          rotina,
+          isRotinaDispensada(dispensasRotina, c.id, "Departamento Pessoal", rotina)
+        ),
         vencimento: vencimentoRotina(rotina, competencia),
       });
     }
@@ -141,7 +162,7 @@ export function rotinasDepartamentosDoMes(
         tipo: rotina,
         setor: "MEI",
         competencia,
-        status: statusDe(checklistMei, c.id, competencia, rotina),
+        status: statusDe(checklistMei, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "MEI", rotina)),
         vencimento: vencimentoRotina(rotina, competencia),
       });
     }

@@ -151,6 +151,7 @@ import type {
   EtapaProcesso,
   ChecklistEntry,
   ChecklistStatus,
+  DispensaRotina,
   ServicoPortfolio,
   Recebimento,
   Parcelamento,
@@ -220,6 +221,7 @@ interface AppState {
   notifications: AppNotification[];
   servicosExtras: ServicoExtra[];
   licencas: Licenca[];
+  dispensasRotina: DispensaRotina[];
   indicacoes: Indicacao[];
   servicosPortfolio: ServicoPortfolio[];
   recebimentos: Recebimento[];
@@ -435,6 +437,7 @@ interface AppState {
   setTimelineFromSupabase: (timeline: TimelineEvent[]) => void;
   setServicosExtrasFromSupabase: (servicos: ServicoExtra[]) => void;
   setLicencasFromSupabase: (licencas: Licenca[]) => void;
+  setDispensasRotinaFromSupabase: (dispensas: DispensaRotina[]) => void;
   setIndicacoesFromSupabase: (indicacoes: Indicacao[]) => void;
   setServicosPortfolioFromSupabase: (servicos: ServicoPortfolio[]) => void;
   setChecklistContabilFromSupabase: (checklist: ChecklistEntry[]) => void;
@@ -464,6 +467,8 @@ interface AppState {
   addLicenca: (licenca: Licenca) => void;
   updateLicenca: (id: string, patch: Partial<Licenca>) => void;
   deleteLicenca: (id: string) => void;
+  addDispensaRotina: (dispensa: DispensaRotina) => void;
+  deleteDispensaRotina: (id: string) => void;
   addIndicacao: (indicacao: Indicacao) => void;
   updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
   deleteIndicacao: (id: string) => void;
@@ -543,6 +548,7 @@ const initial = {
   notifications: [] as AppNotification[],
   servicosExtras: [] as ServicoExtra[],
   licencas: [] as Licenca[],
+  dispensasRotina: [] as DispensaRotina[],
   indicacoes: [] as Indicacao[],
   servicosPortfolio: [] as ServicoPortfolio[],
   recebimentos: [] as Recebimento[],
@@ -749,6 +755,7 @@ export const useAppStore = create<AppState>()(
           timeline: s.timeline.filter((t) => t.clienteId !== clientId),
           servicosExtras: s.servicosExtras.filter((se) => se.clienteId !== clientId),
           licencas: s.licencas.filter((l) => l.clienteId !== clientId),
+          dispensasRotina: s.dispensasRotina.filter((d) => d.clienteId !== clientId),
           indicacoes: s.indicacoes.filter((i) => i.clienteId !== clientId),
           boletosMensais: s.boletosMensais.filter((b) => b.clienteId !== clientId),
           recebimentosParceiro: s.recebimentosParceiro.filter((r) => r.clienteId !== clientId),
@@ -1415,6 +1422,7 @@ export const useAppStore = create<AppState>()(
       setServicosExtrasFromSupabase: (servicosExtras) => set({ servicosExtras }),
       setLicencasFromSupabase: (licencas) =>
         set((s) => ({ licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) })),
+      setDispensasRotinaFromSupabase: (dispensasRotina) => set({ dispensasRotina }),
       setIndicacoesFromSupabase: (indicacoes) => set({ indicacoes }),
       setServicosPortfolioFromSupabase: (servicosPortfolio) => set({ servicosPortfolio }),
       setChecklistContabilFromSupabase: (checklistContabil) => set({ checklistContabil }),
@@ -1723,6 +1731,15 @@ export const useAppStore = create<AppState>()(
         });
         deleteFinanceiro("licencas", id);
         if (licenca) logAuditoria("Licença excluída", "Licenças", licenca.nome);
+      },
+
+      addDispensaRotina: (dispensa) => {
+        set((s) => ({ dispensasRotina: [dispensa, ...s.dispensasRotina] }));
+        pushFinanceiro("dispensasRotina", dispensa.id, dispensa.clienteId, dispensa);
+      },
+      deleteDispensaRotina: (id) => {
+        set((s) => ({ dispensasRotina: s.dispensasRotina.filter((d) => d.id !== id) }));
+        deleteFinanceiro("dispensasRotina", id);
       },
 
       addIndicacao: (indicacao) => {

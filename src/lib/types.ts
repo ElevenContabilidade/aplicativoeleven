@@ -1177,6 +1177,18 @@ export interface ChecklistEntry {
   status: ChecklistStatus;
 }
 
+/** Marca que um cliente nunca precisa cumprir essa rotina (ex: dispensado
+ * de uma obrigação por decisão contábil) — o checklist passa a mostrar
+ * "Dispensada" automaticamente em todo mês sem marcação própria, até que
+ * algum mês específico seja marcado manualmente (o que sempre tem
+ * prioridade sobre essa dispensa permanente). */
+export interface DispensaRotina {
+  id: string;
+  clienteId: string;
+  setor: "Fiscal" | "Contábil" | "Departamento Pessoal" | "MEI";
+  rotina: string;
+}
+
 // ---------- Checklist de rotinas fiscais ----------
 
 export const ROTINAS_FISCAIS_MENSAIS = [

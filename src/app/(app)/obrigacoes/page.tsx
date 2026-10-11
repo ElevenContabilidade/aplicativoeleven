@@ -46,6 +46,7 @@ export default function ObrigacoesPage() {
   const checklistContabil = useAppStore((s) => s.checklistContabil);
   const checklistPessoal = useAppStore((s) => s.checklistPessoal);
   const checklistMei = useAppStore((s) => s.checklistMei);
+  const dispensasRotina = useAppStore((s) => s.dispensasRotina);
   const updateObligation = useAppStore((s) => s.updateObligation);
   const deleteObligation = useAppStore((s) => s.deleteObligation);
   const setChecklistFiscal = useAppStore((s) => s.setChecklistFiscal);
@@ -69,8 +70,8 @@ export default function ObrigacoesPage() {
   const hojeIso = hoje.toISOString().slice(0, 10);
 
   const rotinasDepto = useMemo(
-    () => rotinasDepartamentosDoMes(clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia),
-    [clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia]
+    () => rotinasDepartamentosDoMes(clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia, dispensasRotina),
+    [clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia, dispensasRotina]
   );
 
   function abrirNova() {

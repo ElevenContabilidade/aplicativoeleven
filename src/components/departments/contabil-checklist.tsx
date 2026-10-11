@@ -6,9 +6,10 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ArrowUp, ArrowUpDown, Copy } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
+import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -43,6 +44,9 @@ export function ContabilChecklist() {
   const clients = useAppStore((s) => s.clients);
   const checklist = useAppStore((s) => s.checklistContabil);
   const setChecklistContabil = useAppStore((s) => s.setChecklistContabil);
+  const dispensasRotina = useAppStore((s) => s.dispensasRotina);
+  const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
+  const deleteDispensaRotina = useAppStore((s) => s.deleteDispensaRotina);
 
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
@@ -78,7 +82,19 @@ export function ContabilChecklist() {
   );
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
-    return checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status ?? null;
+    const explicito = checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status;
+    if (explicito) return explicito;
+    return isRotinaDispensada(dispensasRotina, clienteId, "Contábil", rotina) ? "Dispensada" : null;
+  }
+
+  function dispensaPermanente(clienteId: string, rotina: string) {
+    return dispensasRotina.find((d) => d.clienteId === clienteId && d.setor === "Contábil" && d.rotina === rotina);
+  }
+
+  function toggleDispensaPermanente(clienteId: string, rotina: string) {
+    const existente = dispensaPermanente(clienteId, rotina);
+    if (existente) deleteDispensaRotina(existente.id);
+    else addDispensaRotina({ id: `disp-${clienteId}-Contábil-${rotina}`, clienteId, setor: "Contábil", rotina });
   }
 
   function pctFor(clienteId: string, comp: string, list: readonly string[]) {
@@ -318,6 +334,8 @@ export function ContabilChecklist() {
                     statusFor={statusFor}
                     setChecklistContabil={setChecklistContabil}
                     pct={pctFor(c.id, competencia, rotinasContabeisFor(c, rotinas))}
+                    isDispensadoPermanente={(rotina) => !!dispensaPermanente(c.id, rotina)}
+                    onToggleDispensaPermanente={(rotina) => toggleDispensaPermanente(c.id, rotina)}
                   />
                 ))}
                 {myClients.length === 0 && (
@@ -344,6 +362,8 @@ function ClientRow({
   statusFor,
   setChecklistContabil,
   pct,
+  isDispensadoPermanente,
+  onToggleDispensaPermanente,
 }: {
   client: Client;
   rotinas: readonly string[];
@@ -352,6 +372,8 @@ function ClientRow({
   statusFor: (clienteId: string, competencia: string, rotina: string) => ChecklistStatus | null;
   setChecklistContabil: (clienteId: string, competencia: string, rotina: string, status: ChecklistStatus | null) => void;
   pct: number;
+  isDispensadoPermanente?: (rotina: string) => boolean;
+  onToggleDispensaPermanente?: (rotina: string) => void;
 }) {
   return (
     <tr className="bg-white odd:bg-sand-50">
@@ -369,22 +391,42 @@ function ClientRow({
           );
         }
         const status = statusFor(c.id, competencia, r);
+        const dispensado = isDispensadoPermanente?.(r) ?? false;
         return (
           <td key={r} className="border-b border-l border-sand-200 px-2 py-1.5">
-            <Select
-              value={status ?? "—"}
-              onValueChange={(v) => setChecklistContabil(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
-            >
-              <SelectTrigger className={cn("h-7 w-36 mx-auto justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="—">—</SelectItem>
-                {CHECKLIST_STATUS.map((s) => (
-                  <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-center gap-1">
+              <Select
+                value={status ?? "—"}
+                onValueChange={(v) => setChecklistContabil(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
+              >
+                <SelectTrigger className={cn("h-7 w-36 justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="—">—</SelectItem>
+                  {CHECKLIST_STATUS.map((s) => (
+                    <SelectItem key={s} value={s} className="uppercase">{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {onToggleDispensaPermanente && (
+                <button
+                  type="button"
+                  onClick={() => onToggleDispensaPermanente(r)}
+                  title={
+                    dispensado
+                      ? `${c.dados.razaoSocial} não precisa mais cumprir "${r}" todo mês — clique pra reativar a cobrança normal`
+                      : `Dispensar "${r}" de ${c.dados.razaoSocial} permanentemente — fica "Dispensada" em todo mês até você marcar OK num mês específico`
+                  }
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-md",
+                    dispensado ? "bg-status-brown text-cream-50" : "text-sand-300 hover:bg-sand-100 hover:text-sand-600"
+                  )}
+                >
+                  <Ban className="size-3" />
+                </button>
+              )}
+            </div>
           </td>
         );
       })}

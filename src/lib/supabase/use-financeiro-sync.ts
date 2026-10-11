@@ -29,6 +29,7 @@ import type {
   Indicacao,
   ServicoPortfolio,
   ChecklistEntry,
+  DispensaRotina,
   SistemaEscritorio,
   SenhaPortalEscritorio,
   DadosEscritorio,
@@ -85,6 +86,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setChecklistFiscalFromSupabase = useAppStore((s) => s.setChecklistFiscalFromSupabase);
   const setChecklistPessoalFromSupabase = useAppStore((s) => s.setChecklistPessoalFromSupabase);
   const setChecklistMeiFromSupabase = useAppStore((s) => s.setChecklistMeiFromSupabase);
+  const setDispensasRotinaFromSupabase = useAppStore((s) => s.setDispensasRotinaFromSupabase);
   const setSistemasEscritorioFromSupabase = useAppStore((s) => s.setSistemasEscritorioFromSupabase);
   const setSenhasPortaisFromSupabase = useAppStore((s) => s.setSenhasPortaisFromSupabase);
   const setDadosEscritorioFromSupabase = useAppStore((s) => s.setDadosEscritorioFromSupabase);
@@ -168,6 +170,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setChecklistFiscalFromSupabase(porTipo<ChecklistEntry>("checklistFiscal"));
       setChecklistPessoalFromSupabase(porTipo<ChecklistEntry>("checklistPessoal"));
       setChecklistMeiFromSupabase(porTipo<ChecklistEntry>("checklistMei"));
+      setDispensasRotinaFromSupabase(porTipo<DispensaRotina>("dispensasRotina"));
       setSistemasEscritorioFromSupabase(porTipo<SistemaEscritorio>("sistemasEscritorio"));
       setSenhasPortaisFromSupabase(porTipo<SenhaPortalEscritorio>("senhasPortais"));
       setContratosAssinaturaFromSupabase(porTipo<ContratoAssinatura>("contratosAssinatura"));
@@ -252,6 +255,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setChecklistFiscalFromSupabase,
     setChecklistPessoalFromSupabase,
     setChecklistMeiFromSupabase,
+    setDispensasRotinaFromSupabase,
     setSistemasEscritorioFromSupabase,
     setSenhasPortaisFromSupabase,
     setDadosEscritorioFromSupabase,
