@@ -153,6 +153,15 @@ export function FiscalChecklist() {
     else addDispensaRotina({ id: `disp-${clienteId}-Fiscal-${rotina}`, clienteId, setor: "Fiscal", rotina });
   }
 
+  /** Selecionar "Dispensada" no status do mês já deixa valendo pros próximos
+   * meses também — sem isso, cada competência exigia marcar nos dois
+   * lugares (status do mês + botão de dispensa permanente). */
+  function garantirDispensaPermanente(clienteId: string, rotina: string) {
+    if (!dispensaPermanente(clienteId, rotina)) {
+      addDispensaRotina({ id: `disp-${clienteId}-Fiscal-${rotina}`, clienteId, setor: "Fiscal", rotina });
+    }
+  }
+
   function pctForList(clienteId: string, comp: string, list: string[]) {
     if (list.length === 0) return 0;
     const done = list.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
@@ -451,6 +460,7 @@ export function FiscalChecklist() {
                       pct={pctFor(c, competencia)}
                       isDispensadoPermanente={(rotina) => !!dispensaPermanente(c.id, rotina)}
                       onToggleDispensaPermanente={(rotina) => toggleDispensaPermanente(c.id, rotina)}
+                      onMarcarDispensada={(rotina) => garantirDispensaPermanente(c.id, rotina)}
                       mostrarPrefeitura={mostrarPrefeitura}
                       senhaRevelada={senhasReveladas.has(c.id)}
                       onToggleSenha={() => toggleSenhaRevelada(c.id)}
@@ -493,6 +503,7 @@ function ClientRow({
   pct,
   isDispensadoPermanente,
   onToggleDispensaPermanente,
+  onMarcarDispensada,
   mostrarPrefeitura,
   senhaRevelada,
   onToggleSenha,
@@ -509,6 +520,7 @@ function ClientRow({
   /** Quando ausente (ex: tabela anual), a dispensa permanente não é oferecida. */
   isDispensadoPermanente?: (rotina: string) => boolean;
   onToggleDispensaPermanente?: (rotina: string) => void;
+  onMarcarDispensada?: (rotina: string) => void;
   mostrarPrefeitura?: boolean;
   senhaRevelada?: boolean;
   onToggleSenha?: () => void;
@@ -571,7 +583,10 @@ function ClientRow({
             <div className="flex items-center justify-center gap-1">
               <Select
                 value={status ?? "—"}
-                onValueChange={(v) => setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
+                onValueChange={(v) => {
+                  setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus));
+                  if (v === "Dispensada") onMarcarDispensada?.(r);
+                }}
               >
                 <SelectTrigger className={cn("h-7 w-36 justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                   <SelectValue />

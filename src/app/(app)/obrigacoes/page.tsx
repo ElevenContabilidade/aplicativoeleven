@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info, CheckCheck, RotateCcw } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info, CheckCheck, RotateCcw, Wand2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ export default function ObrigacoesPage() {
   const checklistPessoal = useAppStore((s) => s.checklistPessoal);
   const checklistMei = useAppStore((s) => s.checklistMei);
   const dispensasRotina = useAppStore((s) => s.dispensasRotina);
+  const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
   const updateObligation = useAppStore((s) => s.updateObligation);
   const deleteObligation = useAppStore((s) => s.deleteObligation);
   const setChecklistFiscal = useAppStore((s) => s.setChecklistFiscal);
@@ -102,6 +103,47 @@ export default function ObrigacoesPage() {
     else if (setor === "Contábil") setChecklistContabil(clienteId, comp, rotina, status);
     else if (setor === "Departamento Pessoal") setChecklistPessoal(clienteId, comp, rotina, status);
     else setChecklistMei(clienteId, comp, rotina, status);
+  }
+
+  /** Corrige quem já foi marcado como "Dispensada" num mês específico antes
+   * de existir a dispensa permanente — sem isso, quem ela já tinha marcado
+   * em janeiro, por exemplo, não teve a marcação repetida sozinha nos meses
+   * seguintes. Varre os 4 checklists inteiros (todas as competências) e
+   * cria a dispensa permanente pra cada combinação cliente+rotina que ainda
+   * não tem uma, sem duplicar quem já tem. */
+  function aplicarDispensasRetroativas() {
+    const checklistsPorSetor: { setor: SetorRotina; entries: typeof checklistFiscal }[] = [
+      { setor: "Fiscal", entries: checklistFiscal },
+      { setor: "Contábil", entries: checklistContabil },
+      { setor: "Departamento Pessoal", entries: checklistPessoal },
+      { setor: "MEI", entries: checklistMei },
+    ];
+    const jaDispensado = new Set(dispensasRotina.map((d) => `${d.clienteId}__${d.setor}__${d.rotina}`));
+    const novas: { clienteId: string; setor: SetorRotina; rotina: string }[] = [];
+    const vistos = new Set<string>();
+    for (const { setor, entries } of checklistsPorSetor) {
+      for (const e of entries) {
+        if (e.status !== "Dispensada") continue;
+        const chave = `${e.clienteId}__${setor}__${e.rotina}`;
+        if (jaDispensado.has(chave) || vistos.has(chave)) continue;
+        vistos.add(chave);
+        novas.push({ clienteId: e.clienteId, setor, rotina: e.rotina });
+      }
+    }
+    if (novas.length === 0) {
+      alert("Nenhuma dispensa nova pra aplicar — tudo que já está marcado como Dispensada já tem a dispensa permanente.");
+      return;
+    }
+    if (
+      !confirm(
+        `Encontrei ${novas.length} combinação(ões) de cliente + rotina já marcadas como "Dispensada" em algum mês, mas sem a dispensa permanente. Aplicar a dispensa permanente pra elas agora? Isso faz essas rotinas aparecerem como "Dispensada" em todo mês sem marcação própria, inclusive nos meses futuros.`
+      )
+    )
+      return;
+    for (const { clienteId, setor, rotina } of novas) {
+      addDispensaRotina({ id: `disp-${clienteId}-${setor}-${rotina}`, clienteId, setor, rotina });
+    }
+    alert(`Pronto — ${novas.length} dispensa(s) permanente(s) aplicada(s).`);
   }
 
   function abrirDetalhe(tipo: string) {
@@ -286,7 +328,14 @@ export default function ObrigacoesPage() {
       <PageHeader
         title="Obrigações"
         description="Visão geral do que está pendente de cada cliente — junta as rotinas de Fiscal, Contábil, Departamento Pessoal e MEI com obrigações avulsas."
-        actions={<Button onClick={abrirNova}><Plus className="size-3.5" /> Nova obrigação</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={aplicarDispensasRetroativas}>
+              <Wand2 className="size-3.5" /> Aplicar dispensas já marcadas
+            </Button>
+            <Button onClick={abrirNova}><Plus className="size-3.5" /> Nova obrigação</Button>
+          </div>
+        }
       />
 
       <div className="mb-4 flex items-center justify-between">

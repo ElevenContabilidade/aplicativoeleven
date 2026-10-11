@@ -101,6 +101,12 @@ export function MeiChecklist() {
     else addDispensaRotina({ id: `disp-${clienteId}-MEI-${rotina}`, clienteId, setor: "MEI", rotina });
   }
 
+  function garantirDispensaPermanente(clienteId: string, rotina: string) {
+    if (!dispensaPermanente(clienteId, rotina)) {
+      addDispensaRotina({ id: `disp-${clienteId}-MEI-${rotina}`, clienteId, setor: "MEI", rotina });
+    }
+  }
+
   function pctFor(clienteId: string, comp: string) {
     const done = rotinas.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
     return Math.round((done / rotinas.length) * 100);
@@ -326,6 +332,7 @@ export function MeiChecklist() {
                     pct={pctFor(c.id, competencia)}
                     isDispensadoPermanente={(rotina) => !!dispensaPermanente(c.id, rotina)}
                     onToggleDispensaPermanente={(rotina) => toggleDispensaPermanente(c.id, rotina)}
+                    onMarcarDispensada={(rotina) => garantirDispensaPermanente(c.id, rotina)}
                   />
                 ))}
                 {myClients.length === 0 && (
@@ -353,6 +360,7 @@ function ClientRow({
   pct,
   isDispensadoPermanente,
   onToggleDispensaPermanente,
+  onMarcarDispensada,
 }: {
   client: Client;
   rotinas: readonly string[];
@@ -362,6 +370,7 @@ function ClientRow({
   pct: number;
   isDispensadoPermanente?: (rotina: string) => boolean;
   onToggleDispensaPermanente?: (rotina: string) => void;
+  onMarcarDispensada?: (rotina: string) => void;
 }) {
   return (
     <tr className="bg-white odd:bg-sand-50">
@@ -378,7 +387,10 @@ function ClientRow({
             <div className="flex items-center justify-center gap-1">
               <Select
                 value={status ?? "—"}
-                onValueChange={(v) => setChecklistMei(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
+                onValueChange={(v) => {
+                  setChecklistMei(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus));
+                  if (v === "Dispensada") onMarcarDispensada?.(r);
+                }}
               >
                 <SelectTrigger className={cn("h-7 w-36 justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                   <SelectValue />

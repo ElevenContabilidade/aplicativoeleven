@@ -105,6 +105,12 @@ export function PessoalChecklist() {
     else addDispensaRotina({ id: `disp-${clienteId}-Departamento Pessoal-${rotina}`, clienteId, setor: "Departamento Pessoal", rotina });
   }
 
+  function garantirDispensaPermanente(clienteId: string, rotina: string) {
+    if (!dispensaPermanente(clienteId, rotina)) {
+      addDispensaRotina({ id: `disp-${clienteId}-Departamento Pessoal-${rotina}`, clienteId, setor: "Departamento Pessoal", rotina });
+    }
+  }
+
   function pctForList(clienteId: string, comp: string, list: string[]) {
     if (list.length === 0) return 0;
     const done = list.filter((r) => isDone(statusFor(clienteId, comp, r))).length;
@@ -318,6 +324,7 @@ export function PessoalChecklist() {
                   pctForClient={(c) => pctFor(c, competencia)}
                   isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
+                  onMarcarDispensada={garantirDispensaPermanente}
                 />
               ) : (
                 <p className="py-8 text-center text-sand-400">Nenhum cliente do setor Pessoal possui funcionários registrados.</p>
@@ -337,6 +344,7 @@ export function PessoalChecklist() {
                   pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_FIXAS))}
                   isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
+                  onMarcarDispensada={garantirDispensaPermanente}
                 />
               </div>
               <div>
@@ -352,6 +360,7 @@ export function PessoalChecklist() {
                   pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_VARIAVEIS))}
                   isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
+                  onMarcarDispensada={garantirDispensaPermanente}
                 />
               </div>
             </div>
@@ -372,6 +381,7 @@ function RotinaTable({
   pctForClient,
   isDispensadoPermanente,
   onToggleDispensaPermanente,
+  onMarcarDispensada,
 }: {
   clients: Client[];
   columns: string[];
@@ -382,6 +392,7 @@ function RotinaTable({
   pctForClient: (client: Client) => number;
   isDispensadoPermanente?: (clienteId: string, rotina: string) => boolean;
   onToggleDispensaPermanente?: (clienteId: string, rotina: string) => void;
+  onMarcarDispensada?: (clienteId: string, rotina: string) => void;
 }) {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const todosSelecionados = clients.length > 0 && clients.every((c) => selecionados.has(c.id));
@@ -510,7 +521,10 @@ function RotinaTable({
                       <div className="flex items-center justify-center gap-1">
                         <Select
                           value={status ?? "—"}
-                          onValueChange={(v) => setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus))}
+                          onValueChange={(v) => {
+                            setChecklist(c.id, competencia, r, v === "—" ? null : (v as ChecklistStatus));
+                            if (v === "Dispensada") onMarcarDispensada?.(c.id, r);
+                          }}
                         >
                           <SelectTrigger className={cn("h-7 w-36 justify-center whitespace-nowrap px-2 text-[11px] font-semibold uppercase", status && STATUS_STYLE[status])}>
                             <SelectValue />
