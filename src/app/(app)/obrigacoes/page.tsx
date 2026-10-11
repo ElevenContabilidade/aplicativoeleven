@@ -250,15 +250,15 @@ export default function ObrigacoesPage() {
       </div>
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: "Rotinas no mês", value: totalRotinas },
-          { label: "Concluídas", value: totalConcluidas },
-          { label: "Vencem hoje", value: totalVencemHoje },
-          { label: "Fora do prazo", value: totalAtrasadas },
-          { label: "Progresso geral", value: `${progressoGeral}%` },
-        ].map(({ label, value }) => (
-          <Card key={label} className="border-sand-800 bg-sand-900 py-0">
+          { label: "Rotinas no mês", value: totalRotinas, className: "border-sand-800 bg-sand-900" },
+          { label: "Concluídas", value: totalConcluidas, className: "border-status-success bg-status-success" },
+          { label: "Vencem hoje", value: totalVencemHoje, className: "border-status-danger bg-status-danger" },
+          { label: "Fora do prazo", value: totalAtrasadas, className: "border-status-info bg-status-info" },
+          { label: "Progresso geral", value: `${progressoGeral}%`, className: "border-sand-800 bg-sand-900" },
+        ].map(({ label, value, className }) => (
+          <Card key={label} className={cn("py-0", className)}>
             <CardContent className="p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-sand-400">{label}</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-cream-50/70">{label}</p>
               <p className="mt-2 font-display text-2xl font-semibold text-cream-50">{value}</p>
             </CardContent>
           </Card>
