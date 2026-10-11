@@ -699,6 +699,16 @@ export default function ObrigacoesPage() {
                 className="pl-8"
               />
             </div>
+            {linhasDetalhe.some(({ linha: l }) => l.pendente) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setSelecionadosDetalhe(new Set(linhasDetalhe.filter(({ linha: l }) => l.pendente).map(({ linha: l }) => l.id)))}
+              >
+                Selecionar só pendentes
+              </Button>
+            )}
             {selecionadosDetalhe.size > 0 && (
               <>
                 <Button type="button" size="sm" variant="outline" onClick={() => marcarSelecionadosDetalhe(true)}>
