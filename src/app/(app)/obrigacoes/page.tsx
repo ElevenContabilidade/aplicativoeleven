@@ -215,8 +215,20 @@ export default function ObrigacoesPage() {
     return [...porTipo.values()]
       .filter((g) => g.menorVencimentoPendente !== null)
       .sort((a, b) => a.menorVencimentoPendente!.localeCompare(b.menorVencimentoPendente!))
-      .slice(0, 4);
+      .slice(0, 12);
   }, [linhas]);
+
+  // Agrupa os cards de "Próximos prazos" por data (um cabeçalho por data
+  // compartilhada), já que a lista vem ordenada por vencimento crescente.
+  const prazosPorData = useMemo(() => {
+    const grupos: { data: string; itens: typeof proximosPrazos }[] = [];
+    for (const g of proximosPrazos) {
+      const ultimo = grupos[grupos.length - 1];
+      if (ultimo && ultimo.data === g.menorVencimentoPendente) ultimo.itens.push(g);
+      else grupos.push({ data: g.menorVencimentoPendente!, itens: [g] });
+    }
+    return grupos;
+  }, [proximosPrazos]);
 
   return (
     <div>
@@ -265,41 +277,63 @@ export default function ObrigacoesPage() {
         ))}
       </div>
 
-      {proximosPrazos.length > 0 && (
+      {prazosPorData.length > 0 && (
         <div className="mb-6">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">Próximos prazos</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {proximosPrazos.map((g) => {
-              const venc = new Date(g.menorVencimentoPendente! + "T00:00:00");
-              const dias = Math.round((venc.getTime() - hojeMeiaNoite) / 86400000);
-              const atrasado = dias < 0;
-              const urgente = !atrasado && dias <= 3;
-              const paleta = atrasado
-                ? { card: "bg-status-danger-bg", badge: "bg-status-danger", texto: "text-status-danger", barra: "bg-status-danger" }
-                : urgente
-                  ? { card: "bg-status-warning-bg", badge: "bg-status-warning", texto: "text-status-warning", barra: "bg-status-warning" }
-                  : { card: "bg-wine-50", badge: "bg-wine-600", texto: "text-wine-700", barra: "bg-wine-600" };
-              const MESES_ABREV = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
-              const pct = g.total > 0 ? Math.round((g.concluidas / g.total) * 100) : 0;
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wide text-sand-400">Próximos prazos</p>
+            <div className="flex items-center gap-3 text-[11px] text-sand-500">
+              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-status-success" /> Em dia</span>
+              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-status-warning" /> Urgente</span>
+              <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-status-danger" /> Atrasado</span>
+            </div>
+          </div>
+          <div className="space-y-4">
+            {prazosPorData.map(({ data, itens }) => {
+              const venc = new Date(data + "T00:00:00");
+              const DIAS_SEMANA = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
               return (
-                <Card key={g.tipo} className={cn("overflow-hidden py-0", paleta.card)}>
-                  <CardContent className="flex items-start gap-0 p-0">
-                    <div className={cn("flex w-14 shrink-0 flex-col items-center justify-center gap-0.5 self-stretch py-3 leading-none text-cream-50", paleta.badge)}>
-                      <span className="text-lg font-bold">{venc.getDate()}</span>
-                      <span className="text-[9px] font-semibold">{MESES_ABREV[venc.getMonth()]}</span>
-                    </div>
-                    <div className="min-w-0 flex-1 p-3">
-                      <p className="truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
-                      <p className={cn("text-xs font-semibold", paleta.texto)}>
-                        {atrasado ? `Atrasada há ${Math.abs(dias)}d` : dias === 0 ? "Vence hoje" : `Vence em ${dias}d`}
-                        <span className="font-normal text-sand-500"> · {g.concluidas}/{g.total} clientes</span>
-                      </p>
-                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/60">
-                        <div className={cn("h-full rounded-full", paleta.barra)} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={data}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="rounded-full border border-sand-300 bg-white px-2.5 py-1 text-[10px] font-semibold text-sand-600">
+                      {DIAS_SEMANA[venc.getDay()]} {venc.getDate()}
+                    </span>
+                    <div className="h-px flex-1 bg-sand-200" />
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-1">
+                    {itens.map((g) => {
+                      const dias = Math.round((venc.getTime() - hojeMeiaNoite) / 86400000);
+                      const atrasado = dias < 0;
+                      const urgente = !atrasado && dias <= 3;
+                      const paleta = atrasado
+                        ? { anel: "border-status-danger text-status-danger", pill: "border-status-danger text-status-danger", label: "ATRASADO" }
+                        : urgente
+                          ? { anel: "border-status-warning text-status-warning", pill: "border-status-warning text-status-warning", label: "URGENTE" }
+                          : { anel: "border-status-info text-status-info", pill: "border-status-info text-status-info", label: "ABERTO" };
+                      return (
+                        <Card key={g.tipo} className="w-52 shrink-0 py-0">
+                          <CardContent className="flex flex-col items-center gap-1.5 p-3 text-center">
+                            <div className={cn("flex size-14 shrink-0 flex-col items-center justify-center gap-0 rounded-full border-2 leading-none", paleta.anel)}>
+                              <span className="text-[9px] font-semibold">{DIAS_SEMANA[venc.getDay()]}</span>
+                              <span className="text-lg font-bold">{venc.getDate()}</span>
+                            </div>
+                            <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-wide", paleta.pill)}>
+                              {paleta.label}
+                            </span>
+                            <p className="truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
+                            <p className="text-[11px] text-sand-400">
+                              Competência {MESES.find((m) => m.value === mes)?.label}/{ano}
+                            </p>
+                            <p className="text-[11px]">
+                              <span className="font-semibold text-status-success">{g.concluidas} concluídas</span>
+                              <span className="text-sand-400"> · </span>
+                              <span className="font-semibold text-status-danger">{g.total - g.concluidas} pendentes</span>
+                            </p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
               );
             })}
           </div>
