@@ -2,18 +2,20 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info, CheckCheck, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ObligationFormDialog } from "@/components/obligations/obligation-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
-import { rotinasDepartamentosDoMes, type RotinaDepartamento, type SetorRotina } from "@/lib/obrigacoes-departamentos";
+import { rotinasDepartamentosDoMes, regraVencimentoRotina, type RotinaDepartamento, type SetorRotina } from "@/lib/obrigacoes-departamentos";
 import { CHECKLIST_STATUS, OBLIGATION_STATUS, type Obligation, type ChecklistStatus } from "@/lib/types";
 import type { BadgeTone } from "@/lib/status";
 import { formatDate, cn } from "@/lib/utils";
@@ -65,6 +67,9 @@ export default function ObrigacoesPage() {
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Obligation | null>(null);
+  const [detalheTipo, setDetalheTipo] = useState<string | null>(null);
+  const [buscaDetalhe, setBuscaDetalhe] = useState("");
+  const [selecionadosDetalhe, setSelecionadosDetalhe] = useState<Set<string>>(new Set());
 
   const competencia = `${ano}-${mes}`;
   const hojeIso = hoje.toISOString().slice(0, 10);
@@ -99,6 +104,21 @@ export default function ObrigacoesPage() {
     else setChecklistMei(clienteId, comp, rotina, status);
   }
 
+  function abrirDetalhe(tipo: string) {
+    setDetalheTipo(tipo);
+    setBuscaDetalhe("");
+    setSelecionadosDetalhe(new Set());
+  }
+
+  function toggleSelecionadoDetalhe(id: string) {
+    setSelecionadosDetalhe((atual) => {
+      const next = new Set(atual);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const linhas = useMemo<Linha[]>(() => {
     const manuais: Linha[] = obligations
       .filter((o) => o.competencia === competencia)
@@ -128,6 +148,15 @@ export default function ObrigacoesPage() {
     }));
     return [...manuais, ...departamentos];
   }, [obligations, rotinasDepto, competencia]);
+
+  function marcarSelecionadosDetalhe(concluido: boolean) {
+    for (const l of linhas) {
+      if (!selecionadosDetalhe.has(l.id)) continue;
+      if (l.kind === "manual") updateObligation(l.id, { status: concluido ? "Concluído" : "A fazer" });
+      else setStatusChecklist(l.setor, l.clienteId, competencia, l.tipo, concluido ? "OK" : "Pendente");
+    }
+    setSelecionadosDetalhe(new Set());
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -231,6 +260,27 @@ export default function ObrigacoesPage() {
     return grupos;
   }, [proximosPrazos]);
 
+  // Linhas (uma por cliente) mostradas no detalhe de uma obrigação — aberto
+  // ao clicar num card de "Próximos prazos". Respeita a busca própria do
+  // diálogo, não a busca/filtros da lista principal.
+  const linhasDetalhe = useMemo(() => {
+    if (!detalheTipo) return [];
+    const q = buscaDetalhe.trim().toLowerCase();
+    return linhas
+      .filter((l) => l.tipo === detalheTipo)
+      .map((l) => ({ linha: l, cliente: clients.find((c) => c.id === l.clienteId) }))
+      .filter(({ cliente }) => {
+        if (!q) return true;
+        const nome = cliente?.dados.razaoSocial.toLowerCase() ?? "";
+        return nome.includes(q) || (cliente?.dados.cnpj ?? "").includes(q);
+      })
+      .sort((a, b) => (a.cliente?.dados.razaoSocial ?? "").localeCompare(b.cliente?.dados.razaoSocial ?? "", "pt-BR"));
+  }, [linhas, detalheTipo, clients, buscaDetalhe]);
+
+  const detalheConcluidas = linhasDetalhe.filter(({ linha: l }) => !l.pendente).length;
+  const detalheRegra = detalheTipo ? regraVencimentoRotina(detalheTipo) : undefined;
+  const todosSelecionadosDetalhe = linhasDetalhe.length > 0 && linhasDetalhe.every(({ linha: l }) => selecionadosDetalhe.has(l.id));
+
   return (
     <div>
       <PageHeader
@@ -311,7 +361,11 @@ export default function ObrigacoesPage() {
                           ? { anel: "border-status-warning text-status-warning", pill: "border-status-warning text-status-warning", label: "URGENTE" }
                           : { anel: "border-status-info text-status-info", pill: "border-status-info text-status-info", label: "ABERTO" };
                       return (
-                        <Card key={g.tipo} className="w-56 shrink-0 py-0">
+                        <Card
+                          key={g.tipo}
+                          className="w-56 shrink-0 cursor-pointer py-0 transition-shadow hover:shadow-md"
+                          onClick={() => abrirDetalhe(g.tipo)}
+                        >
                           <CardContent className="flex min-w-0 flex-col items-center gap-1.5 p-3 text-center">
                             <div className={cn("flex size-14 shrink-0 flex-col items-center justify-center gap-0 rounded-full border-2 leading-none", paleta.anel)}>
                               <span className="text-[9px] font-semibold">{DIAS_SEMANA[venc.getDay()]}</span>
@@ -552,6 +606,116 @@ export default function ObrigacoesPage() {
       )}
 
       <ObligationFormDialog open={formOpen} onOpenChange={setFormOpen} obligation={editing} />
+
+      <Dialog open={!!detalheTipo} onOpenChange={(open) => !open && setDetalheTipo(null)}>
+        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{detalheTipo}</DialogTitle>
+          </DialogHeader>
+
+          <div className="rounded-lg border border-wine-200 bg-wine-50 p-3 text-xs text-wine-800">
+            <p className="mb-1 flex items-center gap-1.5 font-medium">
+              <Info className="size-3.5 shrink-0" /> Informações da obrigação
+            </p>
+            {detalheRegra ? (
+              <p>
+                Vencimento todo dia <strong>{detalheRegra.dia}</strong> — {detalheRegra.descricaoAjuste}
+              </p>
+            ) : (
+              <p>Obrigação avulsa cadastrada manualmente — o vencimento vem do cadastro, sem regra automática.</p>
+            )}
+            <p className="mt-1 text-wine-700/70">
+              Competência {MESES.find((m) => m.value === mes)?.label}/{ano} · {detalheConcluidas}/{linhasDetalhe.length} clientes concluídos
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full max-w-xs">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
+              <Input
+                value={buscaDetalhe}
+                onChange={(e) => setBuscaDetalhe(e.target.value)}
+                placeholder="Buscar por razão social ou CNPJ"
+                className="pl-8"
+              />
+            </div>
+            {selecionadosDetalhe.size > 0 && (
+              <>
+                <Button type="button" size="sm" variant="outline" onClick={() => marcarSelecionadosDetalhe(true)}>
+                  <CheckCheck className="size-3.5" /> Marcar {selecionadosDetalhe.size} como concluído
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => marcarSelecionadosDetalhe(false)}>
+                  <RotateCcw className="size-3.5" /> Marcar como pendente
+                </Button>
+              </>
+            )}
+          </div>
+
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-9">
+                  {linhasDetalhe.length > 0 && (
+                    <Checkbox
+                      checked={todosSelecionadosDetalhe}
+                      onCheckedChange={() =>
+                        setSelecionadosDetalhe(
+                          todosSelecionadosDetalhe ? new Set() : new Set(linhasDetalhe.map(({ linha: l }) => l.id))
+                        )
+                      }
+                    />
+                  )}
+                </TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {linhasDetalhe.map(({ linha: l, cliente }) => (
+                <TableRow key={l.id}>
+                  <TableCell>
+                    <Checkbox checked={selecionadosDetalhe.has(l.id)} onCheckedChange={() => toggleSelecionadoDetalhe(l.id)} />
+                  </TableCell>
+                  <TableCell>
+                    {cliente ? (
+                      <Link href={`/clientes/${cliente.id}`} className="font-medium text-sand-900 hover:text-wine-700 hover:underline">
+                        {cliente.dados.razaoSocial}
+                      </Link>
+                    ) : (
+                      <span className="text-sand-400">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sand-500">{cliente?.dados.cnpj ?? "—"}</TableCell>
+                  <TableCell>
+                    {l.kind === "manual" ? (
+                      <Select value={l.status} onValueChange={(v) => updateObligation(l.id, { status: v as Obligation["status"] })}>
+                        <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {OBLIGATION_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Select
+                        value={l.status}
+                        onValueChange={(v) => setStatusChecklist(l.setor, l.clienteId, competencia, l.tipo, v as ChecklistStatus)}
+                      >
+                        <SelectTrigger className="h-7 w-40 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {CHECKLIST_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {linhasDetalhe.length === 0 && (
+                <TableRow><TableCell colSpan={4} className="py-8 text-center text-sand-400">Nenhum cliente encontrado.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

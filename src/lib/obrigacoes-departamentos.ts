@@ -50,6 +50,21 @@ const REGRAS_VENCIMENTO_ROTINA: Record<string, { dia: number; ajuste: AjusteVenc
   "Entrega da DCTFWeb": { dia: 30, ajuste: "antecipa" },
 };
 
+/** Descrição legível da regra de prazo dessa rotina (dia-base + o que
+ * acontece quando cai em fim de semana/feriado), ou undefined quando não
+ * há regra cadastrada — usado pra explicar o vencimento na tela. */
+export function regraVencimentoRotina(tipo: string): { dia: number; descricaoAjuste: string } | undefined {
+  const regra = REGRAS_VENCIMENTO_ROTINA[tipo];
+  if (!regra) return undefined;
+  const descricaoAjuste =
+    regra.ajuste === "antecipa"
+      ? "Se cair em fim de semana ou feriado nacional, antecipa pro dia útil anterior."
+      : regra.ajuste === "prorroga"
+        ? "Se cair em fim de semana ou feriado nacional, prorroga pro próximo dia útil."
+        : "Dia fixo, mesmo caindo em fim de semana ou feriado.";
+  return { dia: regra.dia, descricaoAjuste };
+}
+
 /** Vencimento ("YYYY-MM-DD") da rotina nessa competência, ou undefined
  * quando não há regra de prazo cadastrada pra ela. */
 export function vencimentoRotina(tipo: string, competencia: string): string | undefined {
