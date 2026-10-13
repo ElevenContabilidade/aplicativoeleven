@@ -2,19 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, FileUp, Plus, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { Lead, LeadOrigem, ServicoInteresse } from "@/lib/types";
-import { formatDate, formatDateTime } from "@/lib/utils";
+import { formatBytes, formatDate, formatDateTime } from "@/lib/utils";
 import { useAppStore } from "@/lib/store/app-store";
 import { createClientFromLead } from "@/lib/actions/convert-lead";
+import { uploadPropostaLead } from "@/lib/upload-proposta-lead";
 
 const SERVICOS: ServicoInteresse[] = [
   "Contabilidade mensal",
@@ -42,6 +44,9 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
   const [form, setForm] = useState<Lead | null>(lead);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [novoServico, setNovoServico] = useState("");
+  const [propostaFile, setPropostaFile] = useState<File | null>(null);
+  const [enviandoProposta, setEnviandoProposta] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
 
   const servicosCadastrados = useMemo(
     () => [...new Set(leads.flatMap((l) => l.servicosInteresse))].filter((s) => !SERVICOS.includes(s)).sort((a, b) => a.localeCompare(b, "pt-BR")),
@@ -68,10 +73,28 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
     setNovoServico("");
   }
 
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!form) return;
-    updateLead(form.id, form);
+
+    setErro(null);
+    let dadosFinais = form;
+    if (propostaFile) {
+      setEnviandoProposta(true);
+      try {
+        const proposta = await uploadPropostaLead({ file: propostaFile, leadId: form.id, leadNome: form.nome });
+        dadosFinais = { ...form, propostaNome: proposta.nome, propostaUrl: proposta.url };
+        setForm(dadosFinais);
+        setPropostaFile(null);
+      } catch (err) {
+        setErro(err instanceof Error ? err.message : "Não foi possível enviar a proposta.");
+        setEnviandoProposta(false);
+        return;
+      }
+      setEnviandoProposta(false);
+    }
+
+    updateLead(dadosFinais.id, dadosFinais);
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
   }
@@ -137,6 +160,13 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
             <Field label="Valor estimado (R$)">
               <Input type="number" value={form.valorEstimado} onChange={(e) => set("valorEstimado", Number(e.target.value))} />
             </Field>
+            <Field label="Valor da assessoria mensal (R$)">
+              <Input
+                type="number"
+                value={form.valorAssessoriaMensal ?? ""}
+                onChange={(e) => set("valorAssessoriaMensal", e.target.value ? Number(e.target.value) : undefined)}
+              />
+            </Field>
             <Field label="Faturamento estimado (R$)">
               <Input
                 type="number"
@@ -150,7 +180,26 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
             <Field label="Próxima ação">
               <Input value={form.proximaAcao ?? ""} onChange={(e) => set("proximaAcao", e.target.value)} />
             </Field>
+            <Field label="Observação" className="col-span-2">
+              <Textarea value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} rows={3} />
+            </Field>
+            <Field label="Proposta enviada" className="col-span-2">
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-sand-300 bg-sand-50 px-3 py-2 text-xs text-sand-600 hover:border-wine-400 hover:bg-wine-50">
+                <FileUp className="size-3.5 shrink-0 text-wine-500" />
+                {propostaFile
+                  ? `${propostaFile.name} (${formatBytes(propostaFile.size)})`
+                  : form.propostaNome ?? "Clique para anexar a proposta (PDF ou outro arquivo)"}
+                <input type="file" className="hidden" onChange={(e) => setPropostaFile(e.target.files?.[0] ?? null)} />
+              </label>
+              {form.propostaUrl && !propostaFile && (
+                <a href={form.propostaUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] text-wine-600 hover:underline">
+                  Ver proposta no Drive
+                </a>
+              )}
+            </Field>
           </div>
+
+          {erro && <p className="text-xs text-status-danger">{erro}</p>}
 
           <div>
             <Label className="mb-1.5 block">Serviços de interesse</Label>
@@ -221,7 +270,7 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
                   Ver cliente
                 </Button>
               )}
-              <Button type="submit">Salvar alterações</Button>
+              <Button type="submit" disabled={enviandoProposta}>{enviandoProposta ? "Enviando proposta…" : "Salvar alterações"}</Button>
             </div>
           </DialogFooter>
         </form>

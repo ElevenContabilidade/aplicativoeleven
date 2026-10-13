@@ -31,7 +31,7 @@ export function createClientFromLead(lead: Lead): Client {
     segmento: lead.segmento ?? "Outros",
     tags: [],
     financeiro: {
-      valorMensal: lead.valorEstimado,
+      valorMensal: lead.valorAssessoriaMensal ?? lead.valorEstimado,
       vencimentoDia: 10,
       formaPagamento: "Boleto",
       inicioContrato: today,

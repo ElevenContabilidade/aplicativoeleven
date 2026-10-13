@@ -321,9 +321,20 @@ export interface Lead {
   stage: LeadStage;
   responsavelId: string;
   valorEstimado: number;
+  /** Mensalidade que o lead pagaria pela assessoria recorrente — separado do
+   * "valor estimado" porque esse pode ser o valor de um serviço avulso (ex:
+   * abertura de empresa), não necessariamente a mensalidade. Usado como
+   * honorário do cliente ao converter o lead (ver createClientFromLead). */
+  valorAssessoriaMensal?: number;
   proximaAcao?: string;
   dataUltimoContato: string;
   dataEntrada: string;
+
+  observacoes?: string;
+  /** Proposta comercial enviada ao lead (PDF/doc) — sobe pro Drive numa
+   * subpasta própria de leads (ver ensureLeadFolder). */
+  propostaNome?: string;
+  propostaUrl?: string;
 
   historico: LeadHistoricoEntry[];
 }

@@ -157,6 +157,19 @@ export async function ensureClienteFolder(clienteId: string, clienteNome: string
   return existente ?? criarPasta(nomePasta, rootId);
 }
 
+const LEADS_FOLDER_NAME = "Leads — Propostas enviadas";
+
+/** Acha (ou cria) a pasta de um lead especificamente pra guardar a proposta
+ * enviada — leads ainda não têm pasta própria de cliente (só ganham uma ao
+ * virar cliente), então ficam separados numa subpasta própria da raiz. */
+export async function ensureLeadFolder(leadId: string, leadNome: string): Promise<string> {
+  const rootId = await getRootFolderId();
+  const leadsRootId = (await encontrarPasta(LEADS_FOLDER_NAME, rootId)) ?? (await criarPasta(LEADS_FOLDER_NAME, rootId));
+  const nomePasta = `${leadNome} (${leadId})`;
+  const existente = await encontrarPasta(nomePasta, leadsRootId);
+  return existente ?? criarPasta(nomePasta, leadsRootId);
+}
+
 /** Acha (ou cria) a pasta do cliente e, dentro dela, a subpasta certa pra
  * essa categoria de documento (Licenças, Setor Fiscal, Docs Sócio etc.) —
  * a mesma organização que já era feita manualmente no Drive. */
