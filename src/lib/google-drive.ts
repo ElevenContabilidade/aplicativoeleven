@@ -265,42 +265,42 @@ export async function arquivoRemovidoOuNaLixeira(fileId: string): Promise<boolea
   return json.trashed === true;
 }
 
-/** Sobe o arquivo pra dentro da pasta do cliente e deixa o link aberto pra
- * "qualquer um com o link" — assim quem vê o documento no Eleven Hub
- * consegue abrir sem precisar logar com uma conta Google própria. */
-export async function uploadFileToDrive(
-  folderId: string,
-  filename: string,
-  mimeType: string,
-  bytes: ArrayBuffer
-): Promise<{ id: string; webViewLink: string }> {
+/** Abre uma sessão de upload "resumable" na API do Drive e devolve a URL da
+ * sessão — o arquivo em si sobe depois em pedaços (ver /api/drive/upload-chunk
+ * e src/lib/drive-chunk-upload.ts), nunca inteiro de uma vez só, porque
+ * funções serverless (Vercel) têm um limite de corpo de requisição de uns
+ * 4.5MB — bem menor que arquivos reais (propostas, contratos,
+ * digitalizações) costumam ter. */
+export async function iniciarUploadResumable(folderId: string, filename: string, mimeType: string): Promise<string> {
   const token = await getAccessToken();
-  const metadata = { name: filename, parents: [folderId] };
-  const boundary = `eleven-hub-${Date.now()}`;
-  const body =
-    `--${boundary}\r\n` +
-    `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-    `${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\n` +
-    `Content-Type: ${mimeType}\r\n\r\n`;
-  const closing = `\r\n--${boundary}--`;
-  const payload = new Blob([body, bytes, closing]);
-
-  const res = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true`, {
+  const res = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id,webViewLink&supportsAllDrives=true`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": `multipart/related; boundary=${boundary}` },
-    body: payload,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+    },
+    body: JSON.stringify({ name: filename, parents: [folderId] }),
   });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error?.message ?? "Não foi possível enviar o arquivo pro Drive.");
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Não foi possível iniciar o envio do arquivo pro Drive (${res.status}): ${body}`);
+  }
+  const sessionUrl = res.headers.get("Location");
+  if (!sessionUrl) throw new Error("O Drive não retornou a URL de upload.");
+  return sessionUrl;
+}
 
-  await fetch(`${DRIVE_API}/files/${json.id}/permissions?supportsAllDrives=true`, {
+/** Deixa o link do arquivo aberto pra "qualquer um com o link" — assim quem
+ * vê o documento no Eleven Hub consegue abrir sem precisar logar com uma
+ * conta Google própria. Chamado depois que o upload em pedaços termina. */
+export async function tornarArquivoPublico(fileId: string): Promise<void> {
+  const token = await getAccessToken();
+  await fetch(`${DRIVE_API}/files/${fileId}/permissions?supportsAllDrives=true`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ role: "reader", type: "anyone" }),
   });
-
-  return { id: json.id, webViewLink: json.webViewLink };
 }
 
 /** Move o arquivo pra lixeira do Drive (não apaga de vez) — assim fica
