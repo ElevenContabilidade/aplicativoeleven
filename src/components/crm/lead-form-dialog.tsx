@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { uploadPropostaLead } from "@/lib/upload-proposta-lead";
+import { sincronizarIndicacaoDoLead } from "@/lib/actions/sincronizar-indicacao-lead";
 import { formatBytes } from "@/lib/utils";
 import type { Lead, LeadOrigem, ServicoInteresse } from "@/lib/types";
 
@@ -33,6 +34,11 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const addLead = useAppStore((s) => s.addLead);
   const leads = useAppStore((s) => s.leads);
   const team = useAppStore((s) => s.team);
+  const clients = useAppStore((s) => s.clients);
+  const indicacoes = useAppStore((s) => s.indicacoes);
+  const addIndicacao = useAppStore((s) => s.addIndicacao);
+  const updateIndicacao = useAppStore((s) => s.updateIndicacao);
+  const deleteIndicacao = useAppStore((s) => s.deleteIndicacao);
   const { userId } = useAuthStore();
 
   const [nome, setNome] = useState("");
@@ -43,6 +49,8 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [estado, setEstado] = useState("");
   const [segmento, setSegmento] = useState("");
   const [origem, setOrigem] = useState<LeadOrigem>("Site");
+  const [clienteIndicadorId, setClienteIndicadorId] = useState("");
+  const [comissaoIndicacaoPercentual, setComissaoIndicacaoPercentual] = useState("");
   const [valorEstimado, setValorEstimado] = useState("");
   const [valorAssessoriaMensal, setValorAssessoriaMensal] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -71,7 +79,8 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
 
   function reset() {
     setNome(""); setEmpresa(""); setTelefone(""); setEmail(""); setCidade(""); setEstado("");
-    setSegmento(""); setOrigem("Site"); setValorEstimado(""); setValorAssessoriaMensal("");
+    setSegmento(""); setOrigem("Site"); setClienteIndicadorId(""); setComissaoIndicacaoPercentual("");
+    setValorEstimado(""); setValorAssessoriaMensal("");
     setObservacoes(""); setPropostaFile(null); setErro(null); setServicos([]); setNovoServico("");
   }
 
@@ -107,6 +116,8 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       segmento: segmento || undefined,
       servicosInteresse: servicos,
       origem,
+      clienteIndicadorId: origem === "Indicação" && clienteIndicadorId ? clienteIndicadorId : undefined,
+      comissaoIndicacaoPercentual: comissaoIndicacaoPercentual ? Number(comissaoIndicacaoPercentual) : undefined,
       stage: "Lead recebido",
       responsavelId: userId ?? team[0]?.id ?? "",
       valorEstimado: Number(valorEstimado) || 0,
@@ -119,6 +130,7 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       historico: [],
     };
     addLead(lead);
+    sincronizarIndicacaoDoLead(lead, indicacoes, { addIndicacao, updateIndicacao, deleteIndicacao });
     reset();
     onOpenChange(false);
   }
@@ -182,6 +194,31 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   </SelectContent>
                 </Select>
               </Field>
+              {origem === "Indicação" && (
+                <>
+                  <Field label="Cliente que indicou">
+                    <Select value={clienteIndicadorId} onValueChange={setClienteIndicadorId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.dados.razaoSocial}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="% de comissão">
+                    <Input
+                      type="number"
+                      value={comissaoIndicacaoPercentual}
+                      onChange={(e) => setComissaoIndicacaoPercentual(e.target.value)}
+                    />
+                  </Field>
+                </>
+              )}
               <Field label="Observação" className="col-span-2">
                 <Textarea value={observacoes} onChange={(e) => setObservacoes(e.target.value)} rows={3} />
               </Field>

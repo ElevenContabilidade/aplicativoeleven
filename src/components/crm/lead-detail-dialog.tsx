@@ -16,6 +16,7 @@ import type { Lead, LeadOrigem, ServicoInteresse } from "@/lib/types";
 import { formatBytes, formatDate, formatDateTime } from "@/lib/utils";
 import { useAppStore } from "@/lib/store/app-store";
 import { createClientFromLead } from "@/lib/actions/convert-lead";
+import { idIndicacaoDoLead, sincronizarIndicacaoDoLead } from "@/lib/actions/sincronizar-indicacao-lead";
 import { uploadPropostaLead } from "@/lib/upload-proposta-lead";
 
 const SERVICOS: ServicoInteresse[] = [
@@ -39,6 +40,10 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
   const leads = useAppStore((s) => s.leads);
   const updateLead = useAppStore((s) => s.updateLead);
   const deleteLead = useAppStore((s) => s.deleteLead);
+  const indicacoes = useAppStore((s) => s.indicacoes);
+  const addIndicacao = useAppStore((s) => s.addIndicacao);
+  const updateIndicacao = useAppStore((s) => s.updateIndicacao);
+  const deleteIndicacao = useAppStore((s) => s.deleteIndicacao);
   const alreadyClient = lead ? clients.some((c) => c.leadOrigemId === lead.id) : false;
 
   const [form, setForm] = useState<Lead | null>(lead);
@@ -95,6 +100,7 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
     }
 
     updateLead(dadosFinais.id, dadosFinais);
+    sincronizarIndicacaoDoLead(dadosFinais, indicacoes, { addIndicacao, updateIndicacao, deleteIndicacao });
     setSavedAt(Date.now());
     setTimeout(() => setSavedAt(null), 2500);
   }
@@ -103,6 +109,7 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
     if (!lead) return;
     if (confirm(`Excluir o lead "${lead.nome}"? Essa ação não pode ser desfeita.`)) {
       deleteLead(lead.id);
+      if (indicacoes.some((i) => i.id === idIndicacaoDoLead(lead.id))) deleteIndicacao(idIndicacaoDoLead(lead.id));
       onClose();
     }
   }
@@ -154,6 +161,25 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
                 </SelectContent>
               </Select>
             </Field>
+            {form.origem === "Indicação" && (
+              <>
+                <Field label="Cliente que indicou">
+                  <Select value={form.clienteIndicadorId ?? ""} onValueChange={(v) => set("clienteIndicadorId", v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="% de comissão">
+                  <Input
+                    type="number"
+                    value={form.comissaoIndicacaoPercentual ?? ""}
+                    onChange={(e) => set("comissaoIndicacaoPercentual", e.target.value ? Number(e.target.value) : undefined)}
+                  />
+                </Field>
+              </>
+            )}
             <Field label="Segmento">
               <Input value={form.segmento ?? ""} onChange={(e) => set("segmento", e.target.value)} />
             </Field>

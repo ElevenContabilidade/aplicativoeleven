@@ -317,6 +317,12 @@ export interface Lead {
 
   servicosInteresse: ServicoInteresse[];
   origem: LeadOrigem;
+  /** Preenchido quando origem é "Indicação" — o cliente da Eleven que indicou
+   * esse lead. Gera automaticamente um registro na aba "Indicações" desse
+   * cliente (ver sincronizarIndicacaoDoLead). */
+  clienteIndicadorId?: string;
+  /** % de comissão combinada pela indicação. */
+  comissaoIndicacaoPercentual?: number;
 
   stage: LeadStage;
   responsavelId: string;
@@ -612,6 +618,12 @@ export interface Indicacao {
   status: IndicacaoStatus;
   data: string;
   observacao?: string;
+  /** % de comissão combinada pela indicação. */
+  comissaoPercentual?: number;
+  /** Id do lead que gerou essa indicação automaticamente (quando a origem do
+   * lead é "Indicação") — permite achar/atualizar o mesmo registro em vez de
+   * duplicar quando o lead for editado de novo. */
+  leadId?: string;
 }
 
 // ---------- Tarefas ----------

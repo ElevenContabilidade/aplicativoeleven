@@ -769,7 +769,10 @@ export default function ClientProfilePage() {
                       <Share2 className="size-3.5 shrink-0 text-wine-500" />
                       <span className="min-w-0">
                         <span className="block truncate font-medium text-sand-800">{i.nomeIndicado}{i.empresa ? ` · ${i.empresa}` : ""}</span>
-                        <span className="text-sand-400">{i.contato ?? "Sem contato informado"} • {formatDate(i.data)}</span>
+                        <span className="text-sand-400">
+                          {i.contato ?? "Sem contato informado"} • {formatDate(i.data)}
+                          {i.comissaoPercentual != null && ` • ${i.comissaoPercentual}% de comissão`}
+                        </span>
                       </span>
                     </span>
                     <div className="flex shrink-0 items-center gap-3">

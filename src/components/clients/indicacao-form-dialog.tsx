@@ -25,10 +25,11 @@ export function IndicacaoFormDialog({
   const [empresa, setEmpresa] = useState("");
   const [contato, setContato] = useState("");
   const [status, setStatus] = useState<IndicacaoStatus>("Novo");
+  const [comissaoPercentual, setComissaoPercentual] = useState("");
   const [observacao, setObservacao] = useState("");
 
   function reset() {
-    setNomeIndicado(""); setEmpresa(""); setContato(""); setStatus("Novo"); setObservacao("");
+    setNomeIndicado(""); setEmpresa(""); setContato(""); setStatus("Novo"); setComissaoPercentual(""); setObservacao("");
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -43,6 +44,7 @@ export function IndicacaoFormDialog({
       status,
       data: new Date().toISOString().slice(0, 10),
       observacao: observacao || undefined,
+      comissaoPercentual: comissaoPercentual ? Number(comissaoPercentual) : undefined,
     };
     addIndicacao(indicacao);
     reset();
@@ -69,7 +71,7 @@ export function IndicacaoFormDialog({
               <Label className="mb-1 block">Contato</Label>
               <Input value={contato} onChange={(e) => setContato(e.target.value)} />
             </div>
-            <div className="col-span-2">
+            <div>
               <Label className="mb-1 block">Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as IndicacaoStatus)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -77,6 +79,10 @@ export function IndicacaoFormDialog({
                   {INDICACAO_STATUS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="mb-1 block">% de comissão</Label>
+              <Input type="number" value={comissaoPercentual} onChange={(e) => setComissaoPercentual(e.target.value)} />
             </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Observações</Label>
