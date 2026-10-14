@@ -14,7 +14,7 @@ const MESES = [
 ];
 
 export function MetaMensalCard({ year, mes }: { year: string; mes: string }) {
-  const clients = useAppStore((s) => s.clients);
+  const leads = useAppStore((s) => s.leads);
   const metaMensalClientes = useAppStore((s) => s.metaMensalClientes);
   const updateMetaMensalClientes = useAppStore((s) => s.updateMetaMensalClientes);
   const [editando, setEditando] = useState(false);
@@ -23,10 +23,17 @@ export function MetaMensalCard({ year, mes }: { year: string; mes: string }) {
   const hoje = new Date();
   const mesIndex = mes === "anual" ? hoje.getMonth() : Number(mes) - 1;
   const competencia = mes === "anual" ? hoje.toISOString().slice(0, 7) : `${year}-${mes}`;
-  // Só conta cliente que veio de um lead fechado no pipeline (tem
-  // `leadOrigemId`) — cliente antigo cadastrado direto em Clientes não é
-  // "novo cliente" conquistado pelo comercial neste mês.
-  const clientesNoMes = clients.filter((c) => c.criadoEm.startsWith(competencia) && c.leadOrigemId).length;
+  // Conta pela etapa "Fechado" do pipeline, não por cliente já formalmente
+  // cadastrado em Clientes — o lead já conta como meta batida assim que cai
+  // em "Fechado" no Comercial, mesmo antes de alguém clicar em "Converter em
+  // cliente". Usa a data em que o lead entrou em "Fechado" (do histórico de
+  // movimentações) pra saber em qual mês contar.
+  const clientesNoMes = leads.filter((l) => {
+    if (l.stage !== "Fechado") return false;
+    const ultimaEntradaFechado = [...l.historico].reverse().find((h) => h.paraStage === "Fechado");
+    const dataFechamento = ultimaEntradaFechado?.data ?? l.dataUltimoContato;
+    return dataFechamento.startsWith(competencia);
+  }).length;
   const meta = Math.max(metaMensalClientes, 1);
   const percentual = Math.round((clientesNoMes / meta) * 100);
   const atingiu = clientesNoMes >= meta;
