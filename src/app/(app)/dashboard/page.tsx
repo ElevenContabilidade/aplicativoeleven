@@ -27,6 +27,7 @@ import {
   TrendingDown,
   PiggyBank,
   Target,
+  Scale,
 } from "lucide-react";
 import { MetricCard, SectionCard } from "@/components/dashboard/metric-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -181,6 +182,7 @@ export default function DashboardPage() {
   const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
   const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
   const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
+  const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const { userId } = useAuthStore();
   const me = teamMember(userId ?? "");
   const permissoes = useAppStore((s) => s.permissoes);
@@ -205,7 +207,6 @@ export default function DashboardPage() {
     const suspensos = clients.filter((c) => c.status === "Suspenso").length;
     const inadimplentes = clients.filter((c) => c.financeiro.statusFinanceiro === "Atrasado").length;
     const saida = clients.filter((c) => c.status === "Em processo de cancelamento").length;
-    const comPendencia = clients.filter((c) => c.status === "Com pendência").length;
 
     const leadsNovos = leads.filter((l) => daysFromToday(l.dataEntrada) >= -windowDays).length;
     const leadsEmContato = leads.filter((l) => ["Primeiro contato", "Contato realizado", "Qualificação"].includes(l.stage)).length;
@@ -232,7 +233,7 @@ export default function DashboardPage() {
     const certEmitidosMes = certificados.filter((c) => c.dataEmissao && daysFromToday(c.dataEmissao) >= -30).length;
 
     return {
-      ativos, onboarding, suspensos, inadimplentes, saida, comPendencia,
+      ativos, onboarding, suspensos, inadimplentes, saida,
       leadsNovos, leadsEmContato, reunioes, propostas, negociacoes, fechados, conversao,
       tarefasAbertas, tarefasVencidas, obrigacoesHoje, obrigacoes7d, pendenciasCriticas,
       honorariosPrevistos, recebidos, emAberto, inadimplencia,
@@ -333,6 +334,11 @@ export default function DashboardPage() {
   const pctMeta = Math.round((fechadosNoMes / Math.max(metaMensalClientes, 1)) * 100);
   const valorPipeline = leadsAtivos.reduce((a, l) => a + l.valorEstimado, 0);
 
+  const processosEmAndamento = processosSocietarios.filter((p) => p.status !== "Finalizado").length;
+  const passosMeusPendentes = processosSocietarios
+    .flatMap((p) => p.etapas ?? [])
+    .filter((e) => e.responsavelId === userId && (e.status === "Pendente" || e.status === "Em andamento")).length;
+
   const dataFormatada = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const primeiroNome = me?.nome.split(" ")[0] ?? "bem-vindo";
 
@@ -386,12 +392,12 @@ export default function DashboardPage() {
           onClick={() => router.push("/comercial")}
         />
         <MetricCard
-          label="Clientes com pendência"
-          value={metrics.comPendencia}
-          hint={`${metrics.inadimplentes} inadimplentes`}
-          icon={CircleAlert}
-          tone="warning"
-          onClick={() => router.push("/clientes")}
+          label="Processos de legalização"
+          value={processosEmAndamento}
+          hint={`${passosMeusPendentes} passo${passosMeusPendentes === 1 ? "" : "s"} seu${passosMeusPendentes === 1 ? "" : "s"} pendente${passosMeusPendentes === 1 ? "" : "s"}`}
+          icon={Scale}
+          tone="wine"
+          onClick={() => router.push("/societario")}
         />
       </div>
 

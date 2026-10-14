@@ -67,13 +67,23 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
           <span className="text-xs text-sand-400">
             Iniciado em {formatDate(processo.dataAbertura)}
             {processo.prazo ? ` • Prazo ${formatDate(processo.prazo)}` : ""}
+            {processo.dataConclusao ? ` • Concluído em ${formatDate(processo.dataConclusao)}` : ""}
           </span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <Label className="mb-1 block">Status</Label>
-            <Select value={processo.status} onValueChange={(v) => updateProcessoSocietario(processo.id, { status: v as ProcessoSocietarioStatus })}>
+            <Select
+              value={processo.status}
+              onValueChange={(v) => {
+                const status = v as ProcessoSocietarioStatus;
+                updateProcessoSocietario(processo.id, {
+                  status,
+                  dataConclusao: status === "Finalizado" ? (processo.dataConclusao ?? new Date().toISOString().slice(0, 10)) : undefined,
+                });
+              }}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {STATUSES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}

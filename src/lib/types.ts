@@ -795,6 +795,10 @@ export interface ProcessoSocietario {
   valorProcesso?: number;
   pagamento?: PagamentoProcesso;
   dataPagamento?: string;
+  /** Preenchida automaticamente quando o status vira "Finalizado" (e limpa
+   * se voltar pra outro status) — usada pra calcular o tempo médio de
+   * cada tipo de processo. */
+  dataConclusao?: string;
 }
 
 // ---------- Parcelamentos ----------

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Scale, Plus, Wallet, CircleDollarSign, Hourglass, Trash2 } from "lucide-react";
+import { Scale, Plus, Wallet, CircleDollarSign, Hourglass, Trash2, CheckCheck, Timer } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,11 @@ import type { ProcessoSocietario } from "@/lib/types";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
-type ViewMode = "tabela" | "processo" | "etapa" | "financeiro";
+type ViewMode = "tabela" | "processo" | "etapa" | "financeiro" | "concluidos" | "tempoMedio";
+
+function diasEntre(a: string, b: string) {
+  return Math.round((new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000);
+}
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -96,6 +100,43 @@ export default function SocietarioPage() {
     [processos, competenciasFinanceiro]
   );
 
+  // "Concluídos" filtra pela data em que o processo foi de fato finalizado
+  // (não pela data de abertura) — processos antigos finalizados antes dessa
+  // coluna existir não têm dataConclusao, então caem de volta na data de
+  // abertura pra não sumirem da lista.
+  const concluidosNoPeriodo = useMemo(
+    () =>
+      processos.filter((p) => {
+        if (p.status !== "Finalizado") return false;
+        const data = p.dataConclusao ?? p.dataAbertura;
+        return mes === "anual" ? data.startsWith(year) : data.startsWith(`${year}-${mes}`);
+      }),
+    [processos, year, mes]
+  );
+
+  // Tempo médio só considera quem tem dataConclusao registrada — só existe
+  // a partir de quando essa coluna passou a ser preenchida automaticamente,
+  // então processos finalizados antes disso não entram na conta (não tem
+  // como saber quanto tempo levaram).
+  const tempoMedioPorTipo = useMemo(() => {
+    const comTempo = processos.filter((p) => p.status === "Finalizado" && p.dataConclusao);
+    const map = new Map<string, number[]>();
+    for (const p of comTempo) {
+      const dias = diasEntre(p.dataAbertura, p.dataConclusao!);
+      map.set(p.tipoServico, [...(map.get(p.tipoServico) ?? []), dias]);
+    }
+    const porTipo = [...map.entries()]
+      .map(([tipoServico, lista]) => ({
+        tipoServico,
+        qtd: lista.length,
+        mediaDias: Math.round(lista.reduce((a, d) => a + d, 0) / lista.length),
+      }))
+      .sort((a, b) => a.tipoServico.localeCompare(b.tipoServico, "pt-BR"));
+    const todasAsListas = [...map.values()].flat();
+    const mediaGeral = todasAsListas.length > 0 ? Math.round(todasAsListas.reduce((a, d) => a + d, 0) / todasAsListas.length) : 0;
+    return { porTipo, mediaGeral, totalComTempo: todasAsListas.length };
+  }, [processos]);
+
   return (
     <div>
       <PageHeader
@@ -116,23 +157,29 @@ export default function SocietarioPage() {
             <TabsTrigger value="tabela">Tabela</TabsTrigger>
             <TabsTrigger value="processo">Por processo</TabsTrigger>
             <TabsTrigger value="etapa">Por etapa</TabsTrigger>
+            <TabsTrigger value="concluidos">Concluídos</TabsTrigger>
+            <TabsTrigger value="tempoMedio">Tempo médio</TabsTrigger>
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
           </TabsList>
         </Tabs>
+        {view !== "tempoMedio" && (
         <Select value={year} onValueChange={setYear}>
           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
           <SelectContent>
             {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
           </SelectContent>
         </Select>
+        )}
       </div>
 
+      {view !== "tempoMedio" && (
       <div className="mb-4 flex flex-wrap gap-1.5">
         <PeriodChip label="Anual" active={mes === "anual"} onClick={() => setMes("anual")} />
         {MESES.map((m) => (
           <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
         ))}
       </div>
+      )}
 
       {view === "tabela" && (
         <Card>
@@ -236,6 +283,84 @@ export default function SocietarioPage() {
             Checklist de abertura de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
           </p>
           <AberturaMatrix processos={aberturas} clients={clients} />
+        </div>
+      )}
+
+      {view === "concluidos" && (
+        <Card>
+          <CardHeader><CardTitle>Processos concluídos</CardTitle></CardHeader>
+          <CardContent className="pt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead>Iniciado em</TableHead>
+                  <TableHead>Concluído em</TableHead>
+                  <TableHead>Tempo total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {concluidosNoPeriodo.map((p) => {
+                  const client = clients.find((c) => c.id === p.clienteId);
+                  const dias = p.dataConclusao ? diasEntre(p.dataAbertura, p.dataConclusao) : null;
+                  return (
+                    <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
+                      <TableCell className="font-medium">{client?.dados.razaoSocial ?? "cliente"}</TableCell>
+                      <TableCell>{p.tipoServico}</TableCell>
+                      <TableCell>{teamName(p.responsavelId)}</TableCell>
+                      <TableCell>{formatDate(p.dataAbertura)}</TableCell>
+                      <TableCell>{p.dataConclusao ? formatDate(p.dataConclusao) : "—"}</TableCell>
+                      <TableCell>{dias !== null ? `${dias} dia${dias === 1 ? "" : "s"}` : "—"}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {concluidosNoPeriodo.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-sand-400">Nenhum processo concluído neste período.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {view === "tempoMedio" && (
+        <div>
+          <p className="mb-3 text-[11px] text-sand-500">
+            Quanto tempo leva, em média, da abertura até a conclusão de cada tipo de processo — considera só quem foi finalizado depois que esse
+            controle passou a existir.
+          </p>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <MetricCard label="Média geral" value={`${tempoMedioPorTipo.mediaGeral} dias`} icon={Timer} tone="wine" />
+            <MetricCard label="Processos considerados" value={tempoMedioPorTipo.totalComTempo} icon={CheckCheck} tone="success" />
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Tempo médio por tipo de serviço</CardTitle></CardHeader>
+            <CardContent className="pt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Serviço</TableHead>
+                    <TableHead>Processos concluídos</TableHead>
+                    <TableHead>Tempo médio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tempoMedioPorTipo.porTipo.map((t) => (
+                    <TableRow key={t.tipoServico}>
+                      <TableCell className="font-medium">{t.tipoServico}</TableCell>
+                      <TableCell>{t.qtd}</TableCell>
+                      <TableCell>{t.mediaDias} dia{t.mediaDias === 1 ? "" : "s"}</TableCell>
+                    </TableRow>
+                  ))}
+                  {tempoMedioPorTipo.porTipo.length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="py-10 text-center text-sand-400">Ainda não há processos finalizados com data de conclusão registrada.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       )}
 
