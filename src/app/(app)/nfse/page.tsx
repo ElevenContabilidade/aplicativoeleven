@@ -72,11 +72,12 @@ export default function NfsePage() {
     return YEARS.includes(current) ? current : YEARS[0];
   });
   const [mes, setMes] = useState<string>(() => String(new Date().getMonth() + 1).padStart(2, "0"));
-  const [soEleven, setSoEleven] = useState(false);
 
+  // Cliente de parceiro nunca emite NFSe pela Eleven — a nota sai pelo
+  // parceiro, não por aqui.
   const clientesMensais = useMemo(
-    () => clients.filter((c) => c.financeiro.valorMensal > 0 && (!soEleven || !c.dados.clienteParceiro)),
-    [clients, soEleven]
+    () => clients.filter((c) => c.financeiro.valorMensal > 0 && !c.dados.clienteParceiro),
+    [clients]
   );
 
   function toggleSort(column: SortColumn) {
@@ -175,8 +176,6 @@ export default function NfsePage() {
         {MESES.map((m) => (
           <PeriodChip key={m.value} label={m.label} active={mes === m.value} onClick={() => setMes(m.value)} />
         ))}
-        <span className="mx-1 h-4 w-px bg-sand-200" />
-        <PeriodChip label="Só da Eleven" active={soEleven} onClick={() => setSoEleven((v) => !v)} />
       </div>
 
       <Card>
