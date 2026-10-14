@@ -555,6 +555,14 @@ export function setorAtendidoPelaEleven(client: Pick<Client, "dados">, setor: De
   return client.dados.setoresAtendidos?.includes(setor) ?? false;
 }
 
+/** Nomes distintos dos parceiros cadastrados nos clientes, ordenados —
+ * usado pra popular o filtro "Mostrar só do parceiro X" nos checklists. */
+export function nomesParceirosDistintos(clients: Pick<Client, "dados">[]): string[] {
+  return [...new Set(clients.map((c) => c.dados.nomeParceiro).filter((n): n is string => !!n))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
+}
+
 /** Um cliente só entra num checklist de rotinas (Fiscal/Contábil/Pessoal) a
  * partir da competência em que o contrato começou — cliente que só entrou
  * em setembro/2026 não deve aparecer nas rotinas de meses ou anos

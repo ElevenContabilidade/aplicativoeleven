@@ -6,7 +6,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, nomesParceirosDistintos, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { maskCpf } from "@/lib/cnpj";
 import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
@@ -68,6 +68,7 @@ export function FiscalChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [parceiroFiltro, setParceiroFiltro] = useState("");
   const [mostrarPrefeitura, setMostrarPrefeitura] = useState(false);
   const [senhasReveladas, setSenhasReveladas] = useState<Set<string>>(new Set());
   const [copiadoId, setCopiadoId] = useState<string | null>(null);
@@ -103,6 +104,8 @@ export function FiscalChecklist() {
   // aparecia aqui como uma linha praticamente toda travada em "—". O
   // interruptor "somenteProprios" deixa esconder quem é de parceiro, pra
   // filtrar melhor quando a lista mistura os dois tipos de cliente.
+  const parceirosDisponiveis = useMemo(() => nomesParceirosDistintos(clients), [clients]);
+
   const clientesDoSetor = useMemo(
     () =>
       clients.filter(
@@ -110,9 +113,10 @@ export function FiscalChecklist() {
           (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
           setorAtendidoPelaEleven(c, "fiscal") &&
           !(c.dados.regimeTributario === "MEI" && !c.dados.contabilidadeRegular) &&
-          (!somenteProprios || !c.dados.clienteParceiro)
+          (!somenteProprios || !c.dados.clienteParceiro) &&
+          (!parceiroFiltro || c.dados.nomeParceiro === parceiroFiltro)
       ),
-    [clients, somenteProprios]
+    [clients, somenteProprios, parceiroFiltro]
   );
 
   const competencia = period === "anual" ? year : `${year}-${period}`;
@@ -320,7 +324,25 @@ export function FiscalChecklist() {
                 <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
               ))}
             </div>
-            <PeriodChip label="Só clientes próprios da Eleven" active={somenteProprios} onClick={() => setSomenteProprios((v) => !v)} />
+            <div className="flex items-center gap-2">
+              <PeriodChip
+                label="Só clientes próprios da Eleven"
+                active={somenteProprios}
+                onClick={() => { setSomenteProprios((v) => !v); setParceiroFiltro(""); }}
+              />
+              {parceirosDisponiveis.length > 0 && (
+                <Select
+                  value={parceiroFiltro || "todos"}
+                  onValueChange={(v) => { setParceiroFiltro(v === "todos" ? "" : v); if (v !== "todos") setSomenteProprios(false); }}
+                >
+                  <SelectTrigger className="h-7 w-44 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os parceiros</SelectItem>
+                    {parceirosDisponiveis.map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
           {period === "anual" ? (

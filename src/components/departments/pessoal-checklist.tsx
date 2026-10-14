@@ -18,6 +18,7 @@ import {
   rotinasPessoalMensalFor,
   setorAtendidoPelaEleven,
   clienteAtivoNaCompetencia,
+  nomesParceirosDistintos,
   type ChecklistStatus,
   type Client,
 } from "@/lib/types";
@@ -70,6 +71,9 @@ export function PessoalChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [parceiroFiltro, setParceiroFiltro] = useState("");
+
+  const parceirosDisponiveis = useMemo(() => nomesParceirosDistintos(clients), [clients]);
 
   const clientesDoSetor = useMemo(
     () =>
@@ -77,9 +81,10 @@ export function PessoalChecklist() {
         (c) =>
           (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
           setorAtendidoPelaEleven(c, "pessoal") &&
-          (!somenteProprios || !c.dados.clienteParceiro)
+          (!somenteProprios || !c.dados.clienteParceiro) &&
+          (!parceiroFiltro || c.dados.nomeParceiro === parceiroFiltro)
       ),
-    [clients, somenteProprios]
+    [clients, somenteProprios, parceiroFiltro]
   );
 
   const competencia = period === "anual" ? year : `${year}-${period}`;
@@ -304,7 +309,25 @@ export function PessoalChecklist() {
                 <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
               ))}
             </div>
-            <PeriodChip label="Só clientes próprios da Eleven" active={somenteProprios} onClick={() => setSomenteProprios((v) => !v)} />
+            <div className="flex items-center gap-2">
+              <PeriodChip
+                label="Só clientes próprios da Eleven"
+                active={somenteProprios}
+                onClick={() => { setSomenteProprios((v) => !v); setParceiroFiltro(""); }}
+              />
+              {parceirosDisponiveis.length > 0 && (
+                <Select
+                  value={parceiroFiltro || "todos"}
+                  onValueChange={(v) => { setParceiroFiltro(v === "todos" ? "" : v); if (v !== "todos") setSomenteProprios(false); }}
+                >
+                  <SelectTrigger className="h-7 w-44 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os parceiros</SelectItem>
+                    {parceirosDisponiveis.map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
           {period !== "anual" && copiarChecklistControls}

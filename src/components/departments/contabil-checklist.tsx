@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, nomesParceirosDistintos, type ChecklistStatus, type Client } from "@/lib/types";
 import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +53,7 @@ export function ContabilChecklist() {
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
+  const [parceiroFiltro, setParceiroFiltro] = useState("");
   const [ordem, setOrdem] = useState<{ campo: "nome" | "pct"; dir: "asc" | "desc" } | null>(null);
 
   function toggleOrdem(campo: "nome" | "pct") {
@@ -62,15 +63,18 @@ export function ContabilChecklist() {
     });
   }
 
+  const parceirosDisponiveis = useMemo(() => nomesParceirosDistintos(clients), [clients]);
+
   const clientesDoSetor = useMemo(
     () =>
       clients.filter(
         (c) =>
           (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
           setorAtendidoPelaEleven(c, "contabil") &&
-          (!somenteProprios || !c.dados.clienteParceiro)
+          (!somenteProprios || !c.dados.clienteParceiro) &&
+          (!parceiroFiltro || c.dados.nomeParceiro === parceiroFiltro)
       ),
-    [clients, somenteProprios]
+    [clients, somenteProprios, parceiroFiltro]
   );
 
   const rotinas = period === "anual" ? ROTINAS_CONTABEIS_ANUAIS : ROTINAS_CONTABEIS_MENSAIS;
@@ -267,7 +271,25 @@ export function ContabilChecklist() {
                 <PeriodChip key={m.value} label={m.label} active={period === m.value} onClick={() => setPeriod(m.value)} />
               ))}
             </div>
-            <PeriodChip label="Só clientes próprios da Eleven" active={somenteProprios} onClick={() => setSomenteProprios((v) => !v)} />
+            <div className="flex items-center gap-2">
+              <PeriodChip
+                label="Só clientes próprios da Eleven"
+                active={somenteProprios}
+                onClick={() => { setSomenteProprios((v) => !v); setParceiroFiltro(""); }}
+              />
+              {parceirosDisponiveis.length > 0 && (
+                <Select
+                  value={parceiroFiltro || "todos"}
+                  onValueChange={(v) => { setParceiroFiltro(v === "todos" ? "" : v); if (v !== "todos") setSomenteProprios(false); }}
+                >
+                  <SelectTrigger className="h-7 w-44 text-[11px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os parceiros</SelectItem>
+                    {parceirosDisponiveis.map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
           </div>
 
           <div className="mb-3 flex flex-wrap items-center gap-2">
