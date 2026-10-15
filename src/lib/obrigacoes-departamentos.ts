@@ -31,15 +31,27 @@ export interface RotinaDepartamento {
   competencia: string;
   status: ChecklistStatus;
   vencimento?: string;
+  /** Primeiro dia da competência, só preenchido junto com `vencimento` —
+   * usado como início "genérico" da barra no gráfico de Gantt semanal
+   * (ainda não existe uma regra de início por rotina, então assume que ela
+   * pode começar assim que o mês abre). */
+  inicio?: string;
 }
 
-type AjusteVencimento = "antecipa" | "prorroga" | "nenhum";
+export type AjusteVencimento = "antecipa" | "prorroga" | "nenhum";
+
+export interface RegraVencimento {
+  dia: number;
+  ajuste: AjusteVencimento;
+}
 
 /** Regras de vencimento passadas pela Kauane — "antecipa" move pro dia útil
  * anterior quando a data cai em fim de semana/feriado nacional, "prorroga"
  * move pro próximo dia útil, "nenhum" mantém o dia fixo mesmo caindo num
- * fim de semana. */
-const REGRAS_VENCIMENTO_ROTINA: Record<string, { dia: number; ajuste: AjusteVencimento }> = {
+ * fim de semana. Esse é só o padrão de fábrica — a Kauane pode sobrescrever
+ * qualquer uma dessas (ou cadastrar regra pra uma rotina nova) pela aba
+ * Configurações de Obrigações, que manda o override em `overrides`. */
+export const REGRAS_VENCIMENTO_ROTINA_PADRAO: Record<string, RegraVencimento> = {
   "Emissão e Envio do INSS e IRRF": { dia: 20, ajuste: "antecipa" },
   "Emissão e Envio do FGTS": { dia: 20, ajuste: "antecipa" },
   "EFD-Reinf": { dia: 15, ajuste: "antecipa" },
@@ -52,9 +64,13 @@ const REGRAS_VENCIMENTO_ROTINA: Record<string, { dia: number; ajuste: AjusteVenc
 
 /** Descrição legível da regra de prazo dessa rotina (dia-base + o que
  * acontece quando cai em fim de semana/feriado), ou undefined quando não
- * há regra cadastrada — usado pra explicar o vencimento na tela. */
-export function regraVencimentoRotina(tipo: string): { dia: number; descricaoAjuste: string } | undefined {
-  const regra = REGRAS_VENCIMENTO_ROTINA[tipo];
+ * há regra cadastrada (nem padrão, nem override) — usado pra explicar o
+ * vencimento na tela. */
+export function regraVencimentoRotina(
+  tipo: string,
+  overrides: Record<string, RegraVencimento> = {}
+): { dia: number; descricaoAjuste: string } | undefined {
+  const regra = overrides[tipo] ?? REGRAS_VENCIMENTO_ROTINA_PADRAO[tipo];
   if (!regra) return undefined;
   const descricaoAjuste =
     regra.ajuste === "antecipa"
@@ -66,9 +82,10 @@ export function regraVencimentoRotina(tipo: string): { dia: number; descricaoAju
 }
 
 /** Vencimento ("YYYY-MM-DD") da rotina nessa competência, ou undefined
- * quando não há regra de prazo cadastrada pra ela. */
-export function vencimentoRotina(tipo: string, competencia: string): string | undefined {
-  const regra = REGRAS_VENCIMENTO_ROTINA[tipo];
+ * quando não há regra de prazo cadastrada pra ela (nem padrão, nem
+ * override). */
+export function vencimentoRotina(tipo: string, competencia: string, overrides: Record<string, RegraVencimento> = {}): string | undefined {
+  const regra = overrides[tipo] ?? REGRAS_VENCIMENTO_ROTINA_PADRAO[tipo];
   if (!regra) return undefined;
   const [anoStr, mesStr] = competencia.split("-");
   const ano = Number(anoStr);
@@ -92,6 +109,19 @@ export function isRotinaDispensada(dispensas: DispensaRotina[], clienteId: strin
   return dispensas.some((d) => d.clienteId === clienteId && d.setor === setor && d.rotina === rotina);
 }
 
+export interface RotinaDesativada {
+  id: string;
+  setor: SetorRotina;
+  rotina: string;
+}
+
+/** Rotina desativada pro setor inteiro (configurado na aba Configurações
+ * de Obrigações) — diferente de uma dispensa, que é por cliente; essa tira
+ * a rotina de todo mundo do setor, pra sempre, até ser reativada. */
+export function isRotinaDesativadaNoSetor(desativadas: RotinaDesativada[], setor: SetorRotina, rotina: string): boolean {
+  return desativadas.some((d) => d.setor === setor && d.rotina === rotina);
+}
+
 function statusDe(
   checklist: ChecklistEntry[],
   clienteId: string,
@@ -104,7 +134,9 @@ function statusDe(
 }
 
 /** Todas as rotinas mensais dos 4 departamentos, aplicáveis a cada cliente
- * conforme o regime/config dele, numa competência específica. */
+ * conforme o regime/config dele, numa competência específica. `overrides` e
+ * `rotinasDesativadas` vêm da aba Configurações de Obrigações — sem eles,
+ * usa as regras padrão e não tira nenhuma rotina. */
 export function rotinasDepartamentosDoMes(
   clients: Client[],
   checklistFiscal: ChecklistEntry[],
@@ -112,55 +144,53 @@ export function rotinasDepartamentosDoMes(
   checklistPessoal: ChecklistEntry[],
   checklistMei: ChecklistEntry[],
   competencia: string,
-  dispensasRotina: DispensaRotina[] = []
+  dispensasRotina: DispensaRotina[] = [],
+  overrides: Record<string, RegraVencimento> = {},
+  rotinasDesativadas: RotinaDesativada[] = []
 ): RotinaDepartamento[] {
   const rotinas: RotinaDepartamento[] = [];
+  const primeiroDiaCompetencia = `${competencia}-01`;
+
+  function empurrar(clienteId: string, tipo: string, setor: SetorRotina, status: ChecklistStatus) {
+    if (isRotinaDesativadaNoSetor(rotinasDesativadas, setor, tipo)) return;
+    const vencimento = vencimentoRotina(tipo, competencia, overrides);
+    rotinas.push({
+      id: `${setor}-${clienteId}-${competencia}-${tipo}`,
+      clienteId,
+      tipo,
+      setor,
+      competencia,
+      status,
+      vencimento,
+      inicio: vencimento ? primeiroDiaCompetencia : undefined,
+    });
+  }
 
   for (const c of clientesAtivosNoSetor(clients, "fiscal")) {
     for (const rotina of rotinasFiscaisMensaisFor(c)) {
-      rotinas.push({
-        id: `fiscal-${c.id}-${competencia}-${rotina}`,
-        clienteId: c.id,
-        tipo: rotina,
-        setor: "Fiscal",
-        competencia,
-        status: statusDe(checklistFiscal, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Fiscal", rotina)),
-        vencimento: vencimentoRotina(rotina, competencia),
-      });
+      empurrar(c.id, rotina, "Fiscal", statusDe(checklistFiscal, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Fiscal", rotina)));
     }
   }
 
   for (const c of clientesAtivosNoSetor(clients, "contabil")) {
     for (const rotina of rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS)) {
-      rotinas.push({
-        id: `contabil-${c.id}-${competencia}-${rotina}`,
-        clienteId: c.id,
-        tipo: rotina,
-        setor: "Contábil",
-        competencia,
-        status: statusDe(checklistContabil, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Contábil", rotina)),
-        vencimento: vencimentoRotina(rotina, competencia),
-      });
+      empurrar(
+        c.id,
+        rotina,
+        "Contábil",
+        statusDe(checklistContabil, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Contábil", rotina))
+      );
     }
   }
 
   for (const c of clientesAtivosNoSetor(clients, "pessoal")) {
     for (const rotina of rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS])) {
-      rotinas.push({
-        id: `pessoal-${c.id}-${competencia}-${rotina}`,
-        clienteId: c.id,
-        tipo: rotina,
-        setor: "Departamento Pessoal",
-        competencia,
-        status: statusDe(
-          checklistPessoal,
-          c.id,
-          competencia,
-          rotina,
-          isRotinaDispensada(dispensasRotina, c.id, "Departamento Pessoal", rotina)
-        ),
-        vencimento: vencimentoRotina(rotina, competencia),
-      });
+      empurrar(
+        c.id,
+        rotina,
+        "Departamento Pessoal",
+        statusDe(checklistPessoal, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Departamento Pessoal", rotina))
+      );
     }
   }
 
@@ -171,15 +201,7 @@ export function rotinasDepartamentosDoMes(
       cl.criadoEm.slice(0, 7) <= competencia
   )) {
     for (const rotina of ROTINAS_MEI) {
-      rotinas.push({
-        id: `mei-${c.id}-${competencia}-${rotina}`,
-        clienteId: c.id,
-        tipo: rotina,
-        setor: "MEI",
-        competencia,
-        status: statusDe(checklistMei, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "MEI", rotina)),
-        vencimento: vencimentoRotina(rotina, competencia),
-      });
+      empurrar(c.id, rotina, "MEI", statusDe(checklistMei, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "MEI", rotina)));
     }
   }
 

@@ -12,13 +12,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ObligationFormDialog } from "@/components/obligations/obligation-form-dialog";
+import { ObrigacoesAgenda } from "@/components/obligations/obrigacoes-agenda";
+import { ObrigacoesPorCliente } from "@/components/obligations/obrigacoes-por-cliente";
+import { ObrigacoesRelatorios } from "@/components/obligations/obrigacoes-relatorios";
+import { ObrigacoesConfiguracoes } from "@/components/obligations/obrigacoes-configuracoes";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { rotinasDepartamentosDoMes, regraVencimentoRotina, type RotinaDepartamento, type SetorRotina } from "@/lib/obrigacoes-departamentos";
 import { CHECKLIST_STATUS, OBLIGATION_STATUS, type Obligation, type ChecklistStatus } from "@/lib/types";
 import type { BadgeTone } from "@/lib/status";
 import { formatDate, cn } from "@/lib/utils";
+
+type Secao = "ciclo" | "agenda" | "porCliente" | "relatorios" | "configuracoes";
 
 const PENDENTES_MANUAL: Obligation["status"][] = ["A fazer", "Em andamento", "Aguardando informação", "Em atraso"];
 const PENDENTES_DEPTO: ChecklistStatus[] = ["Pendente", "Em andamento"];
@@ -38,8 +45,8 @@ const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
 };
 
 type Linha =
-  | { kind: "manual"; id: string; clienteId: string; tipo: string; setor: "Manual"; vencimento: string; responsavelId: string; status: string; pendente: boolean; obligation: Obligation }
-  | { kind: "departamento"; id: string; clienteId: string; tipo: string; setor: SetorRotina; vencimento: string | null; responsavelId: null; status: string; pendente: boolean; rotina: RotinaDepartamento };
+  | { kind: "manual"; id: string; clienteId: string; tipo: string; setor: "Manual"; vencimento: string; inicio: string; responsavelId: string; status: string; pendente: boolean; obligation: Obligation }
+  | { kind: "departamento"; id: string; clienteId: string; tipo: string; setor: SetorRotina; vencimento: string | null; inicio: string | null; responsavelId: null; status: string; pendente: boolean; rotina: RotinaDepartamento };
 
 export default function ObrigacoesPage() {
   const obligations = useAppStore((s) => s.obligations);
@@ -50,6 +57,8 @@ export default function ObrigacoesPage() {
   const checklistMei = useAppStore((s) => s.checklistMei);
   const dispensasRotina = useAppStore((s) => s.dispensasRotina);
   const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
+  const rotinasDesativadas = useAppStore((s) => s.rotinasDesativadas);
+  const regrasVencimentoOverride = useAppStore((s) => s.regrasVencimentoOverride);
   const updateObligation = useAppStore((s) => s.updateObligation);
   const deleteObligation = useAppStore((s) => s.deleteObligation);
   const setChecklistFiscal = useAppStore((s) => s.setChecklistFiscal);
@@ -59,6 +68,7 @@ export default function ObrigacoesPage() {
 
   const hoje = new Date();
   const hojeMeiaNoite = new Date(hoje).setHours(0, 0, 0, 0);
+  const [secao, setSecao] = useState<Secao>("ciclo");
   const [ano, setAno] = useState(String(hoje.getFullYear()));
   const [mes, setMes] = useState(String(hoje.getMonth() + 1).padStart(2, "0"));
   const [query, setQuery] = useState("");
@@ -76,8 +86,19 @@ export default function ObrigacoesPage() {
   const hojeIso = hoje.toISOString().slice(0, 10);
 
   const rotinasDepto = useMemo(
-    () => rotinasDepartamentosDoMes(clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia, dispensasRotina),
-    [clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia, dispensasRotina]
+    () =>
+      rotinasDepartamentosDoMes(
+        clients,
+        checklistFiscal,
+        checklistContabil,
+        checklistPessoal,
+        checklistMei,
+        competencia,
+        dispensasRotina,
+        regrasVencimentoOverride,
+        rotinasDesativadas
+      ),
+    [clients, checklistFiscal, checklistContabil, checklistPessoal, checklistMei, competencia, dispensasRotina, regrasVencimentoOverride, rotinasDesativadas]
   );
 
   function abrirNova() {
@@ -182,6 +203,7 @@ export default function ObrigacoesPage() {
         tipo: o.tipo,
         setor: "Manual",
         vencimento: o.vencimento,
+        inicio: `${o.competencia}-01`,
         responsavelId: o.responsavelId,
         status: o.status,
         pendente: PENDENTES_MANUAL.includes(o.status),
@@ -194,6 +216,7 @@ export default function ObrigacoesPage() {
       tipo: r.tipo,
       setor: r.setor,
       vencimento: r.vencimento ?? null,
+      inicio: r.inicio ?? null,
       responsavelId: null,
       status: r.status,
       pendente: PENDENTES_DEPTO.includes(r.status),
@@ -331,8 +354,43 @@ export default function ObrigacoesPage() {
   }, [linhas, detalheTipo, clients, buscaDetalhe]);
 
   const detalheConcluidas = linhasDetalhe.filter(({ linha: l }) => !l.pendente).length;
-  const detalheRegra = detalheTipo ? regraVencimentoRotina(detalheTipo) : undefined;
+  const detalheRegra = detalheTipo ? regraVencimentoRotina(detalheTipo, regrasVencimentoOverride) : undefined;
   const todosSelecionadosDetalhe = linhasDetalhe.length > 0 && linhasDetalhe.every(({ linha: l }) => selecionadosDetalhe.has(l.id));
+
+  // Gantt semanal: mostra a semana corrente (independente do mês navegado
+  // acima), agrupado por tipo igual "Próximos prazos". Como ainda não existe
+  // uma regra de início por rotina, usa uma regra genérica simples — a barra
+  // começa no domingo daquela semana e vai até o vencimento, então rotina
+  // que vence cedo na semana aparece com barra curta, e quem vence no fim de
+  // semana aparece com barra mais longa.
+  const semanaGantt = useMemo(() => {
+    const hoje_ = new Date();
+    const inicioSemana = new Date(hoje_);
+    inicioSemana.setHours(0, 0, 0, 0);
+    inicioSemana.setDate(hoje_.getDate() - hoje_.getDay());
+    const dias = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(inicioSemana);
+      d.setDate(inicioSemana.getDate() + i);
+      return d;
+    });
+    const diasIso = dias.map((d) => d.toISOString().slice(0, 10));
+
+    const porTipo = new Map<string, { tipo: string; total: number; concluidas: number; vencimento: string }>();
+    for (const l of linhas) {
+      if (!l.vencimento || !diasIso.includes(l.vencimento)) continue;
+      const atual = porTipo.get(l.tipo) ?? { tipo: l.tipo, total: 0, concluidas: 0, vencimento: l.vencimento };
+      atual.total += 1;
+      if (!l.pendente) atual.concluidas += 1;
+      porTipo.set(l.tipo, atual);
+    }
+
+    const barras = [...porTipo.values()]
+      .map((g) => ({ ...g, fimIdx: diasIso.indexOf(g.vencimento) }))
+      .filter((g) => g.fimIdx >= 0)
+      .sort((a, b) => a.fimIdx - b.fimIdx || a.tipo.localeCompare(b.tipo, "pt-BR"));
+
+    return { dias, barras };
+  }, [linhas]);
 
   return (
     <div>
@@ -349,6 +407,23 @@ export default function ObrigacoesPage() {
         }
       />
 
+      <Tabs value={secao} onValueChange={(v) => setSecao(v as Secao)} className="mb-6">
+        <TabsList>
+          <TabsTrigger value="ciclo">Ciclo do mês</TabsTrigger>
+          <TabsTrigger value="agenda">Agenda</TabsTrigger>
+          <TabsTrigger value="porCliente">Por cliente</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {secao === "agenda" && <ObrigacoesAgenda />}
+      {secao === "porCliente" && <ObrigacoesPorCliente />}
+      {secao === "relatorios" && <ObrigacoesRelatorios />}
+      {secao === "configuracoes" && <ObrigacoesConfiguracoes />}
+
+      {secao === "ciclo" && (
+      <>
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-wide text-sand-400">Ciclo do mês</p>
         <div className="flex items-center gap-1">
@@ -452,6 +527,44 @@ export default function ObrigacoesPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {semanaGantt.barras.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-400">Essa semana</p>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase tracking-wide text-sand-400">
+                {semanaGantt.dias.map((d) => (
+                  <div key={d.toISOString()}>
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()]} {d.getDate()}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {semanaGantt.barras.map((b) => {
+                  const completo = b.concluidas === b.total;
+                  return (
+                    <div key={b.tipo} className="grid grid-cols-7 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => abrirDetalhe(b.tipo)}
+                        className={cn(
+                          "truncate rounded-md px-2 py-1 text-left text-[11px] font-semibold text-cream-50 transition-opacity hover:opacity-90",
+                          completo ? "bg-status-success" : "bg-wine-600"
+                        )}
+                        style={{ gridColumnStart: 1, gridColumnEnd: b.fimIdx + 2 }}
+                        title={b.tipo}
+                      >
+                        {b.tipo} {b.concluidas}/{b.total}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -663,6 +776,8 @@ export default function ObrigacoesPage() {
           )}
         </TableBody>
       </Table>
+      )}
+      </>
       )}
 
       <ObligationFormDialog open={formOpen} onOpenChange={setFormOpen} obligation={editing} />

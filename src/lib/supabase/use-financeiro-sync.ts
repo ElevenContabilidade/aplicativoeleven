@@ -45,6 +45,7 @@ import type {
   Script,
   ConteudoPost,
 } from "@/lib/types";
+import type { RotinaDesativada, RegraVencimento } from "@/lib/obrigacoes-departamentos";
 
 interface DadosFinanceirosRow {
   tipo: string;
@@ -87,6 +88,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
   const setChecklistPessoalFromSupabase = useAppStore((s) => s.setChecklistPessoalFromSupabase);
   const setChecklistMeiFromSupabase = useAppStore((s) => s.setChecklistMeiFromSupabase);
   const setDispensasRotinaFromSupabase = useAppStore((s) => s.setDispensasRotinaFromSupabase);
+  const setRotinasDesativadasFromSupabase = useAppStore((s) => s.setRotinasDesativadasFromSupabase);
+  const setRegrasVencimentoOverrideFromSupabase = useAppStore((s) => s.setRegrasVencimentoOverrideFromSupabase);
   const setSistemasEscritorioFromSupabase = useAppStore((s) => s.setSistemasEscritorioFromSupabase);
   const setSenhasPortaisFromSupabase = useAppStore((s) => s.setSenhasPortaisFromSupabase);
   const setDadosEscritorioFromSupabase = useAppStore((s) => s.setDadosEscritorioFromSupabase);
@@ -171,6 +174,7 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       setChecklistPessoalFromSupabase(porTipo<ChecklistEntry>("checklistPessoal"));
       setChecklistMeiFromSupabase(porTipo<ChecklistEntry>("checklistMei"));
       setDispensasRotinaFromSupabase(porTipo<DispensaRotina>("dispensasRotina"));
+      setRotinasDesativadasFromSupabase(porTipo<RotinaDesativada>("rotinasDesativadas"));
       setSistemasEscritorioFromSupabase(porTipo<SistemaEscritorio>("sistemasEscritorio"));
       setSenhasPortaisFromSupabase(porTipo<SenhaPortalEscritorio>("senhasPortais"));
       setContratosAssinaturaFromSupabase(porTipo<ContratoAssinatura>("contratosAssinatura"));
@@ -193,6 +197,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
       if (dadosEscritorio) setDadosEscritorioFromSupabase(dadosEscritorio);
       const meta = itemUnico<{ valor: number }>("metaMensalClientes");
       if (meta) setMetaMensalClientesFromSupabase(meta.valor);
+      const regrasOverride = itemUnico<{ valor: Record<string, RegraVencimento> }>("regrasVencimentoOverride");
+      if (regrasOverride) setRegrasVencimentoOverrideFromSupabase(regrasOverride.valor);
 
       const idsLidos = porTipo<{ id: string }>("notificacoesLidas").map((n) => n.id);
       if (idsLidos.length > 0) applyNotificationsLidas(idsLidos);
@@ -256,6 +262,8 @@ export function useSupabaseFinanceiroSync(active: boolean) {
     setChecklistPessoalFromSupabase,
     setChecklistMeiFromSupabase,
     setDispensasRotinaFromSupabase,
+    setRotinasDesativadasFromSupabase,
+    setRegrasVencimentoOverrideFromSupabase,
     setSistemasEscritorioFromSupabase,
     setSenhasPortaisFromSupabase,
     setDadosEscritorioFromSupabase,

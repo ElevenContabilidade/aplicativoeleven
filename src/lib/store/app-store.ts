@@ -13,6 +13,7 @@ import { useAuthStore } from "@/lib/store/auth-store";
 import { createClient } from "@/lib/supabase/client";
 import { parsePermissaoKey } from "@/lib/permissoes";
 import { formatCurrency } from "@/lib/utils";
+import type { RotinaDesativada, RegraVencimento } from "@/lib/obrigacoes-departamentos";
 
 /** Nome de quem está logado no momento, para registrar no histórico de
  * ações do colaborador (quem criou/editou o quê). */
@@ -222,6 +223,8 @@ interface AppState {
   servicosExtras: ServicoExtra[];
   licencas: Licenca[];
   dispensasRotina: DispensaRotina[];
+  rotinasDesativadas: RotinaDesativada[];
+  regrasVencimentoOverride: Record<string, RegraVencimento>;
   indicacoes: Indicacao[];
   servicosPortfolio: ServicoPortfolio[];
   recebimentos: Recebimento[];
@@ -438,6 +441,8 @@ interface AppState {
   setServicosExtrasFromSupabase: (servicos: ServicoExtra[]) => void;
   setLicencasFromSupabase: (licencas: Licenca[]) => void;
   setDispensasRotinaFromSupabase: (dispensas: DispensaRotina[]) => void;
+  setRotinasDesativadasFromSupabase: (rotinas: RotinaDesativada[]) => void;
+  setRegrasVencimentoOverrideFromSupabase: (regras: Record<string, RegraVencimento>) => void;
   setIndicacoesFromSupabase: (indicacoes: Indicacao[]) => void;
   setServicosPortfolioFromSupabase: (servicos: ServicoPortfolio[]) => void;
   setChecklistContabilFromSupabase: (checklist: ChecklistEntry[]) => void;
@@ -469,6 +474,9 @@ interface AppState {
   deleteLicenca: (id: string) => void;
   addDispensaRotina: (dispensa: DispensaRotina) => void;
   deleteDispensaRotina: (id: string) => void;
+  addRotinaDesativada: (rotina: RotinaDesativada) => void;
+  deleteRotinaDesativada: (id: string) => void;
+  updateRegrasVencimentoOverride: (regras: Record<string, RegraVencimento>) => void;
   addIndicacao: (indicacao: Indicacao) => void;
   updateIndicacao: (id: string, patch: Partial<Indicacao>) => void;
   deleteIndicacao: (id: string) => void;
@@ -549,6 +557,8 @@ const initial = {
   servicosExtras: [] as ServicoExtra[],
   licencas: [] as Licenca[],
   dispensasRotina: [] as DispensaRotina[],
+  rotinasDesativadas: [] as RotinaDesativada[],
+  regrasVencimentoOverride: {} as Record<string, RegraVencimento>,
   indicacoes: [] as Indicacao[],
   servicosPortfolio: [] as ServicoPortfolio[],
   recebimentos: [] as Recebimento[],
@@ -1423,6 +1433,8 @@ export const useAppStore = create<AppState>()(
       setLicencasFromSupabase: (licencas) =>
         set((s) => ({ licencas, notifications: syncLicencaAlerts(s.notifications, licencas, s.clients) })),
       setDispensasRotinaFromSupabase: (dispensasRotina) => set({ dispensasRotina }),
+      setRotinasDesativadasFromSupabase: (rotinasDesativadas) => set({ rotinasDesativadas }),
+      setRegrasVencimentoOverrideFromSupabase: (regrasVencimentoOverride) => set({ regrasVencimentoOverride }),
       setIndicacoesFromSupabase: (indicacoes) => set({ indicacoes }),
       setServicosPortfolioFromSupabase: (servicosPortfolio) => set({ servicosPortfolio }),
       setChecklistContabilFromSupabase: (checklistContabil) => set({ checklistContabil }),
@@ -1740,6 +1752,18 @@ export const useAppStore = create<AppState>()(
       deleteDispensaRotina: (id) => {
         set((s) => ({ dispensasRotina: s.dispensasRotina.filter((d) => d.id !== id) }));
         deleteFinanceiro("dispensasRotina", id);
+      },
+      addRotinaDesativada: (rotina) => {
+        set((s) => ({ rotinasDesativadas: [rotina, ...s.rotinasDesativadas] }));
+        pushFinanceiro("rotinasDesativadas", rotina.id, null, rotina);
+      },
+      deleteRotinaDesativada: (id) => {
+        set((s) => ({ rotinasDesativadas: s.rotinasDesativadas.filter((r) => r.id !== id) }));
+        deleteFinanceiro("rotinasDesativadas", id);
+      },
+      updateRegrasVencimentoOverride: (regrasVencimentoOverride) => {
+        set({ regrasVencimentoOverride });
+        pushFinanceiro("regrasVencimentoOverride", "default", null, { valor: regrasVencimentoOverride });
       },
 
       addIndicacao: (indicacao) => {
