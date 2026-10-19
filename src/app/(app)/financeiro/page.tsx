@@ -460,6 +460,51 @@ export default function FinanceiroPage() {
   // carteira de clientes — não faz sentido mostrar "Recebido" lá em cima
   // sem contar o que já caiu de honorário de abertura/alteração etc.
   const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) + resumoSocietario.recebido;
+
+  // Itens por trás de cada um dos dois cards "Recebido" — pra poder abrir e
+  // conferir nome a nome por que o regime de caixa deu diferente do de
+  // competência.
+  const [detalheRecebido, setDetalheRecebido] = useState<"competencia" | "caixa" | null>(null);
+
+  const detalheCompetenciaItens = useMemo(() => {
+    const doLedger = ledgerAll
+      .filter(
+        (h) =>
+          competenciasPeriodo.includes(h.competencia) &&
+          (filtroBanco === TODOS || h.banco === filtroBanco) &&
+          (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
+      )
+      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }))
+      .filter((h) => h.valor > 0);
+    const doSocietario = processosSocietarios
+      .filter((p) => (p.valorProcesso ?? 0) > 0 && p.pagamento === "Pago" && competenciasPeriodo.includes((p.dataPagamento ?? p.dataAbertura).slice(0, 7)))
+      .map((p) => ({
+        key: `soc-${p.id}`,
+        nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
+        servico: `Societário — ${p.tipoServico}`,
+        valor: p.valorProcesso ?? 0,
+        competencia: (p.dataPagamento ?? p.dataAbertura).slice(0, 7),
+        data: p.dataPagamento,
+      }));
+    return [...doLedger, ...doSocietario].sort((a, b) => b.valor - a.valor);
+  }, [ledgerAll, processosSocietarios, clients, competenciasPeriodo, filtroBanco, filtroTipo, pagoEfetivoDe]);
+
+  const detalheCaixaItens = useMemo(() => {
+    const doLedger = ledgerAno
+      .filter((h) => h.pagamento && mesesCaixa.includes(h.pagamento.slice(0, 7)))
+      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }));
+    const doSocietario = processosSocietarios
+      .filter((p) => (p.valorProcesso ?? 0) > 0 && p.pagamento === "Pago" && p.dataPagamento && mesesCaixa.includes(p.dataPagamento.slice(0, 7)))
+      .map((p) => ({
+        key: `soc-${p.id}`,
+        nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
+        servico: `Societário — ${p.tipoServico}`,
+        valor: p.valorProcesso ?? 0,
+        competencia: p.dataAbertura.slice(0, 7),
+        data: p.dataPagamento,
+      }));
+    return [...doLedger, ...doSocietario].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""));
+  }, [ledgerAno, mesesCaixa, processosSocietarios, clients, pagoEfetivoDe]);
   const emAberto =
     ledgerFiltrado.filter((h) => h.status !== "Atrasado").reduce((a, h) => a + Math.max(h.valor - pagoEfetivo(h), 0), 0) +
     resumoSocietario.aReceber;
@@ -706,14 +751,16 @@ export default function FinanceiroPage() {
           value={formatCurrency(recebido)}
           icon={CircleDollarSign}
           tone="success"
-          hint="Regime de competência — pelo mês do honorário"
+          hint="Regime de competência — clique pra ver os itens"
+          onClick={() => setDetalheRecebido("competencia")}
         />
         <MetricCard
           label={`Recebido (caixa) — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`}
           value={formatCurrency(recebidoCaixa)}
           icon={Landmark}
           tone="success"
-          hint="Regime de caixa — o que caiu de fato nesse mês"
+          hint="Regime de caixa — clique pra ver os itens"
+          onClick={() => setDetalheRecebido("caixa")}
         />
         <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Wallet} tone="warning" />
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
@@ -1099,6 +1146,50 @@ export default function FinanceiroPage() {
           <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
             <span>Total ({detalheMrr.length} lançamentos)</span>
             <span>{formatCurrency(mrr)}</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!detalheRecebido} onOpenChange={(o) => !o && setDetalheRecebido(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {detalheRecebido === "caixa" ? "Recebido (caixa) — itens que compõem o valor" : "Recebido — itens que compõem o valor"}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-[11px] text-sand-500">
+            {detalheRecebido === "caixa"
+              ? "Pela data real de pagamento, não importa a competência."
+              : "Pela competência do honorário, não importa quando foi pago de fato."}
+          </p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Serviço</TableHead>
+                <TableHead>Competência</TableHead>
+                <TableHead>Data pagamento</TableHead>
+                <TableHead className="text-right">Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).map((l) => (
+                <TableRow key={l.key}>
+                  <TableCell className="font-medium text-sand-800">{l.nome}</TableCell>
+                  <TableCell className="text-sand-500">{l.servico}</TableCell>
+                  <TableCell className="text-sand-500">{l.competencia}</TableCell>
+                  <TableCell className={cn(!l.data && "text-sand-300")}>{l.data ? formatDate(l.data) : "sem data"}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(l.valor)}</TableCell>
+                </TableRow>
+              ))}
+              {(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhum item nesse período.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
+            <span>Total ({(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).length} lançamentos)</span>
+            <span>{formatCurrency(detalheRecebido === "caixa" ? recebidoCaixa : recebido)}</span>
           </div>
         </DialogContent>
       </Dialog>
