@@ -226,13 +226,17 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : l.valor,
+      dataPagamento: quitado ? undefined : new Date().toISOString().slice(0, 10),
     });
   }
 
   function handleValorPagoChange(l: Linha, valorPago: number) {
+    const pago = valorPago >= l.valor && l.valor > 0;
+    const existente = recebimentosParceiro.find((r) => r.clienteId === l.cliente.id && r.competencia === l.competencia)?.dataPagamento;
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       valorPago,
-      status: valorPago >= l.valor && l.valor > 0 ? "Pago" : "Em aberto",
+      status: pago ? "Pago" : "Em aberto",
+      dataPagamento: pago ? (existente ?? new Date().toISOString().slice(0, 10)) : undefined,
     });
   }
 
@@ -293,13 +297,17 @@ export default function ParceirosPage() {
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : le.extra.valorMensal,
+      dataPagamento: quitado ? undefined : new Date().toISOString().slice(0, 10),
     });
   }
 
   function handleValorPagoExtraChange(le: LinhaExtra, valorPago: number) {
+    const pago = valorPago >= le.extra.valorMensal && le.extra.valorMensal > 0;
+    const existente = pagamentosExtrasParceiro.find((p) => p.extraParceiroId === le.extra.id && p.competencia === le.competencia)?.dataPagamento;
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       valorPago,
-      status: valorPago >= le.extra.valorMensal && le.extra.valorMensal > 0 ? "Pago" : "Em aberto",
+      status: pago ? "Pago" : "Em aberto",
+      dataPagamento: pago ? (existente ?? new Date().toISOString().slice(0, 10)) : undefined,
     });
   }
 
