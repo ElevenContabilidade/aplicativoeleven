@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Repeat, CircleDollarSign, Wallet, Search, Plus, Trash2, SplitSquareHorizontal } from "lucide-react";
+import { Repeat, CircleDollarSign, Wallet, Search, Plus, Trash2, SplitSquareHorizontal, Wand2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,12 @@ interface Linha {
   status: ReturnType<typeof statusRecebimentoParceiro>;
   banco: string;
   tipoPessoa: TipoPessoaRecebimento | "";
+}
+
+function ultimoDiaCompetencia(competencia: string): string {
+  const [ano, mes] = competencia.split("-").map(Number);
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  return `${competencia}-${String(ultimoDia).padStart(2, "0")}`;
 }
 
 function inicioContratoLabel(iso: string) {
@@ -352,12 +358,54 @@ export default function ParceirosPage() {
     }
   }
 
+  /** Preenche a data de pagamento de quem já está marcado "Pago" mas ficou
+   * sem data (marcado antes dessa coluna existir) — usa o último dia da
+   * própria competência como aproximação, já que não tem como saber o dia
+   * exato. Sem isso, esses recebimentos nunca entram no "Recebido (caixa)"
+   * do Financeiro, só na competência. */
+  async function aplicarDatasPagamentoRetroativas() {
+    const semDataRecebimentos = recebimentosParceiro.filter((r) => r.status === "Pago" && !r.dataPagamento && !r.removido);
+    const semDataExtras = pagamentosExtrasParceiro.filter((p) => p.status === "Pago" && !p.dataPagamento && !p.removido);
+    const total = semDataRecebimentos.length + semDataExtras.length;
+    if (total === 0) {
+      alert("Nenhum recebimento de parceiro pago sem data — tudo certo.");
+      return;
+    }
+    if (
+      !confirm(
+        `Encontrei ${total} recebimento(s) de parceiro já marcados como "Pago" sem data de pagamento. Preencher com o último dia da própria competência (aproximação, já que não dá pra saber o dia exato)? Isso faz esses valores passarem a contar no "Recebido (caixa)" do Financeiro.`
+      )
+    )
+      return;
+
+    const atualizacoes = [
+      ...semDataRecebimentos.map((r) => () => updateRecebimentoParceiro(r.clienteId, r.competencia, { dataPagamento: ultimoDiaCompetencia(r.competencia) })),
+      ...semDataExtras.map((p) => () => updatePagamentoExtraParceiro(p.extraParceiroId, p.competencia, { dataPagamento: ultimoDiaCompetencia(p.competencia) })),
+    ];
+    // Mesmo cuidado de sempre: disparar tudo de uma vez passa do limite de
+    // requisições simultâneas do navegador quando são muitos — aplica em
+    // lotes pequenos, com uma pausa entre eles.
+    const TAMANHO_LOTE = 15;
+    for (let i = 0; i < atualizacoes.length; i += TAMANHO_LOTE) {
+      for (const aplicar of atualizacoes.slice(i, i + TAMANHO_LOTE)) aplicar();
+      if (i + TAMANHO_LOTE < atualizacoes.length) await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    alert(`Pronto — ${total} data(s) de pagamento preenchida(s).`);
+  }
+
   return (
     <div>
       <PageHeader
         title="Parceiros"
         description="Recebimentos via PIX das empresas de parceiros que a Eleven atende — não entram na emissão de boletos."
-        actions={<Button onClick={() => setNovoParceiroOpen(true)}><Plus className="size-3.5" /> Novo parceiro</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={aplicarDatasPagamentoRetroativas}>
+              <Wand2 className="size-3.5" /> Preencher datas de pagamento antigas
+            </Button>
+            <Button onClick={() => setNovoParceiroOpen(true)}><Plus className="size-3.5" /> Novo parceiro</Button>
+          </div>
+        }
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
