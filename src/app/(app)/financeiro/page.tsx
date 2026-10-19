@@ -306,6 +306,19 @@ export default function FinanceiroPage() {
     (h: { valorPago?: number; status: string; valor: number }) => h.valorPago ?? (h.status === "Pago" ? h.valor : 0),
     []
   );
+  // Regime de caixa: quanto caiu de fato no banco no(s) mês(es) em vista,
+  // pela data real de pagamento — não pela competência do honorário (que é
+  // o que "Recebido" acima mostra, regime de competência). Usa o ledger do
+  // ANO inteiro (não só do período filtrado) porque um pagamento pode cair
+  // num mês diferente do da competência que ele quita.
+  const mesesCaixa = useMemo(() => (mes === "anual" ? competenciasAno : [`${year}-${mes}`]), [mes, competenciasAno, year]);
+  const recebidoCaixa = useMemo(() => {
+    const doLedger = ledgerAno
+      .filter((h) => h.pagamento && mesesCaixa.includes(h.pagamento.slice(0, 7)))
+      .reduce((a, h) => a + pagoEfetivoDe(h), 0);
+    const doSocietario = resumoFinanceiroSocietario(processosSocietarios, mesesCaixa).recebido;
+    return doLedger + doSocietario;
+  }, [ledgerAno, mesesCaixa, processosSocietarios, pagoEfetivoDe]);
   const resumoSocietarioPorMes = useMemo(
     () => new Map(MESES.map((m) => [`${year}-${m.value}`, resumoFinanceiroSocietario(processosSocietarios, [`${year}-${m.value}`])])),
     [processosSocietarios, year]
@@ -679,7 +692,7 @@ export default function FinanceiroPage() {
         </Select>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <MetricCard
           label="MRR"
           value={formatCurrency(mrr)}
@@ -688,7 +701,20 @@ export default function FinanceiroPage() {
           hint="Clique para ver quem compõe o valor"
           onClick={() => setMrrDetalheOpen(true)}
         />
-        <MetricCard label={`Recebido — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`} value={formatCurrency(recebido)} icon={CircleDollarSign} tone="success" />
+        <MetricCard
+          label={`Recebido — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`}
+          value={formatCurrency(recebido)}
+          icon={CircleDollarSign}
+          tone="success"
+          hint="Regime de competência — pelo mês do honorário"
+        />
+        <MetricCard
+          label={`Recebido (caixa) — ${mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`}
+          value={formatCurrency(recebidoCaixa)}
+          icon={Landmark}
+          tone="success"
+          hint="Regime de caixa — o que caiu de fato nesse mês"
+        />
         <MetricCard label="Em aberto" value={formatCurrency(emAberto)} icon={Wallet} tone="warning" />
         <MetricCard label="Inadimplência" value={formatCurrency(inadimplencia)} icon={CircleAlert} tone="danger" />
         <MetricCard label="Ticket médio" value={formatCurrency(ticketMedio)} icon={Receipt} />
