@@ -33,6 +33,7 @@ const PIE_COLORS = ["#5C1420", "#8A2F3E", "#E6C378", "#B4791F", "#3E6B8A", "#2E7
 
 type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
 type ContaPagarSortField = "descricao" | "competencia" | "vencimento" | "valor" | "status";
+type DetalheRecebidoSortField = "nome" | "servico" | "competencia" | "data" | "valor";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -465,6 +466,19 @@ export default function FinanceiroPage() {
   // conferir nome a nome por que o regime de caixa deu diferente do de
   // competência.
   const [detalheRecebido, setDetalheRecebido] = useState<"competencia" | "caixa" | null>(null);
+  const [detalheSortField, setDetalheSortField] = useState<DetalheRecebidoSortField | null>(null);
+  const [detalheSortDir, setDetalheSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleDetalheSort(field: DetalheRecebidoSortField) {
+    if (detalheSortField !== field) {
+      setDetalheSortField(field);
+      setDetalheSortDir("asc");
+    } else if (detalheSortDir === "asc") {
+      setDetalheSortDir("desc");
+    } else {
+      setDetalheSortField(null);
+    }
+  }
 
   const detalheCompetenciaItens = useMemo(() => {
     const doLedger = ledgerAll
@@ -505,6 +519,16 @@ export default function FinanceiroPage() {
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""));
   }, [ledgerAno, mesesCaixa, processosSocietarios, clients, pagoEfetivoDe]);
+
+  const detalheItensBase = detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens;
+  const detalheItens = detalheSortField
+    ? [...detalheItensBase].sort((a, b) => {
+        const dir = detalheSortDir === "asc" ? 1 : -1;
+        if (detalheSortField === "valor") return (a.valor - b.valor) * dir;
+        return String(a[detalheSortField] ?? "").localeCompare(String(b[detalheSortField] ?? ""), "pt-BR") * dir;
+      })
+    : detalheItensBase;
+
   const emAberto =
     ledgerFiltrado.filter((h) => h.status !== "Atrasado").reduce((a, h) => a + Math.max(h.valor - pagoEfetivo(h), 0), 0) +
     resumoSocietario.aReceber;
@@ -1165,15 +1189,15 @@ export default function FinanceiroPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Serviço</TableHead>
-                <TableHead>Competência</TableHead>
-                <TableHead>Data pagamento</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
+                <SortableHead field="nome" label="Cliente" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
+                <SortableHead field="servico" label="Serviço" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
+                <SortableHead field="competencia" label="Competência" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
+                <SortableHead field="data" label="Data pagamento" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
+                <SortableHead field="valor" label="Valor" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).map((l) => (
+              {detalheItens.map((l) => (
                 <TableRow key={l.key}>
                   <TableCell className="font-medium text-sand-800">{l.nome}</TableCell>
                   <TableCell className="text-sand-500">{l.servico}</TableCell>
@@ -1182,13 +1206,13 @@ export default function FinanceiroPage() {
                   <TableCell className="text-right">{formatCurrency(l.valor)}</TableCell>
                 </TableRow>
               ))}
-              {(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).length === 0 && (
+              {detalheItens.length === 0 && (
                 <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhum item nesse período.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
           <div className="mt-3 flex items-center justify-between border-t border-sand-200 pt-3 text-sm font-semibold text-sand-900">
-            <span>Total ({(detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens).length} lançamentos)</span>
+            <span>Total ({detalheItens.length} lançamentos)</span>
             <span>{formatCurrency(detalheRecebido === "caixa" ? recebidoCaixa : recebido)}</span>
           </div>
         </DialogContent>
