@@ -1,94 +1,85 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { useMemo } from "react";
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAppStore } from "@/lib/store/app-store";
-import { LEAD_STAGES } from "@/lib/types";
-import { cn, formatCurrency } from "@/lib/utils";
+import { LEAD_STAGES, type Lead } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
+import { ChartCard, StatTile, WINE, WINE_SHADES, GOLD, MESES } from "./crm-shared";
 
-const WINE = "#5C1420";
-const GOLD = "#E6C378";
-
-const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const MESES_VALUE = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-
-function PeriodChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
-        active ? "border-wine-600 bg-wine-700 text-cream-50" : "border-sand-300 bg-white text-sand-600 hover:bg-sand-100"
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-type AnalyticsTab = "pipeline" | "fechados" | "aquisicao" | "geral";
-
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <Card>
-      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
-      <CardContent className="pt-4">
-        <div className="h-56 w-full">{children}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function StatTile({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <p className="text-[11px] text-sand-500">{label}</p>
-        <p className="mt-1 text-lg font-semibold text-sand-900">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function CrmAnalytics({
-  years,
-  year,
-  mes,
-  onYearChange,
-  onMesChange,
-}: {
-  years: string[];
-  year: string;
-  mes: string;
-  onYearChange: (year: string) => void;
-  onMesChange: (mes: string) => void;
-}) {
-  const leads = useAppStore((s) => s.leads);
-  const [tab, setTab] = useState<AnalyticsTab>("pipeline");
-
-  const leadsDoAno = useMemo(() => leads.filter((l) => l.dataEntrada.startsWith(year)), [leads, year]);
-
-  const leadsFiltrados = useMemo(
-    () => (mes === "anual" ? leadsDoAno : leadsDoAno.filter((l) => l.dataEntrada.slice(5, 7) === mes)),
-    [leadsDoAno, mes]
-  );
-
-  const periodoLabel = mes === "anual" ? year : `${MESES[MESES_VALUE.indexOf(mes)]}/${year}`;
-
+/** Gráfico de barras com a distribuição dos leads do período por etapa do
+ * funil — usado na aba Pipeline, acima do Kanban. */
+export function CrmPipelineChart({ leadsFiltrados, periodoLabel }: { leadsFiltrados: Lead[]; periodoLabel: string }) {
   const porEtapa = useMemo(
     () => LEAD_STAGES.map((stage) => ({ stage, total: leadsFiltrados.filter((l) => l.stage === stage).length })),
     [leadsFiltrados]
   );
 
-  const fechados = leadsFiltrados.filter((l) => l.stage === "Fechado");
-  const perdidos = leadsFiltrados.filter((l) => l.stage === "Perdido");
-  const taxaConversao = leadsFiltrados.length > 0 ? Math.round((fechados.length / leadsFiltrados.length) * 100) : 0;
-  const valorFechado = fechados.reduce((sum, l) => sum + l.valorEstimado, 0);
+  return (
+    <ChartCard title={`Leads por etapa do funil — ${periodoLabel}`}>
+      <ResponsiveContainer>
+        <BarChart data={porEtapa}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+          <XAxis dataKey="stage" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+          <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+          <Tooltip />
+          <Bar dataKey="total" fill={WINE} radius={[4, 4, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  );
+}
 
+/** 4 cartões-resumo do período (leads, pipeline em aberto, taxa de
+ * conversão, ticket médio dos fechados) — usados na aba Dashboard. */
+export function CrmDashboardStats({ leadsFiltrados, periodoLabel }: { leadsFiltrados: Lead[]; periodoLabel: string }) {
+  const fechados = leadsFiltrados.filter((l) => l.stage === "Fechado");
+  const valorFechado = fechados.reduce((sum, l) => sum + l.valorEstimado, 0);
+  const taxaConversao = leadsFiltrados.length > 0 ? Math.round((fechados.length / leadsFiltrados.length) * 100) : 0;
+  const valorPipeline = leadsFiltrados
+    .filter((l) => l.stage !== "Fechado" && l.stage !== "Perdido")
+    .reduce((sum, l) => sum + l.valorEstimado, 0);
+  const ticketMedio = fechados.length > 0 ? valorFechado / fechados.length : 0;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-4">
+      <StatTile label={`Leads — ${periodoLabel}`} value={String(leadsFiltrados.length)} />
+      <StatTile label="Valor em pipeline" value={formatCurrency(valorPipeline)} />
+      <StatTile label="Taxa de conversão" value={`${taxaConversao}%`} />
+      <StatTile label="Ticket médio (fechados)" value={formatCurrency(ticketMedio)} />
+    </div>
+  );
+}
+
+function Podio({ top3 }: { top3: { mes: string; total: number }[] }) {
+  const ordemVisual = [top3[1], top3[0], top3[2]]; // 2º, 1º, 3º — visual de pódio
+  const alturas = ["h-16", "h-24", "h-12"];
+  const medalhas = ["🥈", "🥇", "🥉"];
+
+  return (
+    <div className="flex items-end justify-center gap-3">
+      {ordemVisual.map((item, i) =>
+        item ? (
+          <div key={item.mes} className="flex flex-col items-center gap-1">
+            <span className="text-lg">{medalhas[i]}</span>
+            <div
+              className={`flex ${alturas[i]} w-20 flex-col items-center justify-end rounded-t-lg border border-wine-200 bg-wine-50 pb-1.5`}
+            >
+              <span className="text-sm font-bold text-wine-700">{item.total}</span>
+            </div>
+            <span className="text-[11px] font-medium text-sand-600">{item.mes}</span>
+          </div>
+        ) : (
+          <div key={i} className="w-20" />
+        )
+      )}
+    </div>
+  );
+}
+
+/** Aba Aquisição: origem dos leads, serviços mais procurados e distribuição
+ * mensal (donut + pódio do melhor mês do ano). */
+export function CrmAquisicao({ leadsFiltrados, leadsDoAno }: { leadsFiltrados: Lead[]; leadsDoAno: Lead[] }) {
   const porOrigem = useMemo(() => {
     const map = new Map<string, number>();
     leadsFiltrados.forEach((l) => map.set(l.origem, (map.get(l.origem) ?? 0) + 1));
@@ -101,9 +92,8 @@ export function CrmAnalytics({
     return [...map.entries()].map(([servico, total]) => ({ servico, total })).sort((a, b) => b.total - a.total);
   }, [leadsFiltrados]);
 
-  // Sempre quebrado pelos 12 meses do ano selecionado, independente do chip
-  // de mês ativo — filtrar esse gráfico por mês não faria sentido (mostraria
-  // só uma barra).
+  // Sempre quebrado pelos 12 meses do ano selecionado, independente do mês
+  // ativo no seletor — filtrar esse gráfico por mês não faria sentido.
   const porMes = useMemo(() => {
     const counts = Array(12).fill(0);
     leadsDoAno.forEach((l) => {
@@ -113,124 +103,60 @@ export function CrmAnalytics({
     return MESES.map((mesLabel, i) => ({ mes: mesLabel, total: counts[i] }));
   }, [leadsDoAno]);
 
-  const melhorMes = porMes.reduce((best, m) => (m.total > best.total ? m : best), porMes[0]);
-
-  const valorPipeline = leadsFiltrados
-    .filter((l) => l.stage !== "Fechado" && l.stage !== "Perdido")
-    .reduce((sum, l) => sum + l.valorEstimado, 0);
-  const ticketMedio = fechados.length > 0 ? valorFechado / fechados.length : 0;
+  const porMesComLeads = useMemo(() => porMes.filter((m) => m.total > 0), [porMes]);
+  const top3Meses = useMemo(() => [...porMes].sort((a, b) => b.total - a.total).slice(0, 3), [porMes]);
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle>CRM · Lead → Cliente</CardTitle>
-        <Select value={year} onValueChange={onYearChange}>
-          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
-          </SelectContent>
-        </Select>
-      </CardHeader>
-      <CardContent className="pt-4">
-        <div className="mb-4 flex flex-wrap gap-1.5">
-          <PeriodChip label="Ano inteiro" active={mes === "anual"} onClick={() => onMesChange("anual")} />
-          {MESES.map((label, i) => (
-            <PeriodChip key={label} label={label} active={mes === MESES_VALUE[i]} onClick={() => onMesChange(MESES_VALUE[i])} />
+    <div className="grid gap-4 lg:grid-cols-2">
+      <ChartCard title="Leads por origem">
+        <ResponsiveContainer>
+          <BarChart data={porOrigem}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
+            <XAxis dataKey="origem" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
+            <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+            <Tooltip />
+            <Bar dataKey="total" fill={GOLD} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <Card>
+        <CardHeader><CardTitle>Serviços mais procurados</CardTitle></CardHeader>
+        <CardContent className="space-y-1.5 pt-4">
+          {servicosMaisProcurados.map((s) => (
+            <div key={s.servico} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2 text-xs">
+              <span className="text-sand-800">{s.servico}</span>
+              <span className="font-semibold text-wine-700">{s.total}</span>
+            </div>
           ))}
-        </div>
+          {servicosMaisProcurados.length === 0 && <p className="text-xs text-sand-400">Sem dados no período.</p>}
+        </CardContent>
+      </Card>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as AnalyticsTab)} className="mb-4">
-          <TabsList>
-            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-            <TabsTrigger value="fechados">Fechados e perdidos</TabsTrigger>
-            <TabsTrigger value="aquisicao">Aquisição</TabsTrigger>
-            <TabsTrigger value="geral">Geral</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      <ChartCard title="Leads por mês">
+        <ResponsiveContainer>
+          <PieChart>
+            <Pie data={porMesComLeads} dataKey="total" nameKey="mes" innerRadius="55%" outerRadius="85%" paddingAngle={2}>
+              {porMesComLeads.map((entry, i) => (
+                <Cell key={entry.mes} fill={WINE_SHADES[i % WINE_SHADES.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+        {porMesComLeads.length === 0 && <p className="mt-2 text-center text-xs text-sand-400">Sem leads no ano.</p>}
+      </ChartCard>
 
-        {tab === "pipeline" && (
-          <ChartCard title={`Leads por etapa do funil — ${periodoLabel}`}>
-            <ResponsiveContainer>
-              <BarChart data={porEtapa}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                <XAxis dataKey="stage" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="total" fill={WINE} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        )}
-
-        {tab === "fechados" && (
-          <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label={`Fechados — ${periodoLabel}`} value={String(fechados.length)} />
-            <StatTile label={`Perdidos — ${periodoLabel}`} value={String(perdidos.length)} />
-            <StatTile label="Taxa de conversão" value={`${taxaConversao}%`} />
-            <StatTile label="Valor fechado" value={formatCurrency(valorFechado)} />
-          </div>
-        )}
-
-        {tab === "aquisicao" && (
-          <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Leads por origem">
-              <ResponsiveContainer>
-                <BarChart data={porOrigem}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                  <XAxis dataKey="origem" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={50} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="total" fill={GOLD} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <Card>
-              <CardHeader><CardTitle>Serviços mais procurados</CardTitle></CardHeader>
-              <CardContent className="space-y-1.5 pt-4">
-                {servicosMaisProcurados.map((s) => (
-                  <div key={s.servico} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-2 text-xs">
-                    <span className="text-sand-800">{s.servico}</span>
-                    <span className="font-semibold text-wine-700">{s.total}</span>
-                  </div>
-                ))}
-                {servicosMaisProcurados.length === 0 && <p className="text-xs text-sand-400">Sem dados no período.</p>}
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Leads por mês</CardTitle>
-                {melhorMes && melhorMes.total > 0 && (
-                  <span className="text-xs font-semibold text-wine-700">Melhor mês: {melhorMes.mes} ({melhorMes.total})</span>
-                )}
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="h-56 w-full">
-                  <ResponsiveContainer>
-                    <BarChart data={porMes}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E9E3D6" vertical={false} />
-                      <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                      <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="total" fill={WINE} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {tab === "geral" && (
-          <div className="grid gap-4 sm:grid-cols-4">
-            <StatTile label={`Leads — ${periodoLabel}`} value={String(leadsFiltrados.length)} />
-            <StatTile label="Valor em pipeline" value={formatCurrency(valorPipeline)} />
-            <StatTile label="Taxa de conversão" value={`${taxaConversao}%`} />
-            <StatTile label="Ticket médio (fechados)" value={formatCurrency(ticketMedio)} />
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <Card>
+        <CardHeader><CardTitle>Melhor mês do ano</CardTitle></CardHeader>
+        <CardContent className="flex min-h-[224px] items-center justify-center pt-4">
+          {top3Meses[0] && top3Meses[0].total > 0 ? (
+            <Podio top3={top3Meses} />
+          ) : (
+            <p className="text-xs text-sand-400">Sem dados no ano.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
