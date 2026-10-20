@@ -72,7 +72,6 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [servicoPortfolioId, setServicoPortfolioId] = useState("");
   const [valorEstimado, setValorEstimado] = useState("");
   const [tipoServico, setTipoServico] = useState<TipoServicoLead | "">("");
-  const [nicho, setNicho] = useState("");
   const [segmento, setSegmento] = useState("");
   const [valorAssessoriaMensal, setValorAssessoriaMensal] = useState("");
   const [faturamentoEstimado, setFaturamentoEstimado] = useState("");
@@ -116,7 +115,7 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     setNome(""); setEmpresa(""); setStage("Lead recebido"); setMotivoPerda(""); setTelefone("");
     setDataEntrada(new Date().toISOString().slice(0, 10)); setEmail(""); setCidade(""); setEstado("");
     setOrigem("Site"); setResponsavelId(userId ?? ""); setClienteIndicadorId(""); setComissaoIndicacaoPercentual("");
-    setServicoPortfolioId(""); setValorEstimado(""); setTipoServico(""); setNicho(""); setSegmento("");
+    setServicoPortfolioId(""); setValorEstimado(""); setTipoServico(""); setSegmento("");
     setValorAssessoriaMensal(""); setFaturamentoEstimado(""); setQuantidadeSocios(""); setNumeroFuncionarios("");
     setJaTemCnpj(""); setCnpj(""); setRegimeTributarioAtual("");
     setCpf(""); setSenhaGov(""); setObservacoes("");
@@ -154,7 +153,6 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       cidade: cidade || "—",
       estado: estado || "—",
       segmento: segmento || undefined,
-      nicho: nicho || undefined,
       quantidadeSocios: quantidadeSocios ? Number(quantidadeSocios) : undefined,
       jaTemCnpj: jaTemCnpj === "" ? undefined : jaTemCnpj === "sim",
       tipoServico: tipoServico || undefined,
@@ -301,10 +299,7 @@ export function LeadFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Nicho">
-                <Input value={nicho} onChange={(e) => setNicho(e.target.value)} placeholder="Ex: Designer" />
-              </Field>
-              <Field label="Segmento" className="col-span-2">
+              <Field label="Segmento">
                 <Input value={segmento} onChange={(e) => setSegmento(e.target.value)} placeholder="Ex: Clínica odontológica" />
               </Field>
               <Field label="Média de faturamento mensal">

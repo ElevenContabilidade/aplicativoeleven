@@ -339,9 +339,6 @@ export interface Lead {
   estado: string;
 
   segmento?: string;
-  /** Nicho de atuação do lead (ex: "Designer", "Clínica odontológica") —
-   * diferente de segmento, que é mais genérico. */
-  nicho?: string;
   profissao?: string;
   atividade?: string;
   regimeTributarioAtual?: string;

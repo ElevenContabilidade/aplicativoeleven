@@ -260,9 +260,6 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Nicho">
-                <Input value={form.nicho ?? ""} onChange={(e) => set("nicho", e.target.value)} placeholder="Ex: Designer" />
-              </Field>
               <Field label="Segmento">
                 <Input value={form.segmento ?? ""} onChange={(e) => set("segmento", e.target.value)} />
               </Field>
