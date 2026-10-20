@@ -296,6 +296,36 @@ export interface LeadHistoricoEntry {
   paraStage?: LeadStage;
 }
 
+export type TipoServicoLead = "Recorrente" | "Esporádico";
+
+export type LembreteReuniao = "Nenhum" | "No dia" | "1 dia antes" | "1 hora antes";
+
+export interface ReuniaoLead {
+  data: string; // "YYYY-MM-DD"
+  horario?: string; // "HH:MM" — só quando "incluir horário" está marcado
+  dataTermino?: string; // "YYYY-MM-DD"
+  lembrete?: LembreteReuniao;
+}
+
+/** Nomes padrão das 3 etapas de condução pós-contato — a Kauane pode
+ * renomear/adicionar outras direto no lead, mas todo lead novo já nasce
+ * com essas 3. */
+export const ETAPAS_CONDUCAO_PADRAO = ["Segundo contato", "Terceiro contato", "Encerramento"] as const;
+
+export const MENSAGENS_CONDUCAO_PADRAO: Record<(typeof ETAPAS_CONDUCAO_PADRAO)[number], string> = {
+  "Segundo contato": "Olá [nome], bom dia, tudo bem?\nPreciso garantir que o seu atendimento foi concluído.\nVocê conseguiu analisar nossa resposta?",
+  "Terceiro contato": "Olá [nome], passando novamente por aqui — ainda tem interesse em seguir com a proposta? Fico à disposição pra qualquer dúvida.",
+  Encerramento: "Olá [nome], como não tivemos retorno, vamos encerrar esse atendimento por aqui. Qualquer coisa, é só chamar quando quiser retomar!",
+};
+
+export interface EtapaConducaoLead {
+  id: string;
+  nome: string;
+  concluido: boolean;
+  data?: string;
+  mensagem?: string;
+}
+
 export interface Lead {
   id: string;
   nome: string;
@@ -309,11 +339,34 @@ export interface Lead {
   estado: string;
 
   segmento?: string;
+  /** Nicho de atuação do lead (ex: "Designer", "Clínica odontológica") —
+   * diferente de segmento, que é mais genérico. */
+  nicho?: string;
   profissao?: string;
   atividade?: string;
   regimeTributarioAtual?: string;
   faturamentoEstimado?: number;
   numeroFuncionarios?: number;
+  quantidadeSocios?: number;
+  jaTemCnpj?: boolean;
+  /** Se a assessoria combinada é recorrente (mensal) ou um serviço avulso. */
+  tipoServico?: TipoServicoLead;
+  /** Serviço escolhido no catálogo do Portfólio (ver ServicoPortfolio) —
+   * complementa servicosInteresse, que continua livre pra marcar múltiplos
+   * interesses; esse aqui é o serviço principal/específico negociado. */
+  servicoPortfolioId?: string;
+
+  /** Senha do portal gov.br do lead — só preenchida quando ele já
+   * compartilha esse acesso durante o atendimento (ex: abertura de MEI). */
+  senhaGov?: string;
+
+  /** Preenchido quando o lead é marcado "Perdido" — por que não fechou. */
+  motivoPerda?: string;
+
+  reuniao?: ReuniaoLead;
+  /** Checklist de follow-up pós-contato (Segundo contato, Terceiro contato,
+   * Encerramento) — cada lead novo já nasce com as 3 etapas padrão. */
+  conducao?: EtapaConducaoLead[];
 
   servicosInteresse: ServicoInteresse[];
   origem: LeadOrigem;
@@ -523,7 +576,14 @@ export interface ServicoExtra {
 /** Tabela de preços dos serviços que a Eleven vende (Portfólio). */
 export interface ServicoPortfolio {
   id: string;
+  /** Número de catálogo (ex: 1 em "01. Abertura de empresa") — serve só pra
+   * ordenar/identificar visualmente, não tem significado por si só. */
+  numero?: number;
   nome: string;
+  /** Regime/tipo de pessoa a que esse serviço se aplica (ex: "Simples
+   * Nacional", "MEI", "Pessoa física") — texto livre, mostrado entre
+   * parênteses ao lado do nome no catálogo. */
+  categoria?: string;
   valor: number;
 }
 

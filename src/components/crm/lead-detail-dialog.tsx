@@ -12,12 +12,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/ui/status-badge";
-import type { Lead, LeadOrigem, ServicoInteresse } from "@/lib/types";
+import { LEAD_STAGES, type Lead, type LeadOrigem, type LeadStage, type ServicoInteresse, type TipoServicoLead } from "@/lib/types";
 import { formatBytes, formatDate, formatDateTime } from "@/lib/utils";
 import { useAppStore } from "@/lib/store/app-store";
+import { teamName } from "@/lib/team-lookup";
 import { createClientFromLead } from "@/lib/actions/convert-lead";
 import { idIndicacaoDoLead, sincronizarIndicacaoDoLead } from "@/lib/actions/sincronizar-indicacao-lead";
 import { uploadPropostaLead } from "@/lib/upload-proposta-lead";
+import { conducaoPadrao, ConducaoChecklist } from "@/components/crm/lead-conducao";
+import { LeadReuniaoFields } from "@/components/crm/lead-reuniao-fields";
 
 const SERVICOS: ServicoInteresse[] = [
   "Contabilidade mensal",
@@ -32,12 +35,24 @@ const SERVICOS: ServicoInteresse[] = [
 ];
 
 const ORIGENS: LeadOrigem[] = ["Instagram", "Google", "Site", "WhatsApp", "Indicação", "Prospecção ativa", "Parceiro", "Evento", "Outro"];
+const TIPOS_SERVICO: TipoServicoLead[] = ["Recorrente", "Esporádico"];
+const MESES_NOME = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+
+function mesReferencia(dataIso: string): string {
+  if (!dataIso) return "—";
+  const [, mesStr] = dataIso.split("-");
+  const mes = Number(mesStr);
+  if (!mes) return "—";
+  return `${mesStr}. ${MESES_NOME[mes - 1]}`;
+}
 
 export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose: () => void }) {
   const router = useRouter();
   const addClient = useAppStore((s) => s.addClient);
   const clients = useAppStore((s) => s.clients);
   const leads = useAppStore((s) => s.leads);
+  const team = useAppStore((s) => s.team);
+  const servicosPortfolio = useAppStore((s) => s.servicosPortfolio);
   const updateLead = useAppStore((s) => s.updateLead);
   const deleteLead = useAppStore((s) => s.deleteLead);
   const indicacoes = useAppStore((s) => s.indicacoes);
@@ -124,7 +139,7 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
 
   return (
     <Dialog open={!!lead} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>{lead.nome}</DialogTitle>
@@ -133,83 +148,221 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
           <p className="text-xs text-sand-500">{lead.empresa}</p>
         </DialogHeader>
 
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <Field label="Nome" className="col-span-2">
-              <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
-            </Field>
-            <Field label="Empresa" className="col-span-2">
-              <Input value={form.empresa ?? ""} onChange={(e) => set("empresa", e.target.value)} />
-            </Field>
-            <Field label="Telefone">
-              <Input value={form.telefone} onChange={(e) => set("telefone", e.target.value)} />
-            </Field>
-            <Field label="E-mail">
-              <Input value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
-            </Field>
-            <Field label="Cidade">
-              <Input value={form.cidade} onChange={(e) => set("cidade", e.target.value)} />
-            </Field>
-            <Field label="Estado">
-              <Input value={form.estado} maxLength={2} onChange={(e) => set("estado", e.target.value.toUpperCase())} />
-            </Field>
-            <Field label="Origem">
-              <Select value={form.origem} onValueChange={(v) => set("origem", v as LeadOrigem)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ORIGENS.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
-                </SelectContent>
-              </Select>
-            </Field>
-            {form.origem === "Indicação" && (
-              <>
-                <Field label="Cliente que indicou">
-                  <Select value={form.clienteIndicadorId ?? ""} onValueChange={(v) => set("clienteIndicadorId", v)}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
-                    <SelectContent>
-                      {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
+        <form onSubmit={handleSave} className="space-y-4 text-xs">
+          <Secao titulo="Identificação">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Nome" className="col-span-2">
+                <Input value={form.nome} onChange={(e) => set("nome", e.target.value)} />
+              </Field>
+              <Field label="Empresa" className="col-span-2">
+                <Input value={form.empresa ?? ""} onChange={(e) => set("empresa", e.target.value)} />
+              </Field>
+              <Field label="Status de atendimento" className="col-span-2">
+                <Select value={form.stage} onValueChange={(v) => set("stage", v as LeadStage)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LEAD_STAGES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {form.stage === "Perdido" && (
+                <Field label="Motivo da perda" className="col-span-2">
+                  <Input value={form.motivoPerda ?? ""} onChange={(e) => set("motivoPerda", e.target.value)} placeholder="Ex: Fechou com outro escritório" />
                 </Field>
-                <Field label="% de comissão">
-                  <Input
-                    type="number"
-                    value={form.comissaoIndicacaoPercentual ?? ""}
-                    onChange={(e) => set("comissaoIndicacaoPercentual", e.target.value ? Number(e.target.value) : undefined)}
-                  />
-                </Field>
-              </>
-            )}
-            <Field label="Segmento">
-              <Input value={form.segmento ?? ""} onChange={(e) => set("segmento", e.target.value)} />
-            </Field>
-            <Field label="Valor estimado (R$)">
-              <Input type="number" value={form.valorEstimado} onChange={(e) => set("valorEstimado", Number(e.target.value))} />
-            </Field>
-            <Field label="Valor da assessoria mensal (R$)">
-              <Input
-                type="number"
-                value={form.valorAssessoriaMensal ?? ""}
-                onChange={(e) => set("valorAssessoriaMensal", e.target.value ? Number(e.target.value) : undefined)}
-              />
-            </Field>
-            <Field label="Faturamento estimado (R$)">
-              <Input
-                type="number"
-                value={form.faturamentoEstimado ?? ""}
-                onChange={(e) => set("faturamentoEstimado", e.target.value ? Number(e.target.value) : undefined)}
-              />
-            </Field>
-            <Field label="Regime tributário atual">
-              <Input value={form.regimeTributarioAtual ?? ""} onChange={(e) => set("regimeTributarioAtual", e.target.value)} />
-            </Field>
-            <Field label="Próxima ação">
-              <Input value={form.proximaAcao ?? ""} onChange={(e) => set("proximaAcao", e.target.value)} />
-            </Field>
-            <Field label="Observação" className="col-span-2">
-              <Textarea value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} rows={3} />
-            </Field>
-            <Field label="Proposta enviada" className="col-span-2">
+              )}
+              <Field label="Telefone">
+                <Input value={form.telefone} onChange={(e) => set("telefone", e.target.value)} />
+              </Field>
+              <Field label="Primeiro contato">
+                <Input type="date" value={form.dataEntrada} onChange={(e) => set("dataEntrada", e.target.value)} />
+                <p className="mt-1 text-[10px] text-sand-400">Mês referência: {mesReferencia(form.dataEntrada)} (automático)</p>
+              </Field>
+              <Field label="De onde veio">
+                <Select value={form.origem} onValueChange={(v) => set("origem", v as LeadOrigem)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ORIGENS.map((o) => (<SelectItem key={o} value={o}>{o}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Cidade">
+                <Input value={form.cidade} onChange={(e) => set("cidade", e.target.value)} />
+              </Field>
+              <Field label="Estado">
+                <Input value={form.estado} maxLength={2} onChange={(e) => set("estado", e.target.value.toUpperCase())} />
+              </Field>
+              <Field label="E-mail">
+                <Input value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} />
+              </Field>
+              <Field label="Responsável pelo cadastro" className="col-span-2">
+                <Select value={form.responsavelId} onValueChange={(v) => set("responsavelId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {team.map((m) => (<SelectItem key={m.id} value={m.id}>{teamName(m.id)}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              {form.origem === "Indicação" && (
+                <>
+                  <Field label="Cliente que indicou">
+                    <Select value={form.clienteIndicadorId ?? ""} onValueChange={(v) => set("clienteIndicadorId", v)}>
+                      <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                      <SelectContent>
+                        {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="% de comissão">
+                    <Input
+                      type="number"
+                      value={form.comissaoIndicacaoPercentual ?? ""}
+                      onChange={(e) => set("comissaoIndicacaoPercentual", e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </Field>
+                </>
+              )}
+            </div>
+          </Secao>
+
+          <Secao titulo="Qualificação">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Serviço (do portfólio)" className="col-span-2">
+                <Select value={form.servicoPortfolioId ?? "nenhum"} onValueChange={(v) => set("servicoPortfolioId", v === "nenhum" ? undefined : v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um serviço" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">—</SelectItem>
+                    {servicosPortfolio.map((sp) => (
+                      <SelectItem key={sp.id} value={sp.id}>
+                        {sp.numero ? `${String(sp.numero).padStart(2, "0")}. ` : ""}
+                        {sp.nome}
+                        {sp.categoria ? ` (${sp.categoria})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Valor estimado (R$)">
+                <Input type="number" value={form.valorEstimado} onChange={(e) => set("valorEstimado", Number(e.target.value))} />
+              </Field>
+              <Field label="Valor da assessoria mensal (R$)">
+                <Input
+                  type="number"
+                  value={form.valorAssessoriaMensal ?? ""}
+                  onChange={(e) => set("valorAssessoriaMensal", e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </Field>
+              <Field label="Tipo de serviço">
+                <Select value={form.tipoServico ?? "nenhum"} onValueChange={(v) => set("tipoServico", v === "nenhum" ? undefined : (v as TipoServicoLead))}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">—</SelectItem>
+                    {TIPOS_SERVICO.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Nicho">
+                <Input value={form.nicho ?? ""} onChange={(e) => set("nicho", e.target.value)} placeholder="Ex: Designer" />
+              </Field>
+              <Field label="Segmento">
+                <Input value={form.segmento ?? ""} onChange={(e) => set("segmento", e.target.value)} />
+              </Field>
+              <Field label="Média de faturamento mensal">
+                <Input
+                  type="number"
+                  value={form.faturamentoEstimado ?? ""}
+                  onChange={(e) => set("faturamentoEstimado", e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </Field>
+              <Field label="Quantidade de sócios">
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.quantidadeSocios ?? ""}
+                  onChange={(e) => set("quantidadeSocios", e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </Field>
+              <Field label="Quantidade de funcionários">
+                <Input
+                  type="number"
+                  min="0"
+                  value={form.numeroFuncionarios ?? ""}
+                  onChange={(e) => set("numeroFuncionarios", e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </Field>
+              <Field label="Já tem CNPJ?">
+                <Select
+                  value={form.jaTemCnpj === undefined ? "nenhum" : form.jaTemCnpj ? "sim" : "nao"}
+                  onValueChange={(v) => set("jaTemCnpj", v === "nenhum" ? undefined : v === "sim")}
+                >
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="nenhum">—</SelectItem>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="CNPJ">
+                <Input value={form.cnpj ?? ""} onChange={(e) => set("cnpj", e.target.value)} />
+              </Field>
+              <Field label="Regime tributário atual">
+                <Input value={form.regimeTributarioAtual ?? ""} onChange={(e) => set("regimeTributarioAtual", e.target.value)} />
+              </Field>
+              <Field label="Próxima ação">
+                <Input value={form.proximaAcao ?? ""} onChange={(e) => set("proximaAcao", e.target.value)} />
+              </Field>
+            </div>
+            <div className="mt-3">
+              <Label className="mb-1.5 block">Serviços de interesse</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {todosServicos.map((s) => (
+                  <label key={s} className="flex items-center gap-2 text-xs text-sand-700">
+                    <Checkbox checked={form.servicosInteresse.includes(s)} onCheckedChange={() => toggleServico(s)} />
+                    {s}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={novoServico}
+                  onChange={(e) => setNovoServico(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarServico(); } }}
+                  placeholder="Cadastrar novo serviço…"
+                  className="h-8 text-xs"
+                />
+                <Button type="button" size="icon" variant="outline" onClick={adicionarServico} className="h-8 w-8 shrink-0">
+                  <Plus className="size-3.5" />
+                </Button>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {form.servicosInteresse.map((s) => (
+                  <Badge key={s} variant="cream">{s}</Badge>
+                ))}
+              </div>
+            </div>
+          </Secao>
+
+          <Secao titulo="Informações adicionais">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="CPF">
+                <Input value={form.cpf ?? ""} onChange={(e) => set("cpf", e.target.value)} />
+              </Field>
+              <Field label="Senha GOV">
+                <Input value={form.senhaGov ?? ""} onChange={(e) => set("senhaGov", e.target.value)} />
+              </Field>
+            </div>
+          </Secao>
+
+          <Secao titulo="Observações de atendimento">
+            <Textarea value={form.observacoes ?? ""} onChange={(e) => set("observacoes", e.target.value)} rows={3} placeholder="Anotações livres sobre o atendimento" />
+          </Secao>
+
+          <Secao titulo="Reunião">
+            <LeadReuniaoFields reuniao={form.reuniao} onChange={(r) => set("reuniao", r)} />
+          </Secao>
+
+          <Secao titulo="Propostas e condução">
+            <Field label="Proposta enviada" className="mb-3 block">
               <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-sand-300 bg-sand-50 px-3 py-2 text-xs text-sand-600 hover:border-wine-400 hover:bg-wine-50">
                 <FileUp className="size-3.5 shrink-0 text-wine-500" />
                 {propostaFile
@@ -223,39 +376,10 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
                 </a>
               )}
             </Field>
-          </div>
+            <ConducaoChecklist etapas={form.conducao ?? conducaoPadrao()} nomeLead={form.nome} onChange={(c) => set("conducao", c)} />
+          </Secao>
 
           {erro && <p className="text-xs text-status-danger">{erro}</p>}
-
-          <div>
-            <Label className="mb-1.5 block">Serviços de interesse</Label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {todosServicos.map((s) => (
-                <label key={s} className="flex items-center gap-2 text-xs text-sand-700">
-                  <Checkbox checked={form.servicosInteresse.includes(s)} onCheckedChange={() => toggleServico(s)} />
-                  {s}
-                </label>
-              ))}
-            </div>
-            <div className="mt-2 flex gap-2">
-              <Input
-                value={novoServico}
-                onChange={(e) => setNovoServico(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarServico(); } }}
-                placeholder="Cadastrar novo serviço…"
-                className="h-8 text-xs"
-              />
-              <Button type="button" size="icon" variant="outline" onClick={adicionarServico} className="h-8 w-8 shrink-0">
-                <Plus className="size-3.5" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {form.servicosInteresse.map((s) => (
-              <Badge key={s} variant="cream">{s}</Badge>
-            ))}
-          </div>
 
           <div>
             <p className="mb-1.5 text-xs font-semibold text-sand-700">Histórico</p>
@@ -302,6 +426,15 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-sand-400">{titulo}</p>
+      {children}
+    </div>
   );
 }
 

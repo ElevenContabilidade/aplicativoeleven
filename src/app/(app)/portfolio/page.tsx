@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store/app-store";
 import { cn } from "@/lib/utils";
 
-type SortColumn = "nome" | "valor";
+type SortColumn = "numero" | "nome" | "categoria" | "valor";
 
 function SortableHead({
   label,
@@ -50,7 +50,9 @@ export default function PortfolioPage() {
   const updateServicoPortfolio = useAppStore((s) => s.updateServicoPortfolio);
   const deleteServicoPortfolio = useAppStore((s) => s.deleteServicoPortfolio);
 
+  const [novoNumero, setNovoNumero] = useState("");
   const [novoNome, setNovoNome] = useState("");
+  const [novaCategoria, setNovaCategoria] = useState("");
   const [novoValor, setNovoValor] = useState("");
   const [sort, setSort] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
 
@@ -62,7 +64,9 @@ export default function PortfolioPage() {
     if (!sort) return servicosPortfolio;
     const dir = sort.direction === "asc" ? 1 : -1;
     return [...servicosPortfolio].sort((a, b) => {
+      if (sort.column === "numero") return ((a.numero ?? 0) - (b.numero ?? 0)) * dir;
       if (sort.column === "nome") return a.nome.localeCompare(b.nome, "pt-BR") * dir;
+      if (sort.column === "categoria") return (a.categoria ?? "").localeCompare(b.categoria ?? "", "pt-BR") * dir;
       return (a.valor - b.valor) * dir;
     });
   }, [servicosPortfolio, sort]);
@@ -71,8 +75,11 @@ export default function PortfolioPage() {
     const nome = novoNome.trim();
     const valor = Number(novoValor.replace(",", "."));
     if (!nome || !Number.isFinite(valor) || valor < 0) return;
-    addServicoPortfolio({ id: `sp-${Date.now()}`, nome, valor });
+    const numero = novoNumero ? Number(novoNumero) : Math.max(0, ...servicosPortfolio.map((s) => s.numero ?? 0)) + 1;
+    addServicoPortfolio({ id: `sp-${Date.now()}`, numero, nome, categoria: novaCategoria.trim() || undefined, valor });
+    setNovoNumero("");
     setNovoNome("");
+    setNovaCategoria("");
     setNovoValor("");
   }
 
@@ -100,7 +107,9 @@ export default function PortfolioPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <SortableHead label="Nº" column="numero" sort={sort} onSort={toggleSort} className="w-20" />
                 <SortableHead label="Serviço" column="nome" sort={sort} onSort={toggleSort} />
+                <SortableHead label="Categoria" column="categoria" sort={sort} onSort={toggleSort} className="w-56" />
                 <SortableHead label="Valor (R$)" column="valor" sort={sort} onSort={toggleSort} className="w-40" />
                 <TableHead className="w-14" />
               </TableRow>
@@ -110,8 +119,23 @@ export default function PortfolioPage() {
                 <TableRow key={sp.id}>
                   <TableCell>
                     <Input
+                      type="number"
+                      min="0"
+                      value={sp.numero ?? ""}
+                      onChange={(e) => updateServicoPortfolio(sp.id, { numero: e.target.value ? Number(e.target.value) : undefined })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
                       value={sp.nome}
                       onChange={(e) => updateServicoPortfolio(sp.id, { nome: e.target.value })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      placeholder="Ex: Simples Nacional"
+                      value={sp.categoria ?? ""}
+                      onChange={(e) => updateServicoPortfolio(sp.id, { categoria: e.target.value || undefined })}
                     />
                   </TableCell>
                   <TableCell>
@@ -137,7 +161,7 @@ export default function PortfolioPage() {
               ))}
               {servicosOrdenados.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3} className="py-8 text-center text-sand-400">
+                  <TableCell colSpan={5} className="py-8 text-center text-sand-400">
                     Nenhum serviço cadastrado.
                   </TableCell>
                 </TableRow>
@@ -145,9 +169,27 @@ export default function PortfolioPage() {
               <TableRow>
                 <TableCell>
                   <Input
+                    type="number"
+                    min="0"
+                    placeholder="Nº"
+                    value={novoNumero}
+                    onChange={(e) => setNovoNumero(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddServico()}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
                     placeholder="Novo serviço"
                     value={novoNome}
                     onChange={(e) => setNovoNome(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddServico()}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Input
+                    placeholder="Ex: Simples Nacional"
+                    value={novaCategoria}
+                    onChange={(e) => setNovaCategoria(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddServico()}
                   />
                 </TableCell>
