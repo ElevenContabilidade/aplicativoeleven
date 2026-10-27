@@ -1,5 +1,15 @@
 import type { ProcessoSocietario } from "@/lib/types";
 
+/** Quanto já entrou de um processo: valor cheio se "Pago", o valorPago
+ * informado se "Parcial" (nunca mais que o valor cobrado), ou 0 se
+ * "Pendente". */
+export function valorRecebidoProcesso(p: ProcessoSocietario): number {
+  const valor = p.valorProcesso ?? 0;
+  if (p.pagamento === "Pago") return valor;
+  if (p.pagamento === "Parcial") return Math.min(p.valorPago ?? 0, valor);
+  return 0;
+}
+
 export interface ServicoFinanceiro {
   tipoServico: string;
   qtd: number;
@@ -28,19 +38,20 @@ export function resumoFinanceiroSocietario(processos: ProcessoSocietario[], comp
   const cobrados = processos.filter((p) => {
     if ((p.valorProcesso ?? 0) <= 0) return false;
     if (!competencias) return true;
-    const competencia = (p.pagamento === "Pago" ? p.dataPagamento : p.dataAbertura)?.slice(0, 7);
+    const temPagamento = p.pagamento === "Pago" || p.pagamento === "Parcial";
+    const competencia = (temPagamento ? p.dataPagamento : p.dataAbertura)?.slice(0, 7);
     return !!competencia && competencias.includes(competencia);
   });
 
   const porServicoMap = new Map<string, ServicoFinanceiro>();
   for (const p of cobrados) {
     const valor = p.valorProcesso ?? 0;
-    const pago = p.pagamento === "Pago";
+    const recebidoDoProcesso = valorRecebidoProcesso(p);
     const entry = porServicoMap.get(p.tipoServico) ?? { tipoServico: p.tipoServico, qtd: 0, total: 0, recebido: 0, aReceber: 0 };
     entry.qtd += 1;
     entry.total += valor;
-    if (pago) entry.recebido += valor;
-    else entry.aReceber += valor;
+    entry.recebido += recebidoDoProcesso;
+    entry.aReceber += valor - recebidoDoProcesso;
     porServicoMap.set(p.tipoServico, entry);
   }
 

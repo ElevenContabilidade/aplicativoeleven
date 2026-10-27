@@ -12,10 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
-import { CHECKLIST_STATUS, type ChecklistStatus, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
+import { CHECKLIST_STATUS, type ChecklistStatus, type PagamentoProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
+
+const PAGAMENTO_OPCOES: PagamentoProcesso[] = ["Pago", "Parcial", "Pendente"];
+const PAGAMENTO_STYLE: Record<PagamentoProcesso, string> = {
+  Pago: "border-status-success bg-status-success-bg text-status-success",
+  Parcial: "border-status-warning bg-status-warning-bg text-status-warning",
+  Pendente: "border-status-danger bg-status-danger-bg text-status-danger",
+};
 
 const ETAPA_STATUS_STYLE: Record<ChecklistStatus, string> = {
   OK: "border-status-success bg-status-success-bg text-status-success",
@@ -64,6 +71,12 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
           {processo.orgao && <Badge variant="outline">{processo.orgao}</Badge>}
           {processo.protocolo && <Badge variant="cream">Nº {processo.protocolo}</Badge>}
           {!!processo.valorProcesso && <Badge variant="cream">{formatCurrency(processo.valorProcesso)}</Badge>}
+          {processo.pagamento && (
+            <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase", PAGAMENTO_STYLE[processo.pagamento])}>
+              {processo.pagamento}
+              {processo.pagamento === "Parcial" && !!processo.valorPago && ` · ${formatCurrency(processo.valorPago)}`}
+            </span>
+          )}
           <span className="text-xs text-sand-400">
             Iniciado em {formatDate(processo.dataAbertura)}
             {processo.prazo ? ` • Prazo ${formatDate(processo.prazo)}` : ""}
@@ -99,6 +112,57 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               </SelectContent>
             </Select>
           </div>
+          <div>
+            <Label className="mb-1 block">Valor do processo (R$)</Label>
+            <Input
+              type="number"
+              value={processo.valorProcesso ?? ""}
+              onChange={(e) => updateProcessoSocietario(processo.id, { valorProcesso: Number(e.target.value) || 0 })}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block">Pagamento</Label>
+            <Select
+              value={processo.pagamento ?? "Pendente"}
+              onValueChange={(v) => {
+                const pagamento = v as PagamentoProcesso;
+                const hoje = new Date().toISOString().slice(0, 10);
+                const temData = pagamento === "Pago" || pagamento === "Parcial";
+                updateProcessoSocietario(processo.id, {
+                  pagamento,
+                  dataPagamento: temData ? (processo.dataPagamento ?? hoje) : undefined,
+                  valorPago: pagamento === "Parcial" ? processo.valorPago : undefined,
+                });
+              }}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PAGAMENTO_OPCOES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+          {(processo.pagamento === "Pago" || processo.pagamento === "Parcial") && (
+            <div>
+              <Label className="mb-1 block">Data do pagamento</Label>
+              <Input
+                type="date"
+                value={processo.dataPagamento ?? ""}
+                onChange={(e) => updateProcessoSocietario(processo.id, { dataPagamento: e.target.value })}
+              />
+            </div>
+          )}
+          {processo.pagamento === "Parcial" && (
+            <div>
+              <Label className="mb-1 block">Valor já pago (R$)</Label>
+              <Input
+                type="number"
+                value={processo.valorPago ?? ""}
+                onChange={(e) => updateProcessoSocietario(processo.id, { valorPago: Number(e.target.value) || 0 })}
+                placeholder="0"
+              />
+            </div>
+          )}
           <div className="col-span-2">
             <Label className="mb-1 block">Pendências / observações</Label>
             <Textarea

@@ -25,9 +25,10 @@ const CELL_STATUS_STYLE: Record<ChecklistStatus, string> = {
   Dispensada: "bg-status-brown",
 };
 
-const PAGAMENTO_OPCOES: PagamentoProcesso[] = ["Pago", "Pendente"];
+const PAGAMENTO_OPCOES: PagamentoProcesso[] = ["Pago", "Parcial", "Pendente"];
 const PAGAMENTO_STYLE: Record<PagamentoProcesso, string> = {
   Pago: "bg-status-success",
+  Parcial: "bg-status-warning",
   Pendente: "bg-status-danger",
 };
 
@@ -174,9 +175,11 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                     onValueChange={(v) => {
                       const pagamento = v as PagamentoProcesso;
                       const hoje = new Date().toISOString().slice(0, 10);
+                      const temData = pagamento === "Pago" || pagamento === "Parcial";
                       updateProcessoSocietario(p.id, {
                         pagamento,
-                        dataPagamento: pagamento === "Pago" ? (p.dataPagamento ?? hoje) : undefined,
+                        dataPagamento: temData ? (p.dataPagamento ?? hoje) : undefined,
+                        valorPago: pagamento === "Parcial" ? p.valorPago : undefined,
                       });
                     }}
                   >
@@ -196,7 +199,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                   </Select>
                 </div>
 
-                {p.pagamento === "Pago" && (
+                {(p.pagamento === "Pago" || p.pagamento === "Parcial") && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Data pagto</span>
                     <Input
@@ -204,6 +207,19 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                       value={p.dataPagamento ?? ""}
                       onChange={(e) => updateProcessoSocietario(p.id, { dataPagamento: e.target.value })}
                       className="h-8 w-36 text-[12px]"
+                    />
+                  </div>
+                )}
+
+                {p.pagamento === "Parcial" && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Valor pago</span>
+                    <Input
+                      type="number"
+                      value={p.valorPago ?? ""}
+                      onChange={(e) => updateProcessoSocietario(p.id, { valorPago: Number(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="h-8 w-20 text-[12px]"
                     />
                   </div>
                 )}

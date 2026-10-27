@@ -19,7 +19,7 @@ import { DespesaFormDialog } from "@/components/financial/despesa-form-dialog";
 import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
-import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
+import { resumoFinanceiroSocietario, valorRecebidoProcesso } from "@/lib/societario-financeiro";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
@@ -491,12 +491,17 @@ export default function FinanceiroPage() {
       .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }))
       .filter((h) => h.valor > 0);
     const doSocietario = processosSocietarios
-      .filter((p) => (p.valorProcesso ?? 0) > 0 && p.pagamento === "Pago" && competenciasPeriodo.includes((p.dataPagamento ?? p.dataAbertura).slice(0, 7)))
+      .filter(
+        (p) =>
+          (p.pagamento === "Pago" || p.pagamento === "Parcial") &&
+          valorRecebidoProcesso(p) > 0 &&
+          competenciasPeriodo.includes((p.dataPagamento ?? p.dataAbertura).slice(0, 7))
+      )
       .map((p) => ({
         key: `soc-${p.id}`,
         nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
         servico: `Societário — ${p.tipoServico}`,
-        valor: p.valorProcesso ?? 0,
+        valor: valorRecebidoProcesso(p),
         competencia: (p.dataPagamento ?? p.dataAbertura).slice(0, 7),
         data: p.dataPagamento,
       }));
@@ -508,12 +513,18 @@ export default function FinanceiroPage() {
       .filter((h) => h.pagamento && mesesCaixa.includes(h.pagamento.slice(0, 7)))
       .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }));
     const doSocietario = processosSocietarios
-      .filter((p) => (p.valorProcesso ?? 0) > 0 && p.pagamento === "Pago" && p.dataPagamento && mesesCaixa.includes(p.dataPagamento.slice(0, 7)))
+      .filter(
+        (p) =>
+          (p.pagamento === "Pago" || p.pagamento === "Parcial") &&
+          valorRecebidoProcesso(p) > 0 &&
+          p.dataPagamento &&
+          mesesCaixa.includes(p.dataPagamento.slice(0, 7))
+      )
       .map((p) => ({
         key: `soc-${p.id}`,
         nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
         servico: `Societário — ${p.tipoServico}`,
-        valor: p.valorProcesso ?? 0,
+        valor: valorRecebidoProcesso(p),
         competencia: p.dataAbertura.slice(0, 7),
         data: p.dataPagamento,
       }));

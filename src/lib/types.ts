@@ -834,7 +834,7 @@ export const ETAPAS_ABERTURA_GRUPOS = [
   { label: "Demais obrigações", count: 12, color: "#9A5A72" },
 ] as const;
 
-export type PagamentoProcesso = "Pago" | "Pendente";
+export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {
   id: string;
@@ -852,6 +852,9 @@ export interface ProcessoSocietario {
   valorProcesso?: number;
   pagamento?: PagamentoProcesso;
   dataPagamento?: string;
+  /** Quanto já entrou, só usado quando pagamento é "Parcial" — ex: cliente
+   * pagou metade do valorProcesso e vai quitar o resto depois. */
+  valorPago?: number;
   /** Preenchida automaticamente quando o status vira "Finalizado" (e limpa
    * se voltar pra outro status) — usada pra calcular o tempo médio de
    * cada tipo de processo. */
