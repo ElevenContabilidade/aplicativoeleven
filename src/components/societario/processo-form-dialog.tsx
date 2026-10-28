@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -31,6 +31,11 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   const addClient = useAppStore((s) => s.addClient);
   const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
+
+  const clientesOrdenados = useMemo(
+    () => [...clients].sort((a, b) => a.dados.razaoSocial.localeCompare(b.dados.razaoSocial, "pt-BR")),
+    [clients]
+  );
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -161,7 +166,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               <Select value={clienteId} onValueChange={setClienteId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
+                  {clientesOrdenados.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                   ))}
                 </SelectContent>
