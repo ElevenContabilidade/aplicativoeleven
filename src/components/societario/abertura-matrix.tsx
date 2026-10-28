@@ -107,10 +107,10 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
               <button
                 type="button"
                 onClick={() => setOpenId(open ? null : p.id)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                className="flex min-w-56 flex-1 items-center gap-3 text-left"
               >
                 <ChevronDown className={cn("size-4 shrink-0 text-sand-400 transition-transform", open && "rotate-180")} />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   {editingNome ? (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <Input
@@ -139,11 +139,12 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       <Link
                         href={`/clientes/${p.clienteId}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                        className="min-w-0 truncate font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                        title={nomeCliente}
                       >
                         {nomeCliente}
                       </Link>
