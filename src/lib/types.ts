@@ -834,36 +834,37 @@ export const ETAPAS_ABERTURA_GRUPOS = [
   { label: "Demais obrigações", count: 12, color: "#9A5A72" },
 ] as const;
 
-/**
- * Checklist padrão de uma alteração contratual, no mesmo espírito do de
- * abertura de empresa — checklist genérico que serve pra maioria dos casos
- * (sócio, endereço, capital, atividade etc.); pode ser ajustado depois.
- */
+/** Checklist de uma alteração contratual, no mesmo formato do de abertura. */
 export const ETAPAS_ALTERACAO_EMPRESA = [
   "Levantamento dos dados da alteração",
-  "Elaboração do instrumento de alteração contratual",
-  "Assinatura dos sócios",
-  "Protocolo na Junta Comercial",
-  "Pagamento da taxa",
-  "Registro da alteração",
-  "Atualização de dados no CNPJ",
-  "Procuração ECAC",
-  "Opção pelo Simples (se mudou atividade)",
-  "Atualização da Inscrição Municipal",
-  "Atualização da Inscrição Estadual",
-  "Atualização de alvará/licenças",
-  "Atualização no sistema contábil",
-  "Atualização no sistema de gestão",
+  "Preenchimento no formulário",
+  "Viabilidade",
+  "DBE",
+  "FCN/Integrador",
+  "Pagamento Taxa",
+  "Registro",
+  "Atualizar CNPJ",
+  "Atualizar Inscrição Municipal",
+  "Atualizar Alvará",
+  "Atualizar Licenças",
+  "Atualizar Inscrição Estadual",
+  "DTE/Sintegra",
+  "Atualizar Bombeiro",
+  "Atualizar Fortes",
+  "Atualizar Veri",
+  "Atualizar aplicativo de gestão",
+  "Atualizar no banco",
   "Guardar documentos no Drive",
 ] as const;
 
 /** Faixas de colunas de ETAPAS_ALTERACAO_EMPRESA, com a cor de cada fase. */
 export const ETAPAS_ALTERACAO_GRUPOS = [
-  { label: "Levantamento e elaboração", count: 3, color: "#2E5F7F" },
-  { label: "Junta Comercial", count: 3, color: "#4A7A8C" },
-  { label: "Receita Federal", count: 3, color: "#B4691F" },
-  { label: "Prefeitura e Estado", count: 3, color: "#7A1F1F" },
-  { label: "Sistemas internos", count: 3, color: "#9A5A72" },
+  { label: "Levantamento e elaboração", count: 2, color: "#5C1420" },
+  { label: "Junta Comercial", count: 5, color: "#2E5F7F" },
+  { label: "Receita Federal", count: 1, color: "#4A7A8C" },
+  { label: "Prefeitura", count: 3, color: "#B4691F" },
+  { label: "Estado", count: 3, color: "#7A1F1F" },
+  { label: "Demais obrigações", count: 5, color: "#9A5A72" },
 ] as const;
 
 export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";

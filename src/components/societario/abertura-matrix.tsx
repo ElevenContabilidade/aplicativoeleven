@@ -7,17 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import {
-  CHECKLIST_STATUS,
-  ETAPAS_ABERTURA_EMPRESA,
-  ETAPAS_ABERTURA_GRUPOS,
-  ETAPAS_ALTERACAO_EMPRESA,
-  ETAPAS_ALTERACAO_GRUPOS,
-  type ChecklistStatus,
-  type Client,
-  type PagamentoProcesso,
-  type ProcessoSocietario,
-} from "@/lib/types";
+import { CHECKLIST_STATUS, type ChecklistStatus, type Client, type PagamentoProcesso, type ProcessoSocietario } from "@/lib/types";
+import { CHECKLISTS_POR_TIPO, etapasAtualizadas, gruposComEtapas } from "@/lib/societario-checklist";
 import { cn } from "@/lib/utils";
 
 const CELL_STATUS_STYLE: Record<ChecklistStatus, string> = {
@@ -37,23 +28,6 @@ const PAGAMENTO_STYLE: Record<PagamentoProcesso, string> = {
 function isDone(status: ChecklistStatus) {
   return status === "OK" || status === "Dispensada";
 }
-
-// Fatia uma lista de etapas nos blocos definidos pelos grupos (mesma lógica
-// usada tanto pro checklist de Abertura quanto pro de Alteração).
-function fatiarGrupos(etapas: readonly string[], grupos: readonly { label: string; count: number; color: string }[]) {
-  let offset = 0;
-  return grupos.map((g) => {
-    const fatia = etapas.slice(offset, offset + g.count);
-    offset += g.count;
-    return { ...g, etapas: fatia };
-  });
-}
-
-const GRUPOS_POR_TIPO: Record<string, ReturnType<typeof fatiarGrupos>> = {
-  Abertura: fatiarGrupos(ETAPAS_ABERTURA_EMPRESA, ETAPAS_ABERTURA_GRUPOS),
-  "Abertura de empresa": fatiarGrupos(ETAPAS_ABERTURA_EMPRESA, ETAPAS_ABERTURA_GRUPOS),
-  Alteração: fatiarGrupos(ETAPAS_ALTERACAO_EMPRESA, ETAPAS_ALTERACAO_GRUPOS),
-};
 
 export function AberturaMatrix({ processos, clients }: { processos: ProcessoSocietario[]; clients: Client[] }) {
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
@@ -94,12 +68,20 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
         const nomeCliente = client?.dados.razaoSocial ?? "—";
-        const grupos = GRUPOS_POR_TIPO[p.tipoServico] ?? [];
+        const grupos = gruposComEtapas(p.tipoServico);
+        const checklistDesatualizado = (CHECKLISTS_POR_TIPO[p.tipoServico]?.etapas.length ?? 0) !== p.etapas.length;
         const total = p.etapas.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
         const open = openId === p.id;
         const editingNome = editingClienteId === p.clienteId;
+
+        function sincronizarChecklist() {
+          const hoje = new Date().toISOString().slice(0, 10);
+          updateProcessoSocietario(p.id, {
+            etapas: etapasAtualizadas(p.tipoServico, p.etapas, p.responsavelId, hoje, p.prazo ?? hoje),
+          });
+        }
 
         return (
           <div key={p.id} className="overflow-hidden rounded-2xl border border-sand-200 bg-white">
@@ -264,6 +246,18 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
 
             {open && (
               <div className="space-y-4 border-t border-sand-200 bg-sand-50/40 p-4">
+                {checklistDesatualizado && grupos.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-status-warning bg-status-warning-bg px-3 py-2 text-[11px] text-status-warning">
+                    <span>Esse processo foi criado com uma versão antiga do checklist padrão de {p.tipoServico}.</span>
+                    <button
+                      type="button"
+                      onClick={sincronizarChecklist}
+                      className="shrink-0 rounded-md border border-status-warning px-2 py-1 font-semibold hover:bg-status-warning hover:text-white"
+                    >
+                      Atualizar checklist
+                    </button>
+                  </div>
+                )}
                 {grupos.map((g) => (
                   <div key={g.label}>
                     <div className="mb-2 flex items-center gap-2">

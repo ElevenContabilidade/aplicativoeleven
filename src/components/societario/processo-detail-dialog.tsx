@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { CHECKLIST_STATUS, type ChecklistStatus, type PagamentoProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
+import { CHECKLISTS_POR_TIPO, etapasAtualizadas } from "@/lib/societario-checklist";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
@@ -52,6 +53,16 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   const client = clients.find((c) => c.id === processo.clienteId);
   const etapas = processo.etapas ?? [];
   const feitas = etapas.filter((e) => isDone(e.status)).length;
+  const checklistPadrao = CHECKLISTS_POR_TIPO[processo.tipoServico];
+  const checklistDesatualizado = !!checklistPadrao && checklistPadrao.etapas.length !== etapas.length;
+
+  function sincronizarChecklist() {
+    if (!processo) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    updateProcessoSocietario(processo.id, {
+      etapas: etapasAtualizadas(processo.tipoServico, processo.etapas, processo.responsavelId, hoje, processo.prazo ?? hoje),
+    });
+  }
 
   function addEtapa() {
     if (!descricao.trim() || !processo) return;
@@ -178,6 +189,22 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
             <p className="text-xs font-semibold text-sand-700">Etapas do processo</p>
             <span className="text-[11px] text-sand-400">{feitas}/{etapas.length} concluídas</span>
           </div>
+          {checklistPadrao && checklistDesatualizado && (
+            <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-status-warning bg-status-warning-bg px-3 py-2 text-[11px] text-status-warning">
+              <span>
+                {etapas.length === 0
+                  ? `Esse processo ainda não tem o checklist padrão de ${processo.tipoServico}.`
+                  : `Esse processo foi criado com uma versão antiga do checklist padrão de ${processo.tipoServico}.`}
+              </span>
+              <button
+                type="button"
+                onClick={sincronizarChecklist}
+                className="shrink-0 rounded-md border border-status-warning px-2 py-1 font-semibold hover:bg-status-warning hover:text-white"
+              >
+                {etapas.length === 0 ? "Aplicar checklist padrão" : "Atualizar checklist"}
+              </button>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
