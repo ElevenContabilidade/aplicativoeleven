@@ -834,6 +834,38 @@ export const ETAPAS_ABERTURA_GRUPOS = [
   { label: "Demais obrigações", count: 12, color: "#9A5A72" },
 ] as const;
 
+/**
+ * Checklist padrão de uma alteração contratual, no mesmo espírito do de
+ * abertura de empresa — checklist genérico que serve pra maioria dos casos
+ * (sócio, endereço, capital, atividade etc.); pode ser ajustado depois.
+ */
+export const ETAPAS_ALTERACAO_EMPRESA = [
+  "Levantamento dos dados da alteração",
+  "Elaboração do instrumento de alteração contratual",
+  "Assinatura dos sócios",
+  "Protocolo na Junta Comercial",
+  "Pagamento da taxa",
+  "Registro da alteração",
+  "Atualização de dados no CNPJ",
+  "Procuração ECAC",
+  "Opção pelo Simples (se mudou atividade)",
+  "Atualização da Inscrição Municipal",
+  "Atualização da Inscrição Estadual",
+  "Atualização de alvará/licenças",
+  "Atualização no sistema contábil",
+  "Atualização no sistema de gestão",
+  "Guardar documentos no Drive",
+] as const;
+
+/** Faixas de colunas de ETAPAS_ALTERACAO_EMPRESA, com a cor de cada fase. */
+export const ETAPAS_ALTERACAO_GRUPOS = [
+  { label: "Levantamento e elaboração", count: 3, color: "#2E5F7F" },
+  { label: "Junta Comercial", count: 3, color: "#4A7A8C" },
+  { label: "Receita Federal", count: 3, color: "#B4691F" },
+  { label: "Prefeitura e Estado", count: 3, color: "#7A1F1F" },
+  { label: "Sistemas internos", count: 3, color: "#9A5A72" },
+] as const;
+
 export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {

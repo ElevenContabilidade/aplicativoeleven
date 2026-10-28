@@ -11,6 +11,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import {
   ETAPAS_ABERTURA_EMPRESA,
+  ETAPAS_ALTERACAO_EMPRESA,
   ONBOARDING_TEMPLATE,
   type Client,
   type EtapaProcesso,
@@ -19,6 +20,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const TIPOS_SERVICO = ["Abertura", "Alteração", "Baixa", "Desenquadramento", "Balanço", "Livro Diário"];
+
+const TEMPLATE_ETAPAS: Record<string, readonly string[]> = {
+  Abertura: ETAPAS_ABERTURA_EMPRESA,
+  Alteração: ETAPAS_ALTERACAO_EMPRESA,
+};
 
 export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addProcessoSocietario = useAppStore((s) => s.addProcessoSocietario);
@@ -93,17 +99,14 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
       addClient(novoCliente);
     }
 
-    const etapas: EtapaProcesso[] =
-      tipoServico === "Abertura"
-        ? ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => ({
-            id: `et-${Date.now()}-${i}`,
-            descricao,
-            responsavelId: userId ?? "u7",
-            inicio: today,
-            prazo: dataInicio,
-            status: "Pendente",
-          }))
-        : [];
+    const etapas: EtapaProcesso[] = (TEMPLATE_ETAPAS[tipoServico] ?? []).map((descricao, i) => ({
+      id: `et-${Date.now()}-${i}`,
+      descricao,
+      responsavelId: userId ?? "u7",
+      inicio: today,
+      prazo: dataInicio,
+      status: "Pendente",
+    }));
     const valorNumero = valor ? Number(valor.replace(",", ".")) : undefined;
     const processo: ProcessoSocietario = {
       id: `ps-${Date.now()}`,

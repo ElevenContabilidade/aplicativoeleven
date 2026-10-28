@@ -52,6 +52,15 @@ export default function SocietarioPage() {
   const [selected, setSelected] = useState<ProcessoSocietario | null>(null);
   const [view, setView] = useState<ViewMode>("tabela");
 
+  // selected guarda só qual processo foi clicado — o objeto em si precisa vir
+  // sempre fresco da store, senão os campos editáveis do diálogo de detalhe
+  // (ex: Valor já pago) ficam presos no snapshot de quando ele foi aberto e
+  // "resetam" a cada tecla digitada.
+  const selectedLive = useMemo(
+    () => (selected ? (processos.find((p) => p.id === selected.id) ?? null) : null),
+    [processos, selected]
+  );
+
   const [year, setYear] = useState(() => {
     const current = new Date().getFullYear().toString();
     return YEARS.includes(current) ? current : YEARS[0];
@@ -83,9 +92,7 @@ export default function SocietarioPage() {
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   }, [filteredPeriodo]);
 
-  const aberturas = filteredPeriodo.filter(
-    (p) => (p.tipoServico === "Abertura" || p.tipoServico === "Abertura de empresa") && (p.etapas ?? []).length > 0
-  );
+  const processosComChecklist = filteredPeriodo.filter((p) => (p.etapas ?? []).length > 0);
 
   // A aba Financeiro não usa filteredPeriodo (que filtra por data de abertura):
   // aqui o processo precisa aparecer no mês em que foi de fato pago, então o
@@ -280,9 +287,9 @@ export default function SocietarioPage() {
       {view === "etapa" && (
         <div>
           <p className="mb-3 text-[11px] text-sand-500">
-            Checklist de abertura de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
+            Checklist de abertura e de alteração de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
           </p>
-          <AberturaMatrix processos={aberturas} clients={clients} />
+          <AberturaMatrix processos={processosComChecklist} clients={clients} />
         </div>
       )}
 
@@ -408,7 +415,7 @@ export default function SocietarioPage() {
       )}
 
       <ProcessoFormDialog open={formOpen} onOpenChange={setFormOpen} />
-      <ProcessoDetailDialog processo={selected} onClose={() => setSelected(null)} />
+      <ProcessoDetailDialog processo={selectedLive} onClose={() => setSelected(null)} />
     </div>
   );
 }

@@ -11,6 +11,8 @@ import {
   CHECKLIST_STATUS,
   ETAPAS_ABERTURA_EMPRESA,
   ETAPAS_ABERTURA_GRUPOS,
+  ETAPAS_ALTERACAO_EMPRESA,
+  ETAPAS_ALTERACAO_GRUPOS,
   type ChecklistStatus,
   type Client,
   type PagamentoProcesso,
@@ -36,15 +38,22 @@ function isDone(status: ChecklistStatus) {
   return status === "OK" || status === "Dispensada";
 }
 
-// Fatia ETAPAS_ABERTURA_EMPRESA nos mesmos blocos de ETAPAS_ABERTURA_GRUPOS.
-const GRUPOS_COM_ETAPAS = (() => {
+// Fatia uma lista de etapas nos blocos definidos pelos grupos (mesma lógica
+// usada tanto pro checklist de Abertura quanto pro de Alteração).
+function fatiarGrupos(etapas: readonly string[], grupos: readonly { label: string; count: number; color: string }[]) {
   let offset = 0;
-  return ETAPAS_ABERTURA_GRUPOS.map((g) => {
-    const etapas = ETAPAS_ABERTURA_EMPRESA.slice(offset, offset + g.count);
+  return grupos.map((g) => {
+    const fatia = etapas.slice(offset, offset + g.count);
     offset += g.count;
-    return { ...g, etapas };
+    return { ...g, etapas: fatia };
   });
-})();
+}
+
+const GRUPOS_POR_TIPO: Record<string, ReturnType<typeof fatiarGrupos>> = {
+  Abertura: fatiarGrupos(ETAPAS_ABERTURA_EMPRESA, ETAPAS_ABERTURA_GRUPOS),
+  "Abertura de empresa": fatiarGrupos(ETAPAS_ABERTURA_EMPRESA, ETAPAS_ABERTURA_GRUPOS),
+  Alteração: fatiarGrupos(ETAPAS_ALTERACAO_EMPRESA, ETAPAS_ALTERACAO_GRUPOS),
+};
 
 export function AberturaMatrix({ processos, clients }: { processos: ProcessoSocietario[]; clients: Client[] }) {
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
@@ -85,7 +94,8 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
         const nomeCliente = client?.dados.razaoSocial ?? "—";
-        const total = ETAPAS_ABERTURA_EMPRESA.length;
+        const grupos = GRUPOS_POR_TIPO[p.tipoServico] ?? [];
+        const total = p.etapas.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
         const open = openId === p.id;
@@ -253,7 +263,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
 
             {open && (
               <div className="space-y-4 border-t border-sand-200 bg-sand-50/40 p-4">
-                {GRUPOS_COM_ETAPAS.map((g) => (
+                {grupos.map((g) => (
                   <div key={g.label}>
                     <div className="mb-2 flex items-center gap-2">
                       <span
