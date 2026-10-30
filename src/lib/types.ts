@@ -834,7 +834,40 @@ export const ETAPAS_ABERTURA_GRUPOS = [
   { label: "Demais obrigações", count: 12, color: "#9A5A72" },
 ] as const;
 
-export type PagamentoProcesso = "Pago" | "Pendente";
+/** Checklist de uma alteração contratual, no mesmo formato do de abertura. */
+export const ETAPAS_ALTERACAO_EMPRESA = [
+  "Levantamento dos dados da alteração",
+  "Preenchimento no formulário",
+  "Viabilidade",
+  "DBE",
+  "FCN/Integrador",
+  "Pagamento Taxa",
+  "Registro",
+  "Atualizar CNPJ",
+  "Atualizar Inscrição Municipal",
+  "Atualizar Alvará",
+  "Atualizar Licenças",
+  "Atualizar Inscrição Estadual",
+  "DTE/Sintegra",
+  "Atualizar Bombeiro",
+  "Atualizar Fortes",
+  "Atualizar Veri",
+  "Atualizar aplicativo de gestão",
+  "Atualizar no banco",
+  "Guardar documentos no Drive",
+] as const;
+
+/** Faixas de colunas de ETAPAS_ALTERACAO_EMPRESA, com a cor de cada fase. */
+export const ETAPAS_ALTERACAO_GRUPOS = [
+  { label: "Levantamento e elaboração", count: 2, color: "#5C1420" },
+  { label: "Junta Comercial", count: 5, color: "#2E5F7F" },
+  { label: "Receita Federal", count: 1, color: "#4A7A8C" },
+  { label: "Prefeitura", count: 3, color: "#B4691F" },
+  { label: "Estado", count: 3, color: "#7A1F1F" },
+  { label: "Demais obrigações", count: 5, color: "#9A5A72" },
+] as const;
+
+export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {
   id: string;
@@ -852,6 +885,9 @@ export interface ProcessoSocietario {
   valorProcesso?: number;
   pagamento?: PagamentoProcesso;
   dataPagamento?: string;
+  /** Quanto já entrou, só usado quando pagamento é "Parcial" — ex: cliente
+   * pagou metade do valorProcesso e vai quitar o resto depois. */
+  valorPago?: number;
   /** Preenchida automaticamente quando o status vira "Finalizado" (e limpa
    * se voltar pra outro status) — usada pra calcular o tempo médio de
    * cada tipo de processo. */

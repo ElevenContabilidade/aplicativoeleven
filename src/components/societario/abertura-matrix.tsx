@@ -7,15 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import {
-  CHECKLIST_STATUS,
-  ETAPAS_ABERTURA_EMPRESA,
-  ETAPAS_ABERTURA_GRUPOS,
-  type ChecklistStatus,
-  type Client,
-  type PagamentoProcesso,
-  type ProcessoSocietario,
-} from "@/lib/types";
+import { CHECKLIST_STATUS, type ChecklistStatus, type Client, type PagamentoProcesso, type ProcessoSocietario } from "@/lib/types";
+import { CHECKLISTS_POR_TIPO, etapasAtualizadas, gruposComEtapas } from "@/lib/societario-checklist";
 import { cn } from "@/lib/utils";
 
 const CELL_STATUS_STYLE: Record<ChecklistStatus, string> = {
@@ -25,25 +18,16 @@ const CELL_STATUS_STYLE: Record<ChecklistStatus, string> = {
   Dispensada: "bg-status-brown",
 };
 
-const PAGAMENTO_OPCOES: PagamentoProcesso[] = ["Pago", "Pendente"];
+const PAGAMENTO_OPCOES: PagamentoProcesso[] = ["Pago", "Parcial", "Pendente"];
 const PAGAMENTO_STYLE: Record<PagamentoProcesso, string> = {
   Pago: "bg-status-success",
+  Parcial: "bg-status-warning",
   Pendente: "bg-status-danger",
 };
 
 function isDone(status: ChecklistStatus) {
   return status === "OK" || status === "Dispensada";
 }
-
-// Fatia ETAPAS_ABERTURA_EMPRESA nos mesmos blocos de ETAPAS_ABERTURA_GRUPOS.
-const GRUPOS_COM_ETAPAS = (() => {
-  let offset = 0;
-  return ETAPAS_ABERTURA_GRUPOS.map((g) => {
-    const etapas = ETAPAS_ABERTURA_EMPRESA.slice(offset, offset + g.count);
-    offset += g.count;
-    return { ...g, etapas };
-  });
-})();
 
 export function AberturaMatrix({ processos, clients }: { processos: ProcessoSocietario[]; clients: Client[] }) {
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
@@ -84,11 +68,20 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
         const nomeCliente = client?.dados.razaoSocial ?? "—";
-        const total = ETAPAS_ABERTURA_EMPRESA.length;
+        const grupos = gruposComEtapas(p.tipoServico);
+        const checklistDesatualizado = (CHECKLISTS_POR_TIPO[p.tipoServico]?.etapas.length ?? 0) !== p.etapas.length;
+        const total = p.etapas.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
         const open = openId === p.id;
         const editingNome = editingClienteId === p.clienteId;
+
+        function sincronizarChecklist() {
+          const hoje = new Date().toISOString().slice(0, 10);
+          updateProcessoSocietario(p.id, {
+            etapas: etapasAtualizadas(p.tipoServico, p.etapas, p.responsavelId, hoje, p.prazo ?? hoje),
+          });
+        }
 
         return (
           <div key={p.id} className="overflow-hidden rounded-2xl border border-sand-200 bg-white">
@@ -96,10 +89,10 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
               <button
                 type="button"
                 onClick={() => setOpenId(open ? null : p.id)}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                className="flex min-w-56 flex-1 items-center gap-3 text-left"
               >
                 <ChevronDown className={cn("size-4 shrink-0 text-sand-400 transition-transform", open && "rotate-180")} />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   {editingNome ? (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <Input
@@ -128,11 +121,12 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       <Link
                         href={`/clientes/${p.clienteId}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                        className="min-w-0 truncate font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                        title={nomeCliente}
                       >
                         {nomeCliente}
                       </Link>
@@ -174,9 +168,11 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                     onValueChange={(v) => {
                       const pagamento = v as PagamentoProcesso;
                       const hoje = new Date().toISOString().slice(0, 10);
+                      const temData = pagamento === "Pago" || pagamento === "Parcial";
                       updateProcessoSocietario(p.id, {
                         pagamento,
-                        dataPagamento: pagamento === "Pago" ? (p.dataPagamento ?? hoje) : undefined,
+                        dataPagamento: temData ? (p.dataPagamento ?? hoje) : undefined,
+                        valorPago: pagamento === "Parcial" ? p.valorPago : undefined,
                       });
                     }}
                   >
@@ -196,7 +192,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                   </Select>
                 </div>
 
-                {p.pagamento === "Pago" && (
+                {(p.pagamento === "Pago" || p.pagamento === "Parcial") && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Data pagto</span>
                     <Input
@@ -204,6 +200,19 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                       value={p.dataPagamento ?? ""}
                       onChange={(e) => updateProcessoSocietario(p.id, { dataPagamento: e.target.value })}
                       className="h-8 w-36 text-[12px]"
+                    />
+                  </div>
+                )}
+
+                {p.pagamento === "Parcial" && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Valor pago</span>
+                    <Input
+                      type="number"
+                      value={p.valorPago ?? ""}
+                      onChange={(e) => updateProcessoSocietario(p.id, { valorPago: Number(e.target.value) || 0 })}
+                      placeholder="0"
+                      className="h-8 w-20 text-[12px]"
                     />
                   </div>
                 )}
@@ -237,7 +246,19 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
 
             {open && (
               <div className="space-y-4 border-t border-sand-200 bg-sand-50/40 p-4">
-                {GRUPOS_COM_ETAPAS.map((g) => (
+                {checklistDesatualizado && grupos.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-status-warning bg-status-warning-bg px-3 py-2 text-[11px] text-status-warning">
+                    <span>Esse processo foi criado com uma versão antiga do checklist padrão de {p.tipoServico}.</span>
+                    <button
+                      type="button"
+                      onClick={sincronizarChecklist}
+                      className="shrink-0 rounded-md border border-status-warning px-2 py-1 font-semibold hover:bg-status-warning hover:text-white"
+                    >
+                      Atualizar checklist
+                    </button>
+                  </div>
+                )}
+                {grupos.map((g) => (
                   <div key={g.label}>
                     <div className="mb-2 flex items-center gap-2">
                       <span

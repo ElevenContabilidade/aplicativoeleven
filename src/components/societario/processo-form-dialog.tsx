@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import {
-  ETAPAS_ABERTURA_EMPRESA,
-  ONBOARDING_TEMPLATE,
-  type Client,
-  type EtapaProcesso,
-  type ProcessoSocietario,
-} from "@/lib/types";
+import { ONBOARDING_TEMPLATE, type Client, type ProcessoSocietario } from "@/lib/types";
+import { etapasPadrao } from "@/lib/societario-checklist";
 import { cn } from "@/lib/utils";
 
 const TIPOS_SERVICO = ["Abertura", "Alteração", "Baixa", "Desenquadramento", "Balanço", "Livro Diário"];
@@ -25,6 +20,11 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
   const addClient = useAppStore((s) => s.addClient);
   const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
+
+  const clientesOrdenados = useMemo(
+    () => [...clients].sort((a, b) => a.dados.razaoSocial.localeCompare(b.dados.razaoSocial, "pt-BR")),
+    [clients]
+  );
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -93,17 +93,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
       addClient(novoCliente);
     }
 
-    const etapas: EtapaProcesso[] =
-      tipoServico === "Abertura"
-        ? ETAPAS_ABERTURA_EMPRESA.map((descricao, i) => ({
-            id: `et-${Date.now()}-${i}`,
-            descricao,
-            responsavelId: userId ?? "u7",
-            inicio: today,
-            prazo: dataInicio,
-            status: "Pendente",
-          }))
-        : [];
+    const etapas = etapasPadrao(tipoServico, userId ?? "u7", today, dataInicio);
     const valorNumero = valor ? Number(valor.replace(",", ".")) : undefined;
     const processo: ProcessoSocietario = {
       id: `ps-${Date.now()}`,
@@ -158,7 +148,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               <Select value={clienteId} onValueChange={setClienteId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {clients.map((c) => (
+                  {clientesOrdenados.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
                   ))}
                 </SelectContent>
