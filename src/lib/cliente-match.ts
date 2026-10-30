@@ -1,6 +1,7 @@
 import { onlyDigits } from "@/lib/cnpj";
 
 export interface ClienteRef {
+  id?: string;
   nomeFantasia?: string;
   razaoSocial?: string;
   cnpj?: string;
@@ -8,12 +9,21 @@ export interface ClienteRef {
 
 /**
  * Compara um registro solto (nome digitado livremente + CNPJ/CPF opcional,
- * como em Parcelamentos e Financeiro) com um cliente cadastrado. Prioriza o
- * CNPJ/CPF (comparando só os dígitos, ignorando pontuação) — o identificador
- * mais confiável, já que não muda com abreviações ou maiúsculas no nome.
- * Sem CNPJ/CPF informado no registro, cai para o nome fantasia/razão social.
+ * como em Parcelamentos e Financeiro) com um cliente cadastrado. Quando o
+ * registro guarda o id do cliente (vínculo explícito, feito na hora do
+ * cadastro), isso decide sozinho — é o jeito mais confiável. Sem isso,
+ * prioriza o CNPJ/CPF (comparando só os dígitos, ignorando pontuação), e só
+ * cai pro nome fantasia/razão social se nem isso tiver.
  */
-export function pertenceAoCliente(nomeDigitado: string, cnpjCpfDigitado: string | undefined, cliente: ClienteRef): boolean {
+export function pertenceAoCliente(
+  nomeDigitado: string,
+  cnpjCpfDigitado: string | undefined,
+  cliente: ClienteRef,
+  clienteIdDigitado?: string
+): boolean {
+  if (clienteIdDigitado && cliente.id) {
+    return clienteIdDigitado === cliente.id;
+  }
   const doc = cnpjCpfDigitado ? onlyDigits(cnpjCpfDigitado) : "";
   if (doc && cliente.cnpj) {
     return doc === onlyDigits(cliente.cnpj);

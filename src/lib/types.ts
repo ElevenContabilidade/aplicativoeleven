@@ -866,6 +866,11 @@ export interface Parcelamento {
   id: string;
   clienteNome: string;
   cnpjCpf?: string; // identifica o cliente do parcelamento (CNPJ ou CPF)
+  /** Preenchido quando o parcelamento é de um cliente já cadastrado — vínculo
+   * direto (por id) com o Client, mais confiável que casar por nome/CNPJ.
+   * Sem isso, o parcelamento ainda pode ser "avulso" (cliente que não tem
+   * cadastro completo) e segue casando por clienteNome/cnpjCpf. */
+  clienteId?: string;
   nome: string;
   quantidadeParcelas?: number; // em quantas X — define por quantos meses o parcelamento se repete
   dataInicio: string; // "YYYY-MM-DD" — mês/ano da 1ª parcela

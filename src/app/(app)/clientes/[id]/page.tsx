@@ -148,7 +148,7 @@ export default function ClientProfilePage() {
   const myNotes = anotacoes.filter((n) => n.clienteId === client.id);
   const myLicencas = licencas.filter((l) => l.clienteId === client.id);
   const myIndicacoes = indicacoes.filter((i) => i.clienteId === client.id);
-  const clienteRef = { nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj };
+  const clienteRef = { id: client.id, nomeFantasia: client.dados.nomeFantasia, razaoSocial: client.dados.razaoSocial, cnpj: client.dados.cnpj };
   const myParcelamentos = parcelamentos.filter((p) => parcelamentoPertenceAoCliente(p, clienteRef));
   const myRecebimentos = recebimentos.filter((r) => recebimentoPertenceAoCliente(r, clienteRef));
   const myBoletos = boletosMensais.filter((b) => b.clienteId === client.id && b.status === "Emitido" && !b.removido);

@@ -38,5 +38,5 @@ export function isParcelamentoAtivo(p: Parcelamento): boolean {
  * não muda com abreviações ou diferenças de maiúsculas no nome. Sem CNPJ/CPF
  * cadastrado no parcelamento, cai para o nome (fantasia ou razão social). */
 export function parcelamentoPertenceAoCliente(p: Parcelamento, cliente: ClienteRef): boolean {
-  return pertenceAoCliente(p.clienteNome, p.cnpjCpf, cliente);
+  return pertenceAoCliente(p.clienteNome, p.cnpjCpf, cliente, p.clienteId);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { maskCnpjCpf } from "@/lib/cnpj";
 import type { Parcelamento, StatusEnvioParcelamento } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export function ParcelamentoFormDialog({
   open,
@@ -23,10 +24,18 @@ export function ParcelamentoFormDialog({
   const addParcelamento = useAppStore((s) => s.addParcelamento);
   const updateParcelamento = useAppStore((s) => s.updateParcelamento);
   const setEnvioParcelamento = useAppStore((s) => s.setEnvioParcelamento);
+  const clients = useAppStore((s) => s.clients);
 
   const isEdit = !!parcelamento;
   const today = new Date().toISOString().slice(0, 10);
 
+  const clientesOrdenados = useMemo(
+    () => [...clients].sort((a, b) => a.dados.razaoSocial.localeCompare(b.dados.razaoSocial, "pt-BR")),
+    [clients]
+  );
+
+  const [clienteMode, setClienteMode] = useState<"existente" | "avulso">(parcelamento?.clienteId ? "existente" : "avulso");
+  const [clienteId, setClienteId] = useState(parcelamento?.clienteId ?? clientesOrdenados[0]?.id ?? "");
   const [clienteNome, setClienteNome] = useState(parcelamento?.clienteNome ?? "");
   const [cnpjCpf, setCnpjCpf] = useState(parcelamento?.cnpjCpf ?? "");
   const [nome, setNome] = useState(parcelamento?.nome ?? "");
@@ -39,11 +48,15 @@ export function ParcelamentoFormDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!clienteNome.trim() || !nome.trim() || !dataInicio) return;
+    if (clienteMode === "existente" ? !clienteId : !clienteNome.trim()) return;
+    if (!nome.trim() || !dataInicio) return;
+
+    const clienteSelecionado = clienteMode === "existente" ? clientesOrdenados.find((c) => c.id === clienteId) : undefined;
 
     const patch = {
-      clienteNome: clienteNome.trim(),
-      cnpjCpf: cnpjCpf.trim() || undefined,
+      clienteId: clienteSelecionado?.id,
+      clienteNome: clienteSelecionado ? clienteSelecionado.dados.razaoSocial : clienteNome.trim(),
+      cnpjCpf: (clienteSelecionado ? clienteSelecionado.dados.cnpj : cnpjCpf.trim()) || undefined,
       nome: nome.trim(),
       quantidadeParcelas: quantidadeParcelas ? Number(quantidadeParcelas) : undefined,
       dataInicio,
@@ -67,16 +80,53 @@ export function ParcelamentoFormDialog({
           <DialogTitle>{isEdit ? "Editar parcelamento" : "Novo parcelamento"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Label className="mb-1 block">Cliente *</Label>
+            <div className="mb-2 inline-flex rounded-lg border border-sand-200 bg-sand-50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setClienteMode("existente")}
+                className={cn(
+                  "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                  clienteMode === "existente" ? "bg-white text-wine-700 shadow-sm" : "text-sand-500 hover:text-sand-700"
+                )}
+              >
+                Cliente já cadastrado
+              </button>
+              <button
+                type="button"
+                onClick={() => setClienteMode("avulso")}
+                className={cn(
+                  "rounded-md px-3 py-1 text-xs font-medium transition-colors",
+                  clienteMode === "avulso" ? "bg-white text-wine-700 shadow-sm" : "text-sand-500 hover:text-sand-700"
+                )}
+              >
+                Nome avulso
+              </button>
+            </div>
+            {clienteMode === "existente" ? (
+              <div>
+                <Select value={clienteId} onValueChange={setClienteId}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger>
+                  <SelectContent>
+                    {clientesOrdenados.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.dados.razaoSocial}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1 text-[11px] text-sand-500">
+                  Fica vinculado direto ao cadastro do cliente — aparece no perfil dele em Parcelamentos.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome do cliente" required />
+                <Input value={cnpjCpf} onChange={(e) => setCnpjCpf(maskCnpjCpf(e.target.value))} placeholder="CNPJ ou CPF (opcional)" />
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="mb-1 block">Cliente *</Label>
-              <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome do cliente" required />
-            </div>
-            <div>
-              <Label className="mb-1 block">CNPJ/CPF</Label>
-              <Input value={cnpjCpf} onChange={(e) => setCnpjCpf(maskCnpjCpf(e.target.value))} placeholder="CNPJ ou CPF do cliente" />
-              <p className="mt-1 text-[11px] text-sand-500">Usado para identificar automaticamente o cliente no perfil dele.</p>
-            </div>
             <div className="col-span-2">
               <Label className="mb-1 block">Nome do parcelamento *</Label>
               <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex: Parcelamento Simples Nacional 2026" required />
