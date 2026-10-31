@@ -969,6 +969,15 @@ export default function FinanceiroPage() {
                 )}
               </TableBody>
             </Table>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-sand-100 pt-2 text-xs">
+              <span className="text-sand-500">
+                {ledgerFiltrado.length} lançamento{ledgerFiltrado.length !== 1 ? "s" : ""} no filtro
+                {ledgerFiltrado.length > 30 ? ` (mostrando os 30 mais recentes)` : ""}
+              </span>
+              <span className="font-semibold text-sand-800">
+                Recebido no filtro: <span className="text-status-success">{formatCurrency(ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0))}</span>
+              </span>
+            </div>
           </CardContent>
         </Card>
 
