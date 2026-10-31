@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2, MessageCircle, Loader2, Wallet, CircleAlert, Receipt } from "lucide-react";
+import { CreditCard, Send, Clock, CircleDollarSign, Search, ArrowUp, ArrowDown, ArrowUpDown, Trash2, MessageCircle, Loader2, Wallet, CircleAlert, Receipt, Wand2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -192,6 +193,37 @@ export default function BoletosPage() {
     });
   }
 
+  /** Preenche a data de recebimento de quem já está marcado "Recebido" mas
+   * ficou sem data (marcado antes dessa coluna existir, ou importado assim)
+   * — usa o vencimento do próprio boleto como aproximação. Sem isso, esses
+   * boletos nunca entram no "Recebido (caixa)" do Financeiro, só na
+   * competência, e ficam escondidos ali só com "sem data". */
+  async function aplicarDatasRecebimentoRetroativas() {
+    const semData = boletosMensais.filter((b) => b.recebido && !b.dataRecebimento && !b.removido);
+    if (semData.length === 0) {
+      alert("Nenhum boleto recebido sem data — tudo certo.");
+      return;
+    }
+    if (
+      !confirm(
+        `Encontrei ${semData.length} boleto(s) já marcados como "Recebido" sem data de recebimento. Preencher com o vencimento do próprio boleto (aproximação, já que não dá pra saber o dia exato)? Isso faz esses valores passarem a contar no "Recebido (caixa)" do Financeiro.`
+      )
+    )
+      return;
+
+    const atualizacoes = semData.map((b) => () => {
+      const cliente = clients.find((c) => c.id === b.clienteId);
+      const vencimento = b.vencimento ?? (cliente ? vencimentoDaCompetencia(b.competencia, cliente.financeiro.vencimentoDia) : b.competencia + "-10");
+      updateBoleto(b.clienteId, b.competencia, { dataRecebimento: vencimento });
+    });
+    const TAMANHO_LOTE = 15;
+    for (let i = 0; i < atualizacoes.length; i += TAMANHO_LOTE) {
+      for (const aplicar of atualizacoes.slice(i, i + TAMANHO_LOTE)) aplicar();
+      if (i + TAMANHO_LOTE < atualizacoes.length) await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    alert(`${semData.length} boleto(s) atualizados.`);
+  }
+
   function handleDelete(l: Linha) {
     const nome = l.cliente.dados.razaoSocial;
     if (confirm(`Excluir o boleto de ${nome} em ${l.competencia}? Ele some da lista deste mês.`)) {
@@ -245,12 +277,17 @@ export default function BoletosPage() {
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sand-400" />
           <Input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por cliente" className="pl-8" />
         </div>
-        <Select value={year} onValueChange={setYear}>
-          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={aplicarDatasRecebimentoRetroativas}>
+            <Wand2 className="size-3.5" /> Preencher datas de recebimento antigas
+          </Button>
+          <Select value={year} onValueChange={setYear}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {YEARS.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="mb-4 flex flex-wrap gap-1.5">
