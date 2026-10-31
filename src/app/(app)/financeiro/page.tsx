@@ -794,9 +794,10 @@ export default function FinanceiroPage() {
   }
 
   // Serviços extras = qualquer cobrança avulsa, não-recorrente: os
-  // lançamentos manuais (ServicoExtra) + os processos societários com valor
-  // (Abertura, Alteração, Baixa etc.) — júnta os dois numa lista só, mais
-  // recente primeiro.
+  // lançamentos manuais (ServicoExtra), os processos societários com valor
+  // (Abertura, Alteração, Baixa etc.) e os recebimentos avulsos digitados
+  // direto na tabela de Honorários (ex: "Regularização", "Abertura" como
+  // serviço livre) — junta os três numa lista só, mais recente primeiro.
   const servicosExtrasCompletos = useMemo(() => {
     const manuais = servicosExtras.map((s) => ({
       key: `extra-${s.id}`,
@@ -822,8 +823,19 @@ export default function FinanceiroPage() {
         data: p.dataPagamento ?? p.dataAbertura,
         status: p.pagamento ?? "Pendente",
       }));
-    return [...manuais, ...societarios].sort((a, b) => b.data.localeCompare(a.data));
-  }, [servicosExtras, processosSocietarios, clients]);
+    const avulsos = recebimentos.map((r) => ({
+      key: `avulso-${r.id}`,
+      origem: "avulso" as const,
+      id: r.id,
+      servico: r.servico || "Recebimento avulso",
+      clienteNome: r.nome,
+      valor: r.valor,
+      responsavelId: "",
+      data: r.pagamento ?? r.vencimento,
+      status: r.status as string,
+    }));
+    return [...manuais, ...societarios, ...avulsos].sort((a, b) => b.data.localeCompare(a.data));
+  }, [servicosExtras, processosSocietarios, recebimentos, clients]);
 
   return (
     <div>
@@ -1075,16 +1087,26 @@ export default function FinanceiroPage() {
                   <p className="text-[11px] text-sand-400">{teamName(s.responsavelId)} • {formatDate(s.data)}</p>
                 </>
               );
-              return s.origem === "societario" ? (
-                <Link
-                  key={s.key}
-                  href="/societario"
-                  title="Ver e editar no Societário"
-                  className="block rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
-                >
-                  {conteudo}
-                </Link>
-              ) : (
+              if (s.origem === "societario") {
+                return (
+                  <Link
+                    key={s.key}
+                    href="/societario"
+                    title="Ver e editar no Societário"
+                    className="block rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
+                  >
+                    {conteudo}
+                  </Link>
+                );
+              }
+              if (s.origem === "avulso") {
+                return (
+                  <div key={s.key} title="Editado na tabela de Honorários, acima" className="rounded-lg border border-sand-200 p-3 text-xs">
+                    {conteudo}
+                  </div>
+                );
+              }
+              return (
                 <div
                   key={s.key}
                   className="cursor-pointer rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
