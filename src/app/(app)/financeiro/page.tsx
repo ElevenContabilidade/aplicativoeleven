@@ -508,7 +508,13 @@ export default function FinanceiroPage() {
         nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
         servico: `Societário — ${p.tipoServico}`,
         valor: valorRecebidoProcesso(p),
-        competencia: (p.dataPagamento ?? p.dataAbertura).slice(0, 7),
+        // Competência de exibição é sempre a data de abertura do processo (a
+        // competência "de verdade"), igual ao resto da tabela — mesmo quando
+        // o filtro acima usa a data de pagamento pra decidir se o processo
+        // entra neste período. Antes mostrava a data de pagamento aqui, o
+        // que fazia o mesmo processo aparecer com competências diferentes
+        // entre este card e o "Recebido (caixa)".
+        competencia: p.dataAbertura.slice(0, 7),
         data: p.dataPagamento,
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => b.valor - a.valor);
