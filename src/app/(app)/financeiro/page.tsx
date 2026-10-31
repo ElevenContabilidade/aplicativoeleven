@@ -321,11 +321,21 @@ export default function FinanceiroPage() {
   const mesesCaixa = useMemo(() => (mes === "anual" ? competenciasAno : [`${year}-${mes}`]), [mes, competenciasAno, year]);
   const recebidoCaixa = useMemo(() => {
     const doLedger = ledgerAno
-      .filter((h) => h.pagamento && mesesCaixa.includes(h.pagamento.slice(0, 7)))
+      .filter(
+        (h) =>
+          h.pagamento &&
+          mesesCaixa.includes(h.pagamento.slice(0, 7)) &&
+          (filtroBanco === TODOS || h.banco === filtroBanco) &&
+          (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
+      )
       .reduce((a, h) => a + pagoEfetivoDe(h), 0);
-    const doSocietario = resumoFinanceiroSocietario(processosSocietarios, mesesCaixa).recebido;
+    // Processo societário não tem banco/tipo de pessoa cadastrado — com um
+    // desses filtros ativo não dá pra saber se ele entra ou não, então fica
+    // de fora (só soma quando a visão é "todos os bancos"/"PF e PJ").
+    const doSocietario =
+      filtroBanco === TODOS && filtroTipo === TODOS ? resumoFinanceiroSocietario(processosSocietarios, mesesCaixa).recebido : 0;
     return doLedger + doSocietario;
-  }, [ledgerAno, mesesCaixa, processosSocietarios, pagoEfetivoDe]);
+  }, [ledgerAno, mesesCaixa, processosSocietarios, pagoEfetivoDe, filtroBanco, filtroTipo]);
   const resumoSocietarioPorMes = useMemo(
     () => new Map(MESES.map((m) => [`${year}-${m.value}`, resumoFinanceiroSocietario(processosSocietarios, [`${year}-${m.value}`])])),
     [processosSocietarios, year]
@@ -466,7 +476,12 @@ export default function FinanceiroPage() {
   // O que entra/falta entrar dos processos societários soma junto com a
   // carteira de clientes — não faz sentido mostrar "Recebido" lá em cima
   // sem contar o que já caiu de honorário de abertura/alteração etc.
-  const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) + resumoSocietario.recebido;
+  // Mas processo societário não tem banco/tipo de pessoa cadastrado, então
+  // com um filtro de banco ou tipo ativo ele fica de fora (não dá pra saber
+  // se pertence ao banco/tipo escolhido).
+  const recebido =
+    ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) +
+    (filtroBanco === TODOS && filtroTipo === TODOS ? resumoSocietario.recebido : 0);
 
   // Itens por trás de cada um dos dois cards "Recebido" — pra poder abrir e
   // conferir nome a nome por que o regime de caixa deu diferente do de
