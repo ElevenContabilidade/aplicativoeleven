@@ -287,7 +287,7 @@ export default function SocietarioPage() {
       {view === "etapa" && (
         <div>
           <p className="mb-3 text-[11px] text-sand-500">
-            Checklist de abertura e de alteração de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
+            Checklist de abertura, alteração e baixa de empresa, no mesmo formato do controle societário — clique em qualquer célula para mudar o status.
           </p>
           <AberturaMatrix processos={processosComChecklist} clients={clients} />
         </div>

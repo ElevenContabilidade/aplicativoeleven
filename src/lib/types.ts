@@ -880,6 +880,30 @@ export const ETAPAS_ALTERACAO_GRUPOS = [
   { label: "Demais obrigações", count: 5, color: "#9A5A72" },
 ] as const;
 
+/** Checklist de uma baixa de empresa, no mesmo formato do de abertura/alteração. */
+export const ETAPAS_BAIXA_EMPRESA = [
+  "Enviar proposta comercial",
+  "Receber pagamento dos 50%",
+  "Cliente preencheu o Google Formulário",
+  "E-CPF ou GOV.BR",
+  "DBE",
+  "FCN",
+  "Assinar documentos",
+  "Enviar documentos para a Junta",
+  "Processo concluído na Junta Comercial",
+  "Baixa da Inscrição Municipal",
+  "Baixa da Inscrição Estadual",
+  "Gerar CNDs",
+] as const;
+
+/** Faixas de colunas de ETAPAS_BAIXA_EMPRESA, com a cor de cada fase. */
+export const ETAPAS_BAIXA_GRUPOS = [
+  { label: "Comercial e levantamento", count: 3, color: "#5C1420" },
+  { label: "Documentação e acessos", count: 3, color: "#2E5F7F" },
+  { label: "Assinatura e protocolo", count: 3, color: "#4A7A8C" },
+  { label: "Baixas e encerramento", count: 3, color: "#9A5A72" },
+] as const;
+
 export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {

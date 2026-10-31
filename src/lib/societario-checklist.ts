@@ -3,6 +3,8 @@ import {
   ETAPAS_ABERTURA_GRUPOS,
   ETAPAS_ALTERACAO_EMPRESA,
   ETAPAS_ALTERACAO_GRUPOS,
+  ETAPAS_BAIXA_EMPRESA,
+  ETAPAS_BAIXA_GRUPOS,
   type EtapaProcesso,
 } from "@/lib/types";
 
@@ -19,6 +21,7 @@ export const CHECKLISTS_POR_TIPO: Record<string, { etapas: readonly string[]; gr
   Abertura: { etapas: ETAPAS_ABERTURA_EMPRESA, grupos: ETAPAS_ABERTURA_GRUPOS },
   "Abertura de empresa": { etapas: ETAPAS_ABERTURA_EMPRESA, grupos: ETAPAS_ABERTURA_GRUPOS },
   Alteração: { etapas: ETAPAS_ALTERACAO_EMPRESA, grupos: ETAPAS_ALTERACAO_GRUPOS },
+  Baixa: { etapas: ETAPAS_BAIXA_EMPRESA, grupos: ETAPAS_BAIXA_GRUPOS },
 };
 
 function novaEtapa(descricao: string, i: number, responsavelId: string, inicio: string, prazo: string): EtapaProcesso {
