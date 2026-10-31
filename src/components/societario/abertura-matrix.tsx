@@ -34,9 +34,14 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const deleteProcessoSocietario = useAppStore((s) => s.deleteProcessoSocietario);
   const updateClientDados = useAppStore((s) => s.updateClientDados);
+  const todosProcessos = useAppStore((s) => s.processosSocietarios);
   const [openId, setOpenId] = useState<string | null>(processos[0]?.id ?? null);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
   const [nomeDraft, setNomeDraft] = useState("");
+
+  const bancoOptions = [...new Set(todosProcessos.map((p) => p.banco).filter((b): b is string => !!b))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
 
   function startEditNome(clienteId: string, nomeAtual: string) {
     setEditingClienteId(clienteId);
@@ -217,6 +222,36 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                   </div>
                 )}
 
+                {(p.pagamento === "Pago" || p.pagamento === "Parcial") && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Banco</span>
+                    <Input
+                      value={p.banco ?? ""}
+                      onChange={(e) => updateProcessoSocietario(p.id, { banco: e.target.value })}
+                      placeholder="Em qual banco"
+                      list="societario-bancos-matrix"
+                      className="h-8 w-28 text-[12px]"
+                    />
+                  </div>
+                )}
+
+                {(p.pagamento === "Pago" || p.pagamento === "Parcial") && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Tipo</span>
+                    <Select
+                      value={p.tipoPessoa ?? "—"}
+                      onValueChange={(v) => updateProcessoSocietario(p.id, { tipoPessoa: v === "—" ? undefined : (v as "PF" | "PJ") })}
+                    >
+                      <SelectTrigger className="h-8 w-16 text-[12px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="—">—</SelectItem>
+                        <SelectItem value="PF">PF</SelectItem>
+                        <SelectItem value="PJ">PJ</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">R$</span>
                   <Input
@@ -316,6 +351,9 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
           </div>
         );
       })}
+      <datalist id="societario-bancos-matrix">
+        {bancoOptions.map((b) => (<option key={b} value={b} />))}
+      </datalist>
     </div>
   );
 }

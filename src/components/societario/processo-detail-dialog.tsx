@@ -39,6 +39,7 @@ function isDone(status: ChecklistStatus) {
 export function ProcessoDetailDialog({ processo, onClose }: { processo: ProcessoSocietario | null; onClose: () => void }) {
   const clients = useAppStore((s) => s.clients);
   const team = useAppStore((s) => s.team);
+  const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const addEtapaProcesso = useAppStore((s) => s.addEtapaProcesso);
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
@@ -54,6 +55,9 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   const etapas = processo.etapas ?? [];
   const feitas = etapas.filter((e) => isDone(e.status)).length;
   const checklistPadrao = CHECKLISTS_POR_TIPO[processo.tipoServico];
+  const bancoOptions = [...new Set(processosSocietarios.map((p) => p.banco).filter((b): b is string => !!b))].sort((a, b) =>
+    a.localeCompare(b, "pt-BR")
+  );
   const checklistDesatualizado = !!checklistPadrao && checklistPadrao.etapas.length !== etapas.length;
 
   function sincronizarChecklist() {
@@ -174,6 +178,33 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               />
             </div>
           )}
+          {(processo.pagamento === "Pago" || processo.pagamento === "Parcial") && (
+            <div>
+              <Label className="mb-1 block">Banco</Label>
+              <Input
+                value={processo.banco ?? ""}
+                onChange={(e) => updateProcessoSocietario(processo.id, { banco: e.target.value })}
+                placeholder="Em qual banco caiu"
+                list="societario-bancos"
+              />
+            </div>
+          )}
+          {(processo.pagamento === "Pago" || processo.pagamento === "Parcial") && (
+            <div>
+              <Label className="mb-1 block">Tipo</Label>
+              <Select
+                value={processo.tipoPessoa ?? "—"}
+                onValueChange={(v) => updateProcessoSocietario(processo.id, { tipoPessoa: v === "—" ? undefined : (v as "PF" | "PJ") })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="—">—</SelectItem>
+                  <SelectItem value="PF">PF</SelectItem>
+                  <SelectItem value="PJ">PJ</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="col-span-2">
             <Label className="mb-1 block">Pendências / observações</Label>
             <Textarea
@@ -278,6 +309,9 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
             <Button type="button" size="sm" variant="outline" onClick={addEtapa}>Adicionar</Button>
           </div>
         </div>
+        <datalist id="societario-bancos">
+          {bancoOptions.map((b) => (<option key={b} value={b} />))}
+        </datalist>
       </DialogContent>
     </Dialog>
   );

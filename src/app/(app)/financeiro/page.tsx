@@ -168,6 +168,22 @@ export default function FinanceiroPage() {
     [processosSocietarios, competenciasPeriodo]
   );
 
+  // Mesmos filtros de Banco/Tipo da tabela de Honorários, aplicados aos
+  // processos societários — só entram no "Recebido" quando batem com o
+  // banco/tipo escolhido (processo sem banco cadastrado fica de fora assim
+  // que um filtro é ativado, já que não dá pra saber onde caiu).
+  const processosSocietariosFiltrados = useMemo(
+    () =>
+      processosSocietarios.filter(
+        (p) => (filtroBanco === TODOS || p.banco === filtroBanco) && (filtroTipo === TODOS || p.tipoPessoa === filtroTipo)
+      ),
+    [processosSocietarios, filtroBanco, filtroTipo]
+  );
+  const resumoSocietarioFiltrado = useMemo(
+    () => resumoFinanceiroSocietario(processosSocietariosFiltrados, competenciasPeriodo),
+    [processosSocietariosFiltrados, competenciasPeriodo]
+  );
+
   /** Monta o ledger consolidado (clientes + avulsos + boletos + parceiros +
    * extras de parceiro) pra um conjunto arbitrário de competências —
    * extraído pra função reutilizável porque a Visão anual precisa do ledger
@@ -329,13 +345,9 @@ export default function FinanceiroPage() {
           (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
       )
       .reduce((a, h) => a + pagoEfetivoDe(h), 0);
-    // Processo societário não tem banco/tipo de pessoa cadastrado — com um
-    // desses filtros ativo não dá pra saber se ele entra ou não, então fica
-    // de fora (só soma quando a visão é "todos os bancos"/"PF e PJ").
-    const doSocietario =
-      filtroBanco === TODOS && filtroTipo === TODOS ? resumoFinanceiroSocietario(processosSocietarios, mesesCaixa).recebido : 0;
+    const doSocietario = resumoFinanceiroSocietario(processosSocietariosFiltrados, mesesCaixa).recebido;
     return doLedger + doSocietario;
-  }, [ledgerAno, mesesCaixa, processosSocietarios, pagoEfetivoDe, filtroBanco, filtroTipo]);
+  }, [ledgerAno, mesesCaixa, processosSocietariosFiltrados, pagoEfetivoDe, filtroBanco, filtroTipo]);
   const resumoSocietarioPorMes = useMemo(
     () => new Map(MESES.map((m) => [`${year}-${m.value}`, resumoFinanceiroSocietario(processosSocietarios, [`${year}-${m.value}`])])),
     [processosSocietarios, year]
@@ -475,13 +487,10 @@ export default function FinanceiroPage() {
   const pagoEfetivo = (h: (typeof ledgerFiltrado)[number]) => h.valorPago ?? (h.status === "Pago" ? h.valor : 0);
   // O que entra/falta entrar dos processos societários soma junto com a
   // carteira de clientes — não faz sentido mostrar "Recebido" lá em cima
-  // sem contar o que já caiu de honorário de abertura/alteração etc.
-  // Mas processo societário não tem banco/tipo de pessoa cadastrado, então
-  // com um filtro de banco ou tipo ativo ele fica de fora (não dá pra saber
-  // se pertence ao banco/tipo escolhido).
-  const recebido =
-    ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) +
-    (filtroBanco === TODOS && filtroTipo === TODOS ? resumoSocietario.recebido : 0);
+  // sem contar o que já caiu de honorário de abertura/alteração etc. Usa a
+  // versão já filtrada por banco/tipo (resumoSocietarioFiltrado), igual ao
+  // resto do card.
+  const recebido = ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0) + resumoSocietarioFiltrado.recebido;
 
   // Itens por trás de cada um dos dois cards "Recebido" — pra poder abrir e
   // conferir nome a nome por que o regime de caixa deu diferente do de
@@ -511,7 +520,7 @@ export default function FinanceiroPage() {
       )
       .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }))
       .filter((h) => h.valor > 0);
-    const doSocietario = processosSocietarios
+    const doSocietario = processosSocietariosFiltrados
       .filter(
         (p) =>
           (p.pagamento === "Pago" || p.pagamento === "Parcial") &&
@@ -533,13 +542,19 @@ export default function FinanceiroPage() {
         data: p.dataPagamento,
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => b.valor - a.valor);
-  }, [ledgerAll, processosSocietarios, clients, competenciasPeriodo, filtroBanco, filtroTipo, pagoEfetivoDe]);
+  }, [ledgerAll, processosSocietariosFiltrados, clients, competenciasPeriodo, filtroBanco, filtroTipo, pagoEfetivoDe]);
 
   const detalheCaixaItens = useMemo(() => {
     const doLedger = ledgerAno
-      .filter((h) => h.pagamento && mesesCaixa.includes(h.pagamento.slice(0, 7)))
+      .filter(
+        (h) =>
+          h.pagamento &&
+          mesesCaixa.includes(h.pagamento.slice(0, 7)) &&
+          (filtroBanco === TODOS || h.banco === filtroBanco) &&
+          (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
+      )
       .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }));
-    const doSocietario = processosSocietarios
+    const doSocietario = processosSocietariosFiltrados
       .filter(
         (p) =>
           (p.pagamento === "Pago" || p.pagamento === "Parcial") &&
@@ -556,7 +571,7 @@ export default function FinanceiroPage() {
         data: p.dataPagamento,
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""));
-  }, [ledgerAno, mesesCaixa, processosSocietarios, clients, pagoEfetivoDe]);
+  }, [ledgerAno, mesesCaixa, processosSocietariosFiltrados, clients, pagoEfetivoDe, filtroBanco, filtroTipo]);
 
   const detalheItensBase = detalheRecebido === "caixa" ? detalheCaixaItens : detalheCompetenciaItens;
   const detalheItens = detalheSortField

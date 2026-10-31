@@ -901,6 +901,10 @@ export interface ProcessoSocietario {
   /** Quanto já entrou, só usado quando pagamento é "Parcial" — ex: cliente
    * pagou metade do valorProcesso e vai quitar o resto depois. */
   valorPago?: number;
+  /** Banco em que o pagamento caiu — sem isso o processo fica de fora quando
+   * o Financeiro filtra o "Recebido" por banco/tipo de pessoa. */
+  banco?: string;
+  tipoPessoa?: TipoPessoaRecebimento;
   /** Preenchida automaticamente quando o status vira "Finalizado" (e limpa
    * se voltar pra outro status) — usada pra calcular o tempo médio de
    * cada tipo de processo. */
