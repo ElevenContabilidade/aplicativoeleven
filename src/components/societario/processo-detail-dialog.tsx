@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { CHECKLIST_STATUS, type ChecklistStatus, type PagamentoProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
 import { CHECKLISTS_POR_TIPO, etapasAtualizadas } from "@/lib/societario-checklist";
+import { criarClienteAvulso, nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
@@ -41,6 +42,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   const team = useAppStore((s) => s.team);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
+  const addClient = useAppStore((s) => s.addClient);
   const addEtapaProcesso = useAppStore((s) => s.addEtapaProcesso);
   const setEtapaStatus = useAppStore((s) => s.setEtapaStatus);
   const deleteEtapaProcesso = useAppStore((s) => s.deleteEtapaProcesso);
@@ -68,6 +70,17 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
     });
   }
 
+  /** Promove um processo avulso (sem cadastro de cliente) pra cliente de
+   * verdade — cria o cadastro rápido (status Onboarding) e vincula o
+   * processo a ele. Só acontece quando alguém clica aqui, nunca sozinho. */
+  function virarCliente() {
+    if (!processo) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(processo, clients), processo.responsavelId, hoje);
+    addClient(novoCliente);
+    updateProcessoSocietario(processo.id, { clienteId: novoCliente.id, clienteNomeAvulso: undefined });
+  }
+
   function addEtapa() {
     if (!descricao.trim() || !processo) return;
     addEtapaProcesso(processo.id, { id: `et-${Date.now()}`, descricao, responsavelId, inicio, prazo, status: "Pendente" });
@@ -79,7 +92,16 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{processo.tipoServico}</DialogTitle>
-          {client && <p className="text-xs text-sand-500">{client.dados.razaoSocial} • {client.dados.cnpj}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs text-sand-500">
+              {client ? `${client.dados.razaoSocial} • ${client.dados.cnpj || "sem CNPJ"}` : nomeDoProcessoSocietario(processo, clients)}
+            </p>
+            {!client && (
+              <Button type="button" size="sm" variant="outline" onClick={virarCliente} className="h-6 gap-1 px-2 text-[11px]">
+                <UserPlus className="size-3" /> Virou cliente
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">

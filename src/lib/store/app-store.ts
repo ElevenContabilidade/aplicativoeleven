@@ -1465,7 +1465,7 @@ export const useAppStore = create<AppState>()(
 
       addProcessoSocietario: (processo) => {
         set((s) => ({ processosSocietarios: [processo, ...s.processosSocietarios] }));
-        pushFinanceiro("processosSocietarios", processo.id, processo.clienteId, processo);
+        pushFinanceiro("processosSocietarios", processo.id, processo.clienteId ?? null, processo);
       },
 
       updateProcessoSocietario: (id, patch) => {
@@ -1473,7 +1473,7 @@ export const useAppStore = create<AppState>()(
           processosSocietarios: s.processosSocietarios.map((p) => (p.id === id ? { ...p, ...patch } : p)),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === id);
-        if (processo) pushFinanceiro("processosSocietarios", id, processo.clienteId, processo);
+        if (processo) pushFinanceiro("processosSocietarios", id, processo.clienteId ?? null, processo);
       },
 
       deleteProcessoSocietario: (id) => {
@@ -1490,7 +1490,7 @@ export const useAppStore = create<AppState>()(
           ),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
-        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId ?? null, processo);
       },
 
       setEtapaStatus: (processoId, etapaId, status) => {
@@ -1502,7 +1502,7 @@ export const useAppStore = create<AppState>()(
           ),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
-        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId ?? null, processo);
       },
 
       deleteEtapaProcesso: (processoId, etapaId) => {
@@ -1512,7 +1512,7 @@ export const useAppStore = create<AppState>()(
           ),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
-        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId, processo);
+        if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId ?? null, processo);
       },
 
       addCertificado: (certificado) => {

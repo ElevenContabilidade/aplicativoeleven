@@ -908,7 +908,14 @@ export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {
   id: string;
-  clienteId: string;
+  /** Ausente = processo avulso, sem vínculo com um cadastro de cliente (ver
+   * clienteNomeAvulso) — ex: só uma abertura de MEI avulsa, alguém que não
+   * virou cliente de assessoria. Só existe um Client de verdade (e esse
+   * campo passa a ser preenchido) quando alguém clica "Virou cliente". */
+  clienteId?: string;
+  /** Nome de quem contratou o processo, só usado enquanto ele é avulso (sem
+   * clienteId) — use nomeDoProcessoSocietario() pra resolver o nome certo. */
+  clienteNomeAvulso?: string;
   tipoServico: string;
   responsavelId: string;
   orgao?: string;

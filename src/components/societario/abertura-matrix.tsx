@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Pencil, Check, X, Trash2 } from "lucide-react";
+import { ChevronDown, Pencil, Check, X, Trash2, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, type ChecklistStatus, type Client, type PagamentoProcesso, type ProcessoSocietario } from "@/lib/types";
 import { CHECKLISTS_POR_TIPO, etapasAtualizadas, gruposComEtapas } from "@/lib/societario-checklist";
+import { criarClienteAvulso, nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { cn } from "@/lib/utils";
 
 const CELL_STATUS_STYLE: Record<ChecklistStatus, string> = {
@@ -34,24 +35,38 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const deleteProcessoSocietario = useAppStore((s) => s.deleteProcessoSocietario);
   const updateClientDados = useAppStore((s) => s.updateClientDados);
+  const addClient = useAppStore((s) => s.addClient);
   const todosProcessos = useAppStore((s) => s.processosSocietarios);
   const [openId, setOpenId] = useState<string | null>(processos[0]?.id ?? null);
-  const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
+  const [editingProcessoId, setEditingProcessoId] = useState<string | null>(null);
   const [nomeDraft, setNomeDraft] = useState("");
 
   const bancoOptions = [...new Set(todosProcessos.map((p) => p.banco).filter((b): b is string => !!b))].sort((a, b) =>
     a.localeCompare(b, "pt-BR")
   );
 
-  function startEditNome(clienteId: string, nomeAtual: string) {
-    setEditingClienteId(clienteId);
+  function startEditNome(processoId: string, nomeAtual: string) {
+    setEditingProcessoId(processoId);
     setNomeDraft(nomeAtual);
   }
 
-  function saveNome(clienteId: string) {
+  function saveNome(p: ProcessoSocietario) {
     const nome = nomeDraft.trim();
-    if (nome) updateClientDados(clienteId, { razaoSocial: nome });
-    setEditingClienteId(null);
+    if (nome) {
+      if (p.clienteId) updateClientDados(p.clienteId, { razaoSocial: nome });
+      else updateProcessoSocietario(p.id, { clienteNomeAvulso: nome });
+    }
+    setEditingProcessoId(null);
+  }
+
+  /** Promove um processo avulso (sem cadastro de cliente) pra cliente de
+   * verdade — cria o cadastro rápido (status Onboarding) e vincula o
+   * processo a ele. Só acontece quando alguém clica aqui, nunca sozinho. */
+  function virarCliente(p: ProcessoSocietario) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(p, clients), p.responsavelId, hoje);
+    addClient(novoCliente);
+    updateProcessoSocietario(p.id, { clienteId: novoCliente.id, clienteNomeAvulso: undefined });
   }
 
   function handleDelete(p: ProcessoSocietario, nomeCliente: string) {
@@ -72,14 +87,14 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
     <div className="space-y-3">
       {processos.map((p) => {
         const client = clients.find((c) => c.id === p.clienteId);
-        const nomeCliente = client?.dados.razaoSocial ?? "—";
+        const nomeCliente = nomeDoProcessoSocietario(p, clients);
         const grupos = gruposComEtapas(p.tipoServico);
         const checklistDesatualizado = (CHECKLISTS_POR_TIPO[p.tipoServico]?.etapas.length ?? 0) !== p.etapas.length;
         const total = p.etapas.length;
         const feitas = p.etapas.filter((e) => isDone(e.status)).length;
         const pct = total > 0 ? Math.round((feitas / total) * 100) : 0;
         const open = openId === p.id;
-        const editingNome = editingClienteId === p.clienteId;
+        const editingNome = editingProcessoId === p.id;
 
         function sincronizarChecklist() {
           const hoje = new Date().toISOString().slice(0, 10);
@@ -105,21 +120,21 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                         value={nomeDraft}
                         onChange={(e) => setNomeDraft(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") saveNome(p.clienteId);
-                          if (e.key === "Escape") setEditingClienteId(null);
+                          if (e.key === "Enter") saveNome(p);
+                          if (e.key === "Escape") setEditingProcessoId(null);
                         }}
                         className="h-7 w-48 text-[13px] font-semibold"
                       />
                       <button
                         type="button"
-                        onClick={() => saveNome(p.clienteId)}
+                        onClick={() => saveNome(p)}
                         className="flex size-6 items-center justify-center rounded-md text-status-success hover:bg-status-success-bg"
                       >
                         <Check className="size-3.5" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingClienteId(null)}
+                        onClick={() => setEditingProcessoId(null)}
                         className="flex size-6 items-center justify-center rounded-md text-sand-400 hover:bg-sand-100"
                       >
                         <X className="size-3.5" />
@@ -127,25 +142,44 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                     </div>
                   ) : (
                     <div className="flex min-w-0 items-center gap-1.5">
-                      <Link
-                        href={`/clientes/${p.clienteId}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="min-w-0 truncate font-semibold text-sand-800 hover:text-wine-700 hover:underline"
-                        title={nomeCliente}
-                      >
-                        {nomeCliente}
-                      </Link>
+                      {client ? (
+                        <Link
+                          href={`/clientes/${p.clienteId}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="min-w-0 truncate font-semibold text-sand-800 hover:text-wine-700 hover:underline"
+                          title={nomeCliente}
+                        >
+                          {nomeCliente}
+                        </Link>
+                      ) : (
+                        <span className="min-w-0 truncate font-semibold text-sand-800" title={nomeCliente}>
+                          {nomeCliente}
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          startEditNome(p.clienteId, client?.dados.razaoSocial ?? "");
+                          startEditNome(p.id, nomeCliente);
                         }}
-                        title="Editar nome do cliente"
+                        title="Editar nome"
                         className="flex size-5 items-center justify-center rounded text-sand-300 hover:bg-sand-100 hover:text-wine-700"
                       >
                         <Pencil className="size-3" />
                       </button>
+                      {!client && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            virarCliente(p);
+                          }}
+                          title="Virou cliente — cria o cadastro dele"
+                          className="flex size-5 items-center justify-center rounded text-sand-300 hover:bg-sand-100 hover:text-wine-700"
+                        >
+                          <UserPlus className="size-3" />
+                        </button>
+                      )}
                     </div>
                   )}
                   <p className="text-xs text-sand-500">

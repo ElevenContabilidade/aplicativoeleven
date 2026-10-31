@@ -20,6 +20,7 @@ import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario, valorRecebidoProcesso } from "@/lib/societario-financeiro";
+import { nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { resolveBoletoLedger } from "@/lib/boleto";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
@@ -529,7 +530,7 @@ export default function FinanceiroPage() {
       )
       .map((p) => ({
         key: `soc-${p.id}`,
-        nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
+        nome: nomeDoProcessoSocietario(p, clients),
         servico: `Societário — ${p.tipoServico}`,
         valor: valorRecebidoProcesso(p),
         // Competência de exibição é sempre a data de abertura do processo (a
@@ -564,7 +565,7 @@ export default function FinanceiroPage() {
       )
       .map((p) => ({
         key: `soc-${p.id}`,
-        nome: clients.find((c) => c.id === p.clienteId)?.dados.razaoSocial ?? "—",
+        nome: nomeDoProcessoSocietario(p, clients),
         servico: `Societário — ${p.tipoServico}`,
         valor: valorRecebidoProcesso(p),
         competencia: p.dataAbertura.slice(0, 7),

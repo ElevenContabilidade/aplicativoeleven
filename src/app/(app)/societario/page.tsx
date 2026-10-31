@@ -18,6 +18,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import type { ProcessoSocietario } from "@/lib/types";
 import { resumoFinanceiroSocietario } from "@/lib/societario-financeiro";
+import { nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 type ViewMode = "tabela" | "processo" | "etapa" | "financeiro" | "concluidos" | "tempoMedio";
@@ -207,8 +208,7 @@ export default function SocietarioPage() {
               </TableHeader>
               <TableBody>
                 {filteredPeriodo.map((p) => {
-                  const client = clients.find((c) => c.id === p.clienteId);
-                  const clienteNome = client?.dados.razaoSocial ?? "cliente";
+                  const clienteNome = nomeDoProcessoSocietario(p, clients);
                   return (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
                       <TableCell className="font-medium">{clienteNome}</TableCell>
@@ -250,8 +250,7 @@ export default function SocietarioPage() {
               </div>
               <div className="space-y-2">
                 {items.map((p) => {
-                  const client = clients.find((c) => c.id === p.clienteId);
-                  const clienteNome = client?.dados.razaoSocial ?? "cliente";
+                  const clienteNome = nomeDoProcessoSocietario(p, clients);
                   return (
                     <Card key={p.id} className="cursor-pointer transition-colors hover:border-wine-300" onClick={() => setSelected(p)}>
                       <CardContent className="space-y-1.5 p-3">
@@ -310,11 +309,10 @@ export default function SocietarioPage() {
               </TableHeader>
               <TableBody>
                 {concluidosNoPeriodo.map((p) => {
-                  const client = clients.find((c) => c.id === p.clienteId);
                   const dias = p.dataConclusao ? diasEntre(p.dataAbertura, p.dataConclusao) : null;
                   return (
                     <TableRow key={p.id} className="cursor-pointer" onClick={() => setSelected(p)}>
-                      <TableCell className="font-medium">{client?.dados.razaoSocial ?? "cliente"}</TableCell>
+                      <TableCell className="font-medium">{nomeDoProcessoSocietario(p, clients)}</TableCell>
                       <TableCell>{p.tipoServico}</TableCell>
                       <TableCell>{teamName(p.responsavelId)}</TableCell>
                       <TableCell>{formatDate(p.dataAbertura)}</TableCell>

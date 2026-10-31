@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { ONBOARDING_TEMPLATE, type Client, type ProcessoSocietario } from "@/lib/types";
+import type { ProcessoSocietario } from "@/lib/types";
 import { etapasPadrao } from "@/lib/societario-checklist";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,6 @@ const TIPOS_SERVICO = ["Abertura", "Alteração", "Baixa", "Desenquadramento", "
 
 export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addProcessoSocietario = useAppStore((s) => s.addProcessoSocietario);
-  const addClient = useAppStore((s) => s.addClient);
   const clients = useAppStore((s) => s.clients);
   const { userId } = useAuthStore();
 
@@ -28,9 +27,9 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [clienteMode, setClienteMode] = useState<"existente" | "novo">("existente");
+  const [clienteMode, setClienteMode] = useState<"existente" | "avulso">("existente");
   const [clienteId, setClienteId] = useState(clients[0]?.id ?? "");
-  const [novoClienteNome, setNovoClienteNome] = useState("");
+  const [nomeAvulso, setNomeAvulso] = useState("");
   const [tipoServico, setTipoServico] = useState(TIPOS_SERVICO[0]);
   const [valor, setValor] = useState("");
   const [numeroProcesso, setNumeroProcesso] = useState("");
@@ -39,7 +38,7 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
 
   function reset() {
     setClienteMode("existente");
-    setNovoClienteNome("");
+    setNomeAvulso("");
     setTipoServico(TIPOS_SERVICO[0]);
     setValor("");
     setNumeroProcesso("");
@@ -49,55 +48,18 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (clienteMode === "novo" ? !novoClienteNome.trim() : !clienteId) return;
+    if (clienteMode === "avulso" ? !nomeAvulso.trim() : !clienteId) return;
     if (!dataInicio) return;
-
-    let finalClienteId = clienteId;
-    if (clienteMode === "novo") {
-      finalClienteId = `c-${Date.now()}`;
-      const novoCliente: Client = {
-        id: finalClienteId,
-        status: "Onboarding",
-        dados: {
-          razaoSocial: novoClienteNome.trim(),
-          cnpj: "",
-          cnaePrincipal: "—",
-          cnaesSecundarios: [],
-          naturezaJuridica: "Sociedade Empresária Limitada",
-          dataAbertura: today,
-          capitalSocial: 0,
-          regimeTributario: "Simples Nacional",
-          municipio: "—",
-          estado: "—",
-          endereco: "—",
-          // Cadastro rápido só com o nome — fica de fora da tela de Clientes
-          // até alguém completar os dados de verdade no cadastro do cliente.
-          criadoViaSocietario: true,
-        },
-        socios: [],
-        contatos: [],
-        responsaveis: { societario: userId ?? undefined },
-        segmento: "Outros",
-        tags: [],
-        financeiro: {
-          valorMensal: 0,
-          vencimentoDia: 10,
-          formaPagamento: "Boleto",
-          inicioContrato: today,
-          statusFinanceiro: "Em aberto",
-        },
-        historicoFinanceiro: [],
-        onboarding: ONBOARDING_TEMPLATE.map((label, i) => ({ id: `ob-${finalClienteId}-${i}`, label, concluido: false })),
-        criadoEm: today,
-      };
-      addClient(novoCliente);
-    }
 
     const etapas = etapasPadrao(tipoServico, userId ?? "u7", today, dataInicio);
     const valorNumero = valor ? Number(valor.replace(",", ".")) : undefined;
     const processo: ProcessoSocietario = {
       id: `ps-${Date.now()}`,
-      clienteId: finalClienteId,
+      // Avulso fica sem clienteId — não vira cadastro de cliente (nem
+      // aparece em Onboarding) até alguém clicar "Virou cliente" no
+      // processo depois.
+      clienteId: clienteMode === "existente" ? clienteId : undefined,
+      clienteNomeAvulso: clienteMode === "avulso" ? nomeAvulso.trim() : undefined,
       tipoServico,
       responsavelId: userId ?? "u7",
       protocolo: numeroProcesso || undefined,
@@ -135,13 +97,13 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
               </button>
               <button
                 type="button"
-                onClick={() => setClienteMode("novo")}
+                onClick={() => setClienteMode("avulso")}
                 className={cn(
                   "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                  clienteMode === "novo" ? "bg-white text-wine-700 shadow-sm" : "text-sand-500 hover:text-sand-700"
+                  clienteMode === "avulso" ? "bg-white text-wine-700 shadow-sm" : "text-sand-500 hover:text-sand-700"
                 )}
               >
-                Novo cliente
+                Nome avulso
               </button>
             </div>
             {clienteMode === "existente" ? (
@@ -156,14 +118,14 @@ export function ProcessoFormDialog({ open, onOpenChange }: { open: boolean; onOp
             ) : (
               <div>
                 <Input
-                  value={novoClienteNome}
-                  onChange={(e) => setNovoClienteNome(e.target.value)}
-                  placeholder="Nome da empresa"
+                  value={nomeAvulso}
+                  onChange={(e) => setNomeAvulso(e.target.value)}
+                  placeholder="Nome da empresa ou pessoa"
                   required
                 />
                 <p className="mt-1 text-[11px] text-sand-500">
-                  Cria um cadastro de cliente novo (status Onboarding), mas ele não aparece na tela de Clientes até alguém completar
-                  CNPJ e demais dados de verdade lá no cadastro do cliente.
+                  Processo avulso, sem criar cadastro de cliente nem aparecer em Onboarding — útil pra quem só contratou esse
+                  serviço pontual. Se a pessoa virar cliente depois, dá pra promover o processo direto na tela dele.
                 </p>
               </div>
             )}
