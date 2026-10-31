@@ -23,6 +23,7 @@ interface LinhaExtra {
   status: ReturnType<typeof statusRecebimentoParceiro>;
   banco: string;
   tipoPessoa: TipoPessoaRecebimento | "";
+  dataPagamento: string;
 }
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
@@ -41,6 +42,7 @@ interface Linha {
   status: ReturnType<typeof statusRecebimentoParceiro>;
   banco: string;
   tipoPessoa: TipoPessoaRecebimento | "";
+  dataPagamento: string;
 }
 
 function ultimoDiaCompetencia(competencia: string): string {
@@ -121,6 +123,7 @@ export default function ParceirosPage() {
           status: statusRecebimentoParceiro(valorPago, valor),
           banco: entry?.banco ?? "",
           tipoPessoa: entry?.tipoPessoa ?? "",
+          dataPagamento: entry?.dataPagamento ?? "",
         });
       }
     }
@@ -159,6 +162,7 @@ export default function ParceirosPage() {
           status: statusRecebimentoParceiro(valorPago, extra.valorMensal),
           banco: pagamento?.banco ?? "",
           tipoPessoa: pagamento?.tipoPessoa ?? "",
+          dataPagamento: pagamento?.dataPagamento ?? "",
         });
       }
     }
@@ -232,7 +236,11 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : l.valor,
-      dataPagamento: quitado ? undefined : new Date().toISOString().slice(0, 10),
+      // Último dia da própria competência, não "hoje" — quem marca Pago
+      // meses depois (acerto retroativo) não quer que o sistema carimbe a
+      // data de hoje como se tivesse acabado de cair; dá pra ajustar certinho
+      // no campo de data logo ao lado.
+      dataPagamento: quitado ? undefined : ultimoDiaCompetencia(l.competencia),
     });
   }
 
@@ -242,7 +250,7 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       valorPago,
       status: pago ? "Pago" : "Em aberto",
-      dataPagamento: pago ? (existente ?? new Date().toISOString().slice(0, 10)) : undefined,
+      dataPagamento: pago ? (existente ?? ultimoDiaCompetencia(l.competencia)) : undefined,
     });
   }
 
@@ -303,7 +311,7 @@ export default function ParceirosPage() {
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : le.extra.valorMensal,
-      dataPagamento: quitado ? undefined : new Date().toISOString().slice(0, 10),
+      dataPagamento: quitado ? undefined : ultimoDiaCompetencia(le.competencia),
     });
   }
 
@@ -313,7 +321,7 @@ export default function ParceirosPage() {
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       valorPago,
       status: pago ? "Pago" : "Em aberto",
-      dataPagamento: pago ? (existente ?? new Date().toISOString().slice(0, 10)) : undefined,
+      dataPagamento: pago ? (existente ?? ultimoDiaCompetencia(le.competencia)) : undefined,
     });
   }
 
@@ -515,18 +523,29 @@ export default function ParceirosPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de pagamento">
-                          <StatusBadge status={l.status} className="cursor-pointer" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteLinha(l)}
-                          title="Excluir lançamento"
-                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <button type="button" onClick={() => toggleStatus(l)} title="Alternar status de pagamento">
+                            <StatusBadge status={l.status} className="cursor-pointer" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLinha(l)}
+                            title="Excluir lançamento"
+                            className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                        {l.status === "Pago" && (
+                          <Input
+                            type="date"
+                            value={l.dataPagamento}
+                            onChange={(e) => updateRecebimentoParceiro(l.cliente.id, l.competencia, { dataPagamento: e.target.value })}
+                            className="h-7 w-32 text-[11px]"
+                            title="Data em que esse pagamento caiu de verdade"
+                          />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -591,22 +610,33 @@ export default function ParceirosPage() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => toggleStatusExtra(le)}
-                          title="Alternar status de pagamento"
-                        >
-                          <StatusBadge status={le.status} className="cursor-pointer" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteExtraLinha(le)}
-                          title="Excluir lançamento"
-                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => toggleStatusExtra(le)}
+                            title="Alternar status de pagamento"
+                          >
+                            <StatusBadge status={le.status} className="cursor-pointer" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteExtraLinha(le)}
+                            title="Excluir lançamento"
+                            className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                        {le.status === "Pago" && (
+                          <Input
+                            type="date"
+                            value={le.dataPagamento}
+                            onChange={(e) => updatePagamentoExtraParceiro(le.extra.id, le.competencia, { dataPagamento: e.target.value })}
+                            className="h-7 w-32 text-[11px]"
+                            title="Data em que esse pagamento caiu de verdade"
+                          />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
