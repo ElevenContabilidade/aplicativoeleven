@@ -99,12 +99,18 @@ export default function FinanceiroPage() {
    * paga mais (o lado parceiro segue a mesma regra da tela de Parceiros,
    * que não filtra por status). */
   const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
-  const clientesAssessoriaMensal = clients.filter(
-    (c) => !c.dados.clienteParceiro && c.financeiro.valorMensal > 0 && !STATUS_FORA_DO_MRR.includes(c.status)
-  );
+  const mesAtual = new Date().toISOString().slice(0, 7);
+  const clientesAssessoriaMensal = clients.filter((c) => {
+    if (c.dados.clienteParceiro || !(c.financeiro.valorMensal > 0) || STATUS_FORA_DO_MRR.includes(c.status)) return false;
+    // Cliente novo cujo contrato só começa num mês futuro (ex: onboarding
+    // em outubro, mensalidade só valendo a partir de novembro) ainda não
+    // entra no MRR deste mês — mesma regra já usada pro lado parceiro.
+    const inicio = c.financeiro.inicioContrato?.slice(0, 7);
+    if (inicio && inicio > mesAtual) return false;
+    return true;
+  });
   const mrrDiretos = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
 
-  const mesAtual = new Date().toISOString().slice(0, 7);
   const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [mesAtual]);
 
   const clientesParceiroAtivosMes = clients.filter((c) => {
