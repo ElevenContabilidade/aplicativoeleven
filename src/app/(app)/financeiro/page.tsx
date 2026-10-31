@@ -471,16 +471,14 @@ export default function FinanceiroPage() {
   }
 
   const ledger = sortField
-    ? [...ledgerFiltrado]
-        .sort((a, b) => {
-          const va = valorOrdenavel(a, sortField);
-          const vb = valorOrdenavel(b, sortField);
-          const dir = sortDir === "asc" ? 1 : -1;
-          if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
-          return String(va).localeCompare(String(vb)) * dir;
-        })
-        .slice(0, 30)
-    : [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento)).slice(0, 30);
+    ? [...ledgerFiltrado].sort((a, b) => {
+        const va = valorOrdenavel(a, sortField);
+        const vb = valorOrdenavel(b, sortField);
+        const dir = sortDir === "asc" ? 1 : -1;
+        if (typeof va === "number" && typeof vb === "number") return (va - vb) * dir;
+        return String(va).localeCompare(String(vb)) * dir;
+      })
+    : [...ledgerFiltrado].sort((a, b) => b.vencimento.localeCompare(a.vencimento));
 
   // valorPago só existe nos lançamentos de parceiro/valor extra (permite
   // pagamento parcial); os demais caem no cálculo antigo (status "Pago" =
@@ -988,7 +986,6 @@ export default function FinanceiroPage() {
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-sand-100 pt-2 text-xs">
               <span className="text-sand-500">
                 {ledgerFiltrado.length} lançamento{ledgerFiltrado.length !== 1 ? "s" : ""} no filtro
-                {ledgerFiltrado.length > 30 ? ` (mostrando os 30 mais recentes)` : ""}
               </span>
               <span className="font-semibold text-sand-800">
                 Recebido no filtro: <span className="text-status-success">{formatCurrency(ledgerFiltrado.reduce((a, h) => a + pagoEfetivo(h), 0))}</span>
