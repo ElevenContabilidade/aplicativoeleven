@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { RecebimentoFormDialog } from "@/components/financial/recebimento-form-dialog";
+import { ServicoExtraFormDialog } from "@/components/financial/servico-extra-form-dialog";
 import { DespesaFormDialog } from "@/components/financial/despesa-form-dialog";
 import { SistemaFormDialog } from "@/components/office/sistema-form-dialog";
 import { useAppStore } from "@/lib/store/app-store";
@@ -26,7 +27,7 @@ import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
 import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { ClientStatus, DespesaAvulsa, SistemaEscritorio } from "@/lib/types";
+import type { ClientStatus, DespesaAvulsa, ServicoExtra, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
 const WINE = "#5C1420";
@@ -47,6 +48,7 @@ const MESES = [
 export default function FinanceiroPage() {
   const clients = useAppStore((s) => s.clients);
   const servicosExtras = useAppStore((s) => s.servicosExtras);
+  const deleteServicoExtra = useAppStore((s) => s.deleteServicoExtra);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const recebimentos = useAppStore((s) => s.recebimentos);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
@@ -70,6 +72,9 @@ export default function FinanceiroPage() {
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
   const [despesaFormOpen, setDespesaFormOpen] = useState(false);
   const [editingDespesa, setEditingDespesa] = useState<DespesaAvulsa | null>(null);
+  const [servicoExtraFormOpen, setServicoExtraFormOpen] = useState(false);
+  const [editingServicoExtra, setEditingServicoExtra] = useState<ServicoExtra | null>(null);
+  const [servicoExtraFormOpenKey, setServicoExtraFormOpenKey] = useState(0);
   const [despesaFormOpenKey, setDespesaFormOpenKey] = useState(0);
   const [despesasSelecionadas, setDespesasSelecionadas] = useState<Set<string>>(new Set());
   const [editingSistema, setEditingSistema] = useState<SistemaEscritorio | null>(null);
@@ -664,6 +669,11 @@ export default function FinanceiroPage() {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) deleteRecebimento(id);
   }
 
+  function handleDeleteServicoExtra(e: React.MouseEvent, id: string, servico: string) {
+    e.stopPropagation();
+    if (confirm(`Excluir o serviço extra "${servico}"?`)) deleteServicoExtra(id);
+  }
+
   function handleDeleteRecebimentoParceiro(clienteId: string, competencia: string, nome: string) {
     if (confirm(`Excluir o recebimento de "${nome}"?`)) {
       updateRecebimentoParceiro(clienteId, competencia, { removido: true });
@@ -995,21 +1005,55 @@ export default function FinanceiroPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Serviços extras</CardTitle></CardHeader>
+          <CardHeader className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle>Serviços extras</CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditingServicoExtra(null);
+                setServicoExtraFormOpenKey((k) => k + 1);
+                setServicoExtraFormOpen(true);
+              }}
+            >
+              <Plus className="size-3.5" /> Novo
+            </Button>
+          </CardHeader>
           <CardContent className="space-y-2 pt-4">
             {servicosExtras.map((s) => {
               const client = clients.find((c) => c.id === s.clienteId);
               return (
-                <div key={s.id} className="rounded-lg border border-sand-200 p-3 text-xs">
-                  <div className="flex items-center justify-between">
+                <div
+                  key={s.id}
+                  className="cursor-pointer rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
+                  onClick={() => {
+                    setEditingServicoExtra(s);
+                    setServicoExtraFormOpenKey((k) => k + 1);
+                    setServicoExtraFormOpen(true);
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sand-900">{s.servico}</span>
-                    <StatusBadge status={s.status} />
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <StatusBadge status={s.status} />
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteServicoExtra(e, s.id, s.servico)}
+                        title="Excluir serviço extra"
+                        className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sand-500">{client?.dados.razaoSocial} • {formatCurrency(s.valor)}</p>
+                  <p className="mt-1 text-sand-500">{client?.dados.razaoSocial ?? "—"} • {formatCurrency(s.valor)}</p>
                   <p className="text-[11px] text-sand-400">{teamName(s.responsavelId)} • {formatDate(s.data)}</p>
                 </div>
               );
             })}
+            {servicosExtras.length === 0 && (
+              <p className="py-6 text-center text-xs text-sand-400">Nenhum serviço extra lançado ainda.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -1196,6 +1240,12 @@ export default function FinanceiroPage() {
       <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
       <DespesaFormDialog key={despesaFormOpenKey} open={despesaFormOpen} onOpenChange={setDespesaFormOpen} despesa={editingDespesa} />
       <SistemaFormDialog key={sistemaFormOpenKey} open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
+      <ServicoExtraFormDialog
+        key={servicoExtraFormOpenKey}
+        open={servicoExtraFormOpen}
+        onOpenChange={setServicoExtraFormOpen}
+        servicoExtra={editingServicoExtra}
+      />
 
       <Dialog open={mrrDetalheOpen} onOpenChange={setMrrDetalheOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-xl">

@@ -376,6 +376,9 @@ interface AppState {
   addRecebimento: (entry: Recebimento) => void;
   updateRecebimento: (id: string, patch: Partial<Recebimento>) => void;
   deleteRecebimento: (id: string) => void;
+  addServicoExtra: (entry: ServicoExtra) => void;
+  updateServicoExtra: (id: string, patch: Partial<ServicoExtra>) => void;
+  deleteServicoExtra: (id: string) => void;
   addParcelamento: (parcelamento: Parcelamento) => void;
   updateParcelamento: (id: string, patch: Partial<Parcelamento>) => void;
   deleteParcelamento: (id: string) => void;
@@ -1554,6 +1557,21 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ recebimentos: s.recebimentos.filter((r) => r.id !== id) }));
         deleteFinanceiro("recebimentos", id);
         if (recebimento) logAuditoria("Recebimento excluído", "Financeiro", `${recebimento.nome} (${formatCurrency(recebimento.valor)})`);
+      },
+      addServicoExtra: (entry) => {
+        set((s) => ({ servicosExtras: [entry, ...s.servicosExtras] }));
+        pushFinanceiro("servicosExtras", entry.id, entry.clienteId, entry);
+      },
+      updateServicoExtra: (id, patch) => {
+        set((s) => ({ servicosExtras: s.servicosExtras.map((se) => (se.id === id ? { ...se, ...patch } : se)) }));
+        const item = useAppStore.getState().servicosExtras.find((se) => se.id === id);
+        if (item) pushFinanceiro("servicosExtras", id, item.clienteId, item);
+      },
+      deleteServicoExtra: (id) => {
+        const servicoExtra = useAppStore.getState().servicosExtras.find((se) => se.id === id);
+        set((s) => ({ servicosExtras: s.servicosExtras.filter((se) => se.id !== id) }));
+        deleteFinanceiro("servicosExtras", id);
+        if (servicoExtra) logAuditoria("Serviço extra excluído", "Financeiro", `${servicoExtra.servico} (${formatCurrency(servicoExtra.valor)})`);
       },
 
       addParcelamento: (parcelamento) => {
