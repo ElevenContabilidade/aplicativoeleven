@@ -793,6 +793,38 @@ export default function FinanceiroPage() {
     }
   }
 
+  // Serviços extras = qualquer cobrança avulsa, não-recorrente: os
+  // lançamentos manuais (ServicoExtra) + os processos societários com valor
+  // (Abertura, Alteração, Baixa etc.) — júnta os dois numa lista só, mais
+  // recente primeiro.
+  const servicosExtrasCompletos = useMemo(() => {
+    const manuais = servicosExtras.map((s) => ({
+      key: `extra-${s.id}`,
+      origem: "extra" as const,
+      id: s.id,
+      servico: s.servico,
+      clienteNome: clients.find((c) => c.id === s.clienteId)?.dados.razaoSocial ?? "—",
+      valor: s.valor,
+      responsavelId: s.responsavelId,
+      data: s.data,
+      status: s.status as string,
+    }));
+    const societarios = processosSocietarios
+      .filter((p) => (p.valorProcesso ?? 0) > 0)
+      .map((p) => ({
+        key: `soc-${p.id}`,
+        origem: "societario" as const,
+        id: p.id,
+        servico: `Societário — ${p.tipoServico}`,
+        clienteNome: nomeDoProcessoSocietario(p, clients),
+        valor: p.valorProcesso ?? 0,
+        responsavelId: p.responsavelId,
+        data: p.dataPagamento ?? p.dataAbertura,
+        status: p.pagamento ?? "Pendente",
+      }));
+    return [...manuais, ...societarios].sort((a, b) => b.data.localeCompare(a.data));
+  }, [servicosExtras, processosSocietarios, clients]);
+
   return (
     <div>
       <PageHeader
@@ -1020,38 +1052,55 @@ export default function FinanceiroPage() {
             </Button>
           </CardHeader>
           <CardContent className="space-y-2 pt-4">
-            {servicosExtras.map((s) => {
-              const client = clients.find((c) => c.id === s.clienteId);
-              return (
-                <div
-                  key={s.id}
-                  className="cursor-pointer rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
-                  onClick={() => {
-                    setEditingServicoExtra(s);
-                    setServicoExtraFormOpenKey((k) => k + 1);
-                    setServicoExtraFormOpen(true);
-                  }}
-                >
+            {servicosExtrasCompletos.map((s) => {
+              const conteudo = (
+                <>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-sand-900">{s.servico}</span>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <StatusBadge status={s.status} />
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteServicoExtra(e, s.id, s.servico)}
-                        title="Excluir serviço extra"
-                        className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      {s.origem === "extra" && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteServicoExtra(e, s.id, s.servico)}
+                          title="Excluir serviço extra"
+                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <p className="mt-1 text-sand-500">{client?.dados.razaoSocial ?? "—"} • {formatCurrency(s.valor)}</p>
+                  <p className="mt-1 text-sand-500">{s.clienteNome} • {formatCurrency(s.valor)}</p>
                   <p className="text-[11px] text-sand-400">{teamName(s.responsavelId)} • {formatDate(s.data)}</p>
+                </>
+              );
+              return s.origem === "societario" ? (
+                <Link
+                  key={s.key}
+                  href="/societario"
+                  title="Ver e editar no Societário"
+                  className="block rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
+                >
+                  {conteudo}
+                </Link>
+              ) : (
+                <div
+                  key={s.key}
+                  className="cursor-pointer rounded-lg border border-sand-200 p-3 text-xs transition-colors hover:bg-sand-50"
+                  onClick={() => {
+                    const original = servicosExtras.find((se) => se.id === s.id);
+                    if (!original) return;
+                    setEditingServicoExtra(original);
+                    setServicoExtraFormOpenKey((k) => k + 1);
+                    setServicoExtraFormOpen(true);
+                  }}
+                >
+                  {conteudo}
                 </div>
               );
             })}
-            {servicosExtras.length === 0 && (
+            {servicosExtrasCompletos.length === 0 && (
               <p className="py-6 text-center text-xs text-sand-400">Nenhum serviço extra lançado ainda.</p>
             )}
           </CardContent>
