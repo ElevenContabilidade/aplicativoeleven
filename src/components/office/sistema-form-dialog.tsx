@@ -13,6 +13,39 @@ import { useAppStore } from "@/lib/store/app-store";
 import { ClientesUsuariosField } from "@/components/shared/clientes-usuarios-field";
 import { SETORES_SISTEMA, type SetorSistema, type SistemaEscritorio, type SituacaoSistema } from "@/lib/types";
 
+/** Competência bem antiga usada como "desde sempre" — âncora do primeiro
+ * valor conhecido quando o histórico de um sistema ainda não existia. */
+const EPOCA = "2000-01";
+
+/**
+ * Quando o valor mensal de um sistema já cadastrado muda, registra a
+ * transição no histórico em vez de só sobrescrever o campo — assim os
+ * meses já passados continuam mostrando o valor antigo em vez de herdar
+ * o novo retroativamente. Sem histórico ainda, primeiro "ancora" o valor
+ * antigo lá desde sempre, pra só então registrar o novo valor valendo a
+ * partir da competência escolhida (ex: mudou hoje mas o valor novo só
+ * vale a partir do mês que vem).
+ */
+function historicoComNovoValor(
+  sistema: SistemaEscritorio,
+  valorNovo: number | undefined,
+  vigenciaNovoValor: string
+): SistemaEscritorio["historicoValor"] {
+  const valorAntigo = sistema.valorMensal;
+  if (valorAntigo === valorNovo) return sistema.historicoValor;
+  const historico = sistema.historicoValor && sistema.historicoValor.length > 0
+    ? [...sistema.historicoValor]
+    : valorAntigo !== undefined
+      ? [{ competencia: EPOCA, valorMensal: valorAntigo }]
+      : [];
+  if (valorNovo !== undefined) {
+    const semVigenciaEscolhida = historico.filter((h) => h.competencia !== vigenciaNovoValor);
+    semVigenciaEscolhida.push({ competencia: vigenciaNovoValor, valorMensal: valorNovo });
+    return semVigenciaEscolhida.sort((a, b) => a.competencia.localeCompare(b.competencia));
+  }
+  return historico;
+}
+
 const SITUACOES: SituacaoSistema[] = ["Ativo", "Cancelado"];
 
 export function SistemaFormDialog({
@@ -35,6 +68,7 @@ export function SistemaFormDialog({
   const [showSenha, setShowSenha] = useState(false);
   const [link, setLink] = useState(sistema?.link ?? "");
   const [valorMensal, setValorMensal] = useState(sistema?.valorMensal?.toString() ?? "");
+  const [vigenciaNovoValor, setVigenciaNovoValor] = useState(new Date().toISOString().slice(0, 7));
   const [diaVencimento, setDiaVencimento] = useState(sistema?.diaVencimento?.toString() ?? "");
   const [valorImplementacao, setValorImplementacao] = useState(sistema?.valorImplementacao?.toString() ?? "");
   const [formaCobranca, setFormaCobranca] = useState(sistema?.formaCobranca ?? "");
@@ -45,7 +79,8 @@ export function SistemaFormDialog({
 
   function reset() {
     setNome(""); setSetores([]); setSituacao("Ativo"); setLogin(""); setSenha(""); setShowSenha(false); setLink("");
-    setValorMensal(""); setDiaVencimento(""); setValorImplementacao(""); setFormaCobranca("");
+    setValorMensal(""); setVigenciaNovoValor(new Date().toISOString().slice(0, 7)); setDiaVencimento("");
+    setValorImplementacao(""); setFormaCobranca("");
     setTelefoneSuporte(""); setEmailSuporte(""); setObservacoes(""); setClientesQueUsam(undefined);
   }
 
@@ -61,6 +96,7 @@ export function SistemaFormDialog({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim()) return;
+    const novoValorMensal = valorMensal ? Number(valorMensal) : undefined;
     const patch = {
       nome: nome.trim(),
       setores,
@@ -68,7 +104,8 @@ export function SistemaFormDialog({
       login: login.trim() || undefined,
       senha: senha.trim() || undefined,
       link: link.trim() || undefined,
-      valorMensal: valorMensal ? Number(valorMensal) : undefined,
+      valorMensal: novoValorMensal,
+      historicoValor: sistema ? historicoComNovoValor(sistema, novoValorMensal, vigenciaNovoValor) : undefined,
       diaVencimento: diaVencimento ? Number(diaVencimento) : undefined,
       valorImplementacao: valorImplementacao ? Number(valorImplementacao) : undefined,
       formaCobranca: formaCobranca.trim() || undefined,
@@ -141,6 +178,13 @@ export function SistemaFormDialog({
               <Label className="mb-1 block">Preço mensal (R$)</Label>
               <Input type="number" step="0.01" min="0" value={valorMensal} onChange={(e) => setValorMensal(e.target.value)} placeholder="0,00" />
             </div>
+            {sistema && Number(valorMensal || 0) !== (sistema.valorMensal ?? 0) && (
+              <div>
+                <Label className="mb-1 block">A partir de quando vale esse novo valor?</Label>
+                <Input type="month" value={vigenciaNovoValor} onChange={(e) => setVigenciaNovoValor(e.target.value)} />
+                <p className="mt-1 text-[11px] text-sand-500">Meses anteriores a esse continuam com o valor antigo no Financeiro.</p>
+              </div>
+            )}
             <div>
               <Label className="mb-1 block">Situação</Label>
               <Select value={situacao} onValueChange={(v) => setSituacao(v as SituacaoSistema)}>

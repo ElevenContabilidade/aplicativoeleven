@@ -1,5 +1,18 @@
 import type { SistemaEscritorio, DespesaAvulsa, PagamentoSistemaMensal, StatusContaPagar } from "@/lib/types";
 
+/** Valor mensal de um sistema numa competência específica — usa o histórico
+ * de mudanças quando existe (a entrada mais recente que já valia naquele
+ * mês), senão cai no valorMensal atual do cadastro. Isso garante que editar
+ * o valor hoje não altera o que já foi registrado em meses passados. */
+export function valorSistemaNaCompetencia(sistema: SistemaEscritorio, competencia: string): number {
+  const historico = sistema.historicoValor ?? [];
+  if (historico.length === 0) return sistema.valorMensal ?? 0;
+  const aplicavel = historico
+    .filter((h) => h.competencia <= competencia)
+    .sort((a, b) => b.competencia.localeCompare(a.competencia))[0];
+  return aplicavel ? aplicavel.valorMensal : (sistema.valorMensal ?? 0);
+}
+
 export interface LinhaContaPagar {
   key: string;
   origem: "sistema" | "avulsa";
@@ -35,7 +48,7 @@ export function contasAPagarDoPeriodo(
           refId: sis.id,
           competencia: comp,
           descricao: sis.nome,
-          valor: sis.valorMensal ?? 0,
+          valor: valorSistemaNaCompetencia(sis, comp),
           vencimento,
           status: pagamento?.status ?? "Em aberto",
           dataPagamento: pagamento?.dataPagamento,

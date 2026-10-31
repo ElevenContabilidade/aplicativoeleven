@@ -178,6 +178,15 @@ export type SetorSistema = (typeof SETORES_SISTEMA)[number];
 
 export type SituacaoSistema = "Ativo" | "Cancelado";
 
+/** Uma mudança no valor mensal de um SistemaEscritorio — a partir de qual
+ * competência aquele valor passou a valer. Resolve o valor de um mês
+ * específico (ver valorSistemaNaCompetencia em contas-pagar.ts) sem que
+ * editar o valor atual mude retroativamente meses já passados. */
+export interface SistemaValorHistorico {
+  competencia: string; // "YYYY-MM"
+  valorMensal: number;
+}
+
 /** Sistema/ferramenta pago pelo escritório (ex: Domínio Sistemas, Nibo,
  * Certificado A1, portal de algum órgão) — acessos, senha e cobrança
  * mensal, geridos na tela "Dados do escritório". */
@@ -188,6 +197,10 @@ export interface SistemaEscritorio {
   senha?: string;
   link?: string;
   valorMensal?: number;
+  /** Histórico de mudanças do valor mensal, mais antigo primeiro. Ausente/
+   * vazio = valorMensal sempre valeu (sistema que nunca teve o valor
+   * alterado desde que esse histórico passou a existir). */
+  historicoValor?: SistemaValorHistorico[];
   diaVencimento?: number;
   observacoes?: string;
   setores?: SetorSistema[];
