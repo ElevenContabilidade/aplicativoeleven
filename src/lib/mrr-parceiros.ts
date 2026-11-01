@@ -1,4 +1,7 @@
-import type { Client, RecebimentoParceiroMensal, ExtraParceiro, PagamentoExtraParceiroMensal } from "@/lib/types";
+import type { BoletoMensal, Client, ClientStatus, RecebimentoParceiroMensal, ExtraParceiro, PagamentoExtraParceiroMensal } from "@/lib/types";
+import { valorMensalidadeNaCompetencia } from "@/lib/boleto";
+
+const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
 
 /** Quanto os clientes de parceiro (pagam via PIX, controlados em Parceiros)
  * somam num conjunto de competências (YYYY-MM) — usa o valor ajustado por
@@ -40,4 +43,61 @@ export function valorParceirosNoPeriodo(
   }
 
   return total;
+}
+
+export interface MrrDoPeriodo {
+  /** Clientes diretos (não-parceiro) que entram no MRR, com o valor já
+   * resolvido pela regra do boleto da competência (ver valorMensalidadeNaCompetencia). */
+  clientesDiretos: { cliente: Client; valor: number }[];
+  /** Clientes de parceiro ativos na competência (mesmo filtro da tela de Parceiros). */
+  clientesParceiro: Client[];
+  mrrDiretos: number;
+  mrrParceiros: number;
+  mrr: number;
+  totalClientes: number;
+}
+
+/** MRR total numa única competência — soma o lado direto (clientes com
+ * boleto/cadastro próprio) com o lado parceiro (clientes de parceiro +
+ * valores extras), a mesma regra usada na tela Financeiro. Centralizado
+ * aqui pra Dashboard e Financeiro nunca mostrarem números diferentes pro
+ * mesmo mês (já aconteceu de ficarem dessincronizados quando essa conta
+ * vivia duplicada em cada tela). */
+export function mrrDoPeriodo(
+  clients: Client[],
+  boletosMensais: BoletoMensal[],
+  recebimentosParceiro: RecebimentoParceiroMensal[],
+  extrasParceiro: ExtraParceiro[],
+  pagamentosExtrasParceiro: PagamentoExtraParceiroMensal[],
+  competencia: string
+): MrrDoPeriodo {
+  const clientesAssessoriaMensal = clients.filter((c) => {
+    if (c.dados.clienteParceiro || !(c.financeiro.valorMensal > 0) || STATUS_FORA_DO_MRR.includes(c.status)) return false;
+    const inicio = c.financeiro.inicioContrato?.slice(0, 7);
+    if (inicio && inicio > competencia) return false;
+    return true;
+  });
+  const clientesDiretos = clientesAssessoriaMensal
+    .map((c) => ({ cliente: c, valor: valorMensalidadeNaCompetencia(c.id, c.financeiro.valorMensal, boletosMensais, competencia) }))
+    .filter((x): x is { cliente: Client; valor: number } => x.valor !== null);
+  const mrrDiretos = clientesDiretos.reduce((a, x) => a + x.valor, 0);
+
+  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [competencia]);
+
+  const clientesParceiro = clients.filter((c) => {
+    if (!c.dados.clienteParceiro) return false;
+    const inicio = c.financeiro.inicioContrato?.slice(0, 7);
+    if (inicio && inicio > competencia) return false;
+    const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === competencia);
+    return !entry?.removido;
+  });
+
+  return {
+    clientesDiretos,
+    clientesParceiro,
+    mrrDiretos,
+    mrrParceiros,
+    mrr: mrrDiretos + mrrParceiros,
+    totalClientes: clientesDiretos.length + clientesParceiro.length,
+  };
 }

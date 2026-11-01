@@ -37,7 +37,8 @@ import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamMember, teamName } from "@/lib/team-lookup";
 import { temPermissao } from "@/lib/permissoes";
-import { recebidoDoPeriodo } from "@/lib/financeiro-recebido";
+import { recebidoDoPeriodo, emAbertoDoPeriodo, inadimplenciaDoPeriodo } from "@/lib/financeiro-recebido";
+import { mrrDoPeriodo } from "@/lib/mrr-parceiros";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { rotinasDepartamentosDoMes, type SetorRotina } from "@/lib/obrigacoes-departamentos";
 import type { Obligation, ChecklistStatus, Task, Lead } from "@/lib/types";
@@ -179,6 +180,8 @@ export default function DashboardPage() {
   const recebimentos = useAppStore((s) => s.recebimentos);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
+  const extrasParceiro = useAppStore((s) => s.extrasParceiro);
+  const pagamentosExtrasParceiro = useAppStore((s) => s.pagamentosExtrasParceiro);
   const sistemasEscritorio = useAppStore((s) => s.sistemasEscritorio);
   const pagamentosSistemas = useAppStore((s) => s.pagamentosSistemas);
   const despesasAvulsas = useAppStore((s) => s.despesasAvulsas);
@@ -223,10 +226,6 @@ export default function DashboardPage() {
     const pendenciasCriticas = obligations.filter((o) => o.status === "Em atraso").length;
 
     const honorariosPrevistos = clients.filter((c) => c.status === "Ativo").reduce((a, c) => a + c.financeiro.valorMensal, 0);
-    const historico = clients.flatMap((c) => c.historicoFinanceiro);
-    const recebidos = historico.filter((h) => h.status === "Pago").reduce((a, h) => a + h.valor, 0);
-    const emAberto = historico.filter((h) => h.status === "Em aberto").reduce((a, h) => a + h.valor, 0);
-    const inadimplencia = historico.filter((h) => h.status === "Atrasado").reduce((a, h) => a + h.valor, 0);
 
     const certVencendo = certificados.filter((c) => daysFromToday(c.dataVencimento) >= 0 && daysFromToday(c.dataVencimento) <= 30).length;
     const certVencidos = certificados.filter((c) => daysFromToday(c.dataVencimento) < 0).length;
@@ -236,17 +235,26 @@ export default function DashboardPage() {
       ativos, onboarding, suspensos, inadimplentes, saida,
       leadsNovos, leadsEmContato, reunioes, propostas, negociacoes, fechados, conversao,
       tarefasAbertas, tarefasVencidas, obrigacoesHoje, obrigacoes7d, pendenciasCriticas,
-      honorariosPrevistos, recebidos, emAberto, inadimplencia,
+      honorariosPrevistos,
       certVencendo, certVencidos, certEmitidosMes,
     };
   }, [clients, leads, tasks, obligations, certificados, windowDays]);
 
+  // Recebido/Em aberto/Inadimplência/MRR do mês atual — mesmas fontes (lib
+  // compartilhada) que a tela Financeiro usa, pra nunca mostrar um número
+  // diferente daqui pra lá no mesmo mês. Antes esses 3 primeiros vinham só
+  // de client.historicoFinanceiro (um ledger manual quase sempre vazio hoje
+  // em dia, já que a maioria da carteira é faturada via Boletos), por isso
+  // apareciam sempre R$ 0,00 mesmo com clientes ativos pagando.
   const relatorioMensal = useMemo(() => {
     const recebidoMes = recebidoDoPeriodo(clients, recebimentos, boletosMensais, recebimentosParceiro, [competenciaAtual]);
+    const emAbertoMes = emAbertoDoPeriodo(clients, recebimentos, boletosMensais, recebimentosParceiro, [competenciaAtual]);
+    const inadimplenciaMes = inadimplenciaDoPeriodo(clients, recebimentos, boletosMensais, [competenciaAtual]);
+    const mrrMes = mrrDoPeriodo(clients, boletosMensais, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, competenciaAtual).mrr;
     const contas = contasAPagarDoPeriodo(sistemasEscritorio, pagamentosSistemas, despesasAvulsas, [competenciaAtual]);
     const pagoMes = contas.filter((c) => c.status === "Pago").reduce((a, c) => a + c.valor, 0);
-    return { recebidoMes, pagoMes, lucroMes: recebidoMes - pagoMes };
-  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciaAtual]);
+    return { recebidoMes, emAbertoMes, inadimplenciaMes, mrrMes, pagoMes, lucroMes: recebidoMes - pagoMes };
+  }, [clients, recebimentos, boletosMensais, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, sistemasEscritorio, pagamentosSistemas, despesasAvulsas, competenciaAtual]);
 
   // "Precisa de atenção": junta Tarefas, Obrigações (rotinas de
   // departamento + avulsas) e CRM parados — igual ao painel do print que a
@@ -528,10 +536,10 @@ export default function DashboardPage() {
         {podeVerFinanceiro && (
         <SectionCard title="Financeiro">
           <MetricCard label="Honorários previstos" value={formatCurrency(metrics.honorariosPrevistos)} icon={Wallet} />
-          <MetricCard label="Recebido" value={formatCurrency(metrics.recebidos)} icon={CircleDollarSign} tone="success" />
-          <MetricCard label="Em aberto" value={formatCurrency(metrics.emAberto)} icon={Wallet} tone="warning" />
-          <MetricCard label="Inadimplência" value={formatCurrency(metrics.inadimplencia)} icon={CircleAlert} tone="danger" />
-          <MetricCard label="MRR" value={formatCurrency(metrics.honorariosPrevistos)} icon={Repeat} tone="wine" />
+          <MetricCard label="Recebido" value={formatCurrency(relatorioMensal.recebidoMes)} icon={CircleDollarSign} tone="success" />
+          <MetricCard label="Em aberto" value={formatCurrency(relatorioMensal.emAbertoMes)} icon={Wallet} tone="warning" />
+          <MetricCard label="Inadimplência" value={formatCurrency(relatorioMensal.inadimplenciaMes)} icon={CircleAlert} tone="danger" />
+          <MetricCard label="MRR" value={formatCurrency(relatorioMensal.mrrMes)} icon={Repeat} tone="wine" />
         </SectionCard>
         )}
 
