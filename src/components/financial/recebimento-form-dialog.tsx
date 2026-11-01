@@ -51,6 +51,11 @@ export function RecebimentoFormDialog({
   const [valor, setValor] = useState(recebimento?.valor ? String(recebimento.valor) : "");
   const [vencimento, setVencimento] = useState(recebimento?.vencimento ?? new Date().toISOString().slice(0, 10));
   const [status, setStatus] = useState<Recebimento["status"]>(recebimento?.status ?? "Em aberto");
+  // Data em que o dinheiro caiu de verdade — nunca assumida sozinha: parte
+  // do vencimento quando ainda não tinha nada preenchido, mas sempre fica
+  // visível e editável assim que o status é "Pago", pra nunca mais ficar
+  // escondida/errada feito a data de hoje sendo carimbada sem perguntar.
+  const [pagamento, setPagamento] = useState(recebimento?.pagamento ?? recebimento?.vencimento ?? new Date().toISOString().slice(0, 10));
   const [banco, setBanco] = useState(recebimento?.banco ?? "");
   const [tipoPessoa, setTipoPessoa] = useState<TipoPessoaRecebimento>(recebimento?.tipoPessoa ?? "PJ");
 
@@ -67,6 +72,7 @@ export function RecebimentoFormDialog({
     setValor("");
     setVencimento(new Date().toISOString().slice(0, 10));
     setStatus("Em aberto");
+    setPagamento(new Date().toISOString().slice(0, 10));
     setBanco("");
     setTipoPessoa("PJ");
   }
@@ -81,9 +87,7 @@ export function RecebimentoFormDialog({
       servico: servico === SEM_SERVICO ? undefined : servico,
       valor: Number(valor) || 0,
       vencimento,
-      // Mantém a data de pagamento já registrada em vez de carimbar "hoje"
-      // de novo a cada edição — só gera uma nova se ainda não tinha.
-      pagamento: status === "Pago" ? (recebimento?.pagamento ?? new Date().toISOString().slice(0, 10)) : undefined,
+      pagamento: status === "Pago" ? pagamento : undefined,
       status,
       banco: banco.trim() || undefined,
       tipoPessoa,
@@ -166,7 +170,7 @@ export function RecebimentoFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2">
+            <div>
               <Label className="mb-1 block">Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as Recebimento["status"])}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -175,6 +179,12 @@ export function RecebimentoFormDialog({
                 </SelectContent>
               </Select>
             </div>
+            {status === "Pago" && (
+              <div>
+                <Label className="mb-1 block">Data do pagamento</Label>
+                <Input type="date" value={pagamento} onChange={(e) => setPagamento(e.target.value)} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
