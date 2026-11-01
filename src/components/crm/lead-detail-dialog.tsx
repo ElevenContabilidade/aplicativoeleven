@@ -32,6 +32,8 @@ const SERVICOS: ServicoInteresse[] = [
   "Departamento pessoal",
   "Certificado digital",
   "Consultoria",
+  "Baixa de empresa",
+  "Baixa de MEI",
 ];
 
 const ORIGENS: LeadOrigem[] = ["Instagram", "Google", "Site", "WhatsApp", "Indicação", "Prospecção ativa", "Parceiro", "Evento", "Outro"];
@@ -72,7 +74,11 @@ export function LeadDetailDialog({ lead, onClose }: { lead: Lead | null; onClose
     () => [...new Set(leads.flatMap((l) => l.servicosInteresse))].filter((s) => !SERVICOS.includes(s)).sort((a, b) => a.localeCompare(b, "pt-BR")),
     [leads]
   );
-  const todosServicos = [...SERVICOS, ...servicosCadastrados];
+  // Inclui também o que já está marcado neste lead (ex: serviço que acabou
+  // de ser cadastrado pelo "+") — sem isso, o serviço novo some da lista até
+  // salvar e reabrir, porque servicosCadastrados só enxerga o que já está
+  // persistido em OUTROS leads.
+  const todosServicos = [...new Set([...SERVICOS, ...servicosCadastrados, ...(form?.servicosInteresse ?? [])])];
 
   if (!lead || !form) return null;
 
