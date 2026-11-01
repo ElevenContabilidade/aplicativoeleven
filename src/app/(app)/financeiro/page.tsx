@@ -836,8 +836,10 @@ export default function FinanceiroPage() {
       data: r.pagamento ?? r.vencimento,
       status: r.status as string,
     }));
-    return [...manuais, ...societarios, ...avulsos].sort((a, b) => b.data.localeCompare(a.data));
-  }, [servicosExtras, processosSocietarios, recebimentos, clients]);
+    return [...manuais, ...societarios, ...avulsos]
+      .filter((s) => competenciasPeriodo.includes(s.data.slice(0, 7)))
+      .sort((a, b) => b.data.localeCompare(a.data));
+  }, [servicosExtras, processosSocietarios, recebimentos, clients, competenciasPeriodo]);
 
   const recebidoServicosExtras = servicosExtrasCompletos
     .filter((s) => s.status === "Pago")
@@ -846,11 +848,14 @@ export default function FinanceiroPage() {
   // Quebra do que já foi efetivamente recebido (status "Pago") por tipo de
   // serviço extra — Societário vira uma categoria só com sub-linhas por
   // tipoServico (Abertura, Alteração, Baixa...), os demais (manuais +
-  // avulsos de Honorários) uma linha por nome de serviço distinto.
+  // avulsos de Honorários) uma linha por nome de serviço distinto. Mesmo
+  // período selecionado acima (competenciasPeriodo), pela data de
+  // pagamento — pra bater com a lista de Serviços extras logo ali em cima.
   const relatorioServicosExtras = useMemo(() => {
     const societarioPorTipo = new Map<string, number>();
     processosSocietarios.forEach((p) => {
       if (p.pagamento !== "Pago" && p.pagamento !== "Parcial") return;
+      if (!p.dataPagamento || !competenciasPeriodo.includes(p.dataPagamento.slice(0, 7))) return;
       const recebido = valorRecebidoProcesso(p);
       if (recebido <= 0) return;
       societarioPorTipo.set(p.tipoServico, (societarioPorTipo.get(p.tipoServico) ?? 0) + recebido);
@@ -859,13 +864,13 @@ export default function FinanceiroPage() {
 
     const outrosPorServico = new Map<string, number>();
     servicosExtras
-      .filter((s) => s.status === "Pago")
+      .filter((s) => s.status === "Pago" && competenciasPeriodo.includes(s.data.slice(0, 7)))
       .forEach((s) => {
         const nome = s.servico.trim() || "Sem nome";
         outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + s.valor);
       });
     recebimentos
-      .filter((r) => r.status === "Pago")
+      .filter((r) => r.status === "Pago" && competenciasPeriodo.includes((r.pagamento ?? r.vencimento).slice(0, 7)))
       .forEach((r) => {
         const nome = (r.servico ?? "").trim() || "Recebimento avulso";
         outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + r.valor);
@@ -880,7 +885,7 @@ export default function FinanceiroPage() {
         .map(([servico, total]) => ({ servico, total }))
         .sort((a, b) => b.total - a.total),
     };
-  }, [processosSocietarios, servicosExtras, recebimentos]);
+  }, [processosSocietarios, servicosExtras, recebimentos, competenciasPeriodo]);
 
   return (
     <div>
@@ -1103,7 +1108,7 @@ export default function FinanceiroPage() {
 
         <Card>
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>Serviços extras</CardTitle>
+            <CardTitle>Serviços extras — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}</CardTitle>
             <Button
               size="sm"
               variant="outline"
@@ -1224,7 +1229,9 @@ export default function FinanceiroPage() {
 
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Quanto já recebemos por tipo de serviço extra</CardTitle>
+          <CardTitle>
+            Quanto já recebemos por tipo de serviço extra — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 pt-4 sm:grid-cols-2">
           <div>
