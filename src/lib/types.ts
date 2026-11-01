@@ -1116,6 +1116,12 @@ export interface ExtraParceiro {
   /** Competência (YYYY-MM) a partir da qual esse valor passa a valer —
    * ausente = sempre valeu, igual FinanceiroCliente.inicioContrato. */
   inicioCompetencia?: string;
+  /** Última competência (YYYY-MM) em que esse extra ainda aparece — ausente
+   * = recorrente pra sempre (comportamento padrão). Igual a inicioCompetencia
+   * = lançamento único, que some da lista depois daquele mês. Usado pra
+   * extra avulso de parceiro (ex: indicação pontual), sem precisar de um
+   * campo de parceiro dentro do Recebimento genérico. */
+  fimCompetencia?: string;
 }
 
 /** Controle mensal (status/pagamento) de um ExtraParceiro — mesmo papel de

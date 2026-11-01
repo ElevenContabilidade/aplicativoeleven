@@ -152,6 +152,7 @@ export default function ParceirosPage() {
     for (const extra of extrasParceiro) {
       for (const comp of competencias) {
         if (extra.inicioCompetencia && comp < extra.inicioCompetencia) continue;
+        if (extra.fimCompetencia && comp > extra.fimCompetencia) continue;
         const pagamento = pagamentoMap.get(`${extra.id}__${comp}`);
         if (pagamento?.removido) continue;
         const valorPago = valorPagoResolvido(pagamento?.valorPago, pagamento?.status, extra.valorMensal);
@@ -304,6 +305,17 @@ export default function ParceirosPage() {
         inicioCompetencia: mes === "anual" ? undefined : `${year}-${mes}`,
       });
     };
+  }
+
+  /** Marca/desmarca um extra de parceiro como lançamento único — ex: uma
+   * indicação pontual que o parceiro trouxe, sem virar cobrança recorrente
+   * nos próximos meses. Marcado = só aparece na competência atual do extra;
+   * desmarcado = volta a se repetir pra sempre (comportamento padrão). */
+  function toggleExtraUnico(le: LinhaExtra) {
+    const jaUnico = !!le.extra.fimCompetencia;
+    updateExtraParceiro(le.extra.id, {
+      fimCompetencia: jaUnico ? undefined : (le.extra.inicioCompetencia ?? le.competencia),
+    });
   }
 
   function toggleStatusExtra(le: LinhaExtra) {
@@ -586,7 +598,20 @@ export default function ParceirosPage() {
                     <TableCell className={cn("font-medium", le.extra.valorMensal - le.valorPago > 0 ? "text-status-warning" : "text-status-success")}>
                       {formatCurrency(Math.max(le.extra.valorMensal - le.valorPago, 0))}
                     </TableCell>
-                    <TableCell className="text-sand-400">—</TableCell>
+                    <TableCell>
+                      <label
+                        className="flex items-center gap-1 text-[11px] text-sand-500"
+                        title="Marcado: esse extra só vale nesse mês e não se repete nos próximos. Desmarcado: recorrente todo mês, igual hoje."
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!!le.extra.fimCompetencia}
+                          onChange={() => toggleExtraUnico(le)}
+                          className="size-3.5"
+                        />
+                        Único
+                      </label>
+                    </TableCell>
                     <TableCell>
                       <Input
                         value={le.banco ?? ""}
