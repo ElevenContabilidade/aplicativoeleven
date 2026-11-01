@@ -142,6 +142,7 @@ export default function FinanceiroPage() {
       cnpj: c.dados.cnpj || "—",
       status: c.status as string,
       valor: c.financeiro.valorMensal,
+      parceiro: undefined as string | undefined,
     })),
     ...clientesParceiroAtivosMes.map((c) => {
       const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
@@ -151,6 +152,7 @@ export default function FinanceiroPage() {
         cnpj: c.dados.cnpj || "—",
         status: c.status as string,
         valor: entry?.valor ?? c.financeiro.valorMensal,
+        parceiro: c.dados.nomeParceiro,
       };
     }),
     ...extrasParceiro
@@ -166,6 +168,7 @@ export default function FinanceiroPage() {
         cnpj: "—",
         status: "Valor extra",
         valor: e.valorMensal,
+        parceiro: e.nomeParceiro as string | undefined,
       })),
   ];
 
@@ -1496,6 +1499,7 @@ export default function FinanceiroPage() {
                 <TableHead>Cliente</TableHead>
                 <TableHead>CNPJ</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Parceiro</TableHead>
                 <TableHead>Mensalidade</TableHead>
               </TableRow>
             </TableHeader>
@@ -1507,11 +1511,12 @@ export default function FinanceiroPage() {
                     <TableCell className="font-medium text-sand-800">{l.nome}</TableCell>
                     <TableCell className="text-sand-500">{l.cnpj}</TableCell>
                     <TableCell><StatusBadge status={l.status} /></TableCell>
+                    <TableCell className={cn(!l.parceiro && "text-sand-300")}>{l.parceiro ?? "—"}</TableCell>
                     <TableCell>{formatCurrency(l.valor)}</TableCell>
                   </TableRow>
                 ))}
               {detalheMrr.length === 0 && (
-                <TableRow><TableCell colSpan={4} className="py-8 text-center text-sand-400">Nenhum cliente com mensalidade cadastrada.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhum cliente com mensalidade cadastrada.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
