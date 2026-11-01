@@ -74,7 +74,7 @@ export function TaskKanbanBoard({ tasks, onOpen }: { tasks: Task[]; onOpen: (tas
             key={col.id}
             columnId={col.id}
             label={col.label}
-            tasks={tasks.filter((t) => col.statuses.includes(t.status))}
+            tasks={tasks.filter((t) => col.statuses.includes(t.status)).sort((a, b) => a.prazo.localeCompare(b.prazo))}
             onOpen={onOpen}
           />
         ))}
