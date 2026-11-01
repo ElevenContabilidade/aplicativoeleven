@@ -27,7 +27,7 @@ import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
 import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { ClientStatus, DespesaAvulsa, ServicoExtra, SistemaEscritorio } from "@/lib/types";
+import type { ClientStatus, DespesaAvulsa, Recebimento, ServicoExtra, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
 const WINE = "#5C1420";
@@ -70,6 +70,8 @@ export default function FinanceiroPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [formOpen, setFormOpen] = useState(() => searchParams.get("novo") === "1");
+  const [editingRecebimento, setEditingRecebimento] = useState<Recebimento | null>(null);
+  const [formOpenKey, setFormOpenKey] = useState(0);
   const [despesaFormOpen, setDespesaFormOpen] = useState(false);
   const [editingDespesa, setEditingDespesa] = useState<DespesaAvulsa | null>(null);
   const [servicoExtraFormOpen, setServicoExtraFormOpen] = useState(false);
@@ -890,7 +892,15 @@ export default function FinanceiroPage() {
             <Link href="/financeiro/conciliacao">
               <Button variant="outline"><Landmark className="size-3.5" /> Conciliação bancária</Button>
             </Link>
-            <Button onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo recebimento</Button>
+            <Button
+              onClick={() => {
+                setEditingRecebimento(null);
+                setFormOpenKey((k) => k + 1);
+                setFormOpen(true);
+              }}
+            >
+              <Plus className="size-3.5" /> Novo recebimento
+            </Button>
           </>
         }
       />
@@ -1114,11 +1124,41 @@ export default function FinanceiroPage() {
                     <span className="font-medium text-sand-900">{s.servico}</span>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <StatusBadge status={s.status} />
+                      {s.origem === "avulso" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const original = recebimentos.find((r) => r.id === s.id);
+                            if (!original) return;
+                            setEditingRecebimento(original);
+                            setFormOpenKey((k) => k + 1);
+                            setFormOpen(true);
+                          }}
+                          title="Editar recebimento"
+                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-sand-100 hover:text-wine-700"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                      )}
                       {s.origem === "extra" && (
                         <button
                           type="button"
                           onClick={(e) => handleDeleteServicoExtra(e, s.id, s.servico)}
                           title="Excluir serviço extra"
+                          className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      )}
+                      {s.origem === "avulso" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Excluir o recebimento de "${s.clienteNome}"?`)) deleteRecebimento(s.id);
+                          }}
+                          title="Excluir recebimento"
                           className="rounded-md p-1 text-sand-400 transition-colors hover:bg-status-danger/10 hover:text-status-danger"
                         >
                           <Trash2 className="size-3.5" />
@@ -1144,7 +1184,7 @@ export default function FinanceiroPage() {
               }
               if (s.origem === "avulso") {
                 return (
-                  <div key={s.key} title="Editado na tabela de Honorários, acima" className="rounded-lg border border-sand-200 p-3 text-xs">
+                  <div key={s.key} className="rounded-lg border border-sand-200 p-3 text-xs">
                     {conteudo}
                   </div>
                 );
@@ -1400,7 +1440,7 @@ export default function FinanceiroPage() {
         </CardContent>
       </Card>
 
-      <RecebimentoFormDialog open={formOpen} onOpenChange={setFormOpen} />
+      <RecebimentoFormDialog key={formOpenKey} open={formOpen} onOpenChange={setFormOpen} recebimento={editingRecebimento} />
       <DespesaFormDialog key={despesaFormOpenKey} open={despesaFormOpen} onOpenChange={setDespesaFormOpen} despesa={editingDespesa} />
       <SistemaFormDialog key={sistemaFormOpenKey} open={sistemaFormOpen} onOpenChange={setSistemaFormOpen} sistema={editingSistema} />
       <ServicoExtraFormDialog

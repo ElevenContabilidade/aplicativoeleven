@@ -27,21 +27,32 @@ const BANCOS_PADRAO = [
   "Sicredi",
 ];
 
-export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function RecebimentoFormDialog({
+  open,
+  onOpenChange,
+  recebimento,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  recebimento?: Recebimento | null;
+}) {
   const clients = useAppStore((s) => s.clients);
   const servicosPortfolio = useAppStore((s) => s.servicosPortfolio);
   const recebimentos = useAppStore((s) => s.recebimentos);
   const addRecebimento = useAppStore((s) => s.addRecebimento);
+  const updateRecebimento = useAppStore((s) => s.updateRecebimento);
 
-  const [nome, setNome] = useState("");
-  const [cnpjCpf, setCnpjCpf] = useState("");
-  const [competencia, setCompetencia] = useState(new Date().toISOString().slice(0, 7));
-  const [servico, setServico] = useState(SEM_SERVICO);
-  const [valor, setValor] = useState("");
-  const [vencimento, setVencimento] = useState(new Date().toISOString().slice(0, 10));
-  const [status, setStatus] = useState<Recebimento["status"]>("Em aberto");
-  const [banco, setBanco] = useState("");
-  const [tipoPessoa, setTipoPessoa] = useState<TipoPessoaRecebimento>("PJ");
+  const isEdit = !!recebimento;
+
+  const [nome, setNome] = useState(recebimento?.nome ?? "");
+  const [cnpjCpf, setCnpjCpf] = useState(recebimento?.cnpjCpf ?? "");
+  const [competencia, setCompetencia] = useState(recebimento?.competencia ?? new Date().toISOString().slice(0, 7));
+  const [servico, setServico] = useState(recebimento?.servico ?? SEM_SERVICO);
+  const [valor, setValor] = useState(recebimento?.valor ? String(recebimento.valor) : "");
+  const [vencimento, setVencimento] = useState(recebimento?.vencimento ?? new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState<Recebimento["status"]>(recebimento?.status ?? "Em aberto");
+  const [banco, setBanco] = useState(recebimento?.banco ?? "");
+  const [tipoPessoa, setTipoPessoa] = useState<TipoPessoaRecebimento>(recebimento?.tipoPessoa ?? "PJ");
 
   const bancoOptions = useMemo(() => {
     const usados = recebimentos.map((r) => r.banco).filter((b): b is string => !!b);
@@ -63,20 +74,25 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!nome.trim() || !valor) return;
-    const entry: Recebimento = {
-      id: `rec-${Date.now()}`,
+    const patch = {
       nome: nome.trim(),
       cnpjCpf: cnpjCpf.trim() || undefined,
       competencia,
       servico: servico === SEM_SERVICO ? undefined : servico,
       valor: Number(valor) || 0,
       vencimento,
-      pagamento: status === "Pago" ? new Date().toISOString().slice(0, 10) : undefined,
+      // Mantém a data de pagamento já registrada em vez de carimbar "hoje"
+      // de novo a cada edição — só gera uma nova se ainda não tinha.
+      pagamento: status === "Pago" ? (recebimento?.pagamento ?? new Date().toISOString().slice(0, 10)) : undefined,
       status,
       banco: banco.trim() || undefined,
       tipoPessoa,
     };
-    addRecebimento(entry);
+    if (isEdit) {
+      updateRecebimento(recebimento.id, patch);
+    } else {
+      addRecebimento({ id: `rec-${Date.now()}`, ...patch });
+    }
     reset();
     onOpenChange(false);
   }
@@ -85,7 +101,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo recebimento</DialogTitle>
+          <DialogTitle>{isEdit ? "Editar recebimento" : "Novo recebimento"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
@@ -162,7 +178,7 @@ export function RecebimentoFormDialog({ open, onOpenChange }: { open: boolean; o
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Registrar recebimento</Button>
+            <Button type="submit">{isEdit ? "Salvar alterações" : "Registrar recebimento"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
