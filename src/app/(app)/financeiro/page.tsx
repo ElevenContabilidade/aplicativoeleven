@@ -837,6 +837,49 @@ export default function FinanceiroPage() {
     return [...manuais, ...societarios, ...avulsos].sort((a, b) => b.data.localeCompare(a.data));
   }, [servicosExtras, processosSocietarios, recebimentos, clients]);
 
+  const recebidoServicosExtras = servicosExtrasCompletos
+    .filter((s) => s.status === "Pago")
+    .reduce((a, s) => a + s.valor, 0);
+
+  // Quebra do que já foi efetivamente recebido (status "Pago") por tipo de
+  // serviço extra — Societário vira uma categoria só com sub-linhas por
+  // tipoServico (Abertura, Alteração, Baixa...), os demais (manuais +
+  // avulsos de Honorários) uma linha por nome de serviço distinto.
+  const relatorioServicosExtras = useMemo(() => {
+    const societarioPorTipo = new Map<string, number>();
+    processosSocietarios.forEach((p) => {
+      if (p.pagamento !== "Pago" && p.pagamento !== "Parcial") return;
+      const recebido = valorRecebidoProcesso(p);
+      if (recebido <= 0) return;
+      societarioPorTipo.set(p.tipoServico, (societarioPorTipo.get(p.tipoServico) ?? 0) + recebido);
+    });
+    const societarioTotal = [...societarioPorTipo.values()].reduce((a, v) => a + v, 0);
+
+    const outrosPorServico = new Map<string, number>();
+    servicosExtras
+      .filter((s) => s.status === "Pago")
+      .forEach((s) => {
+        const nome = s.servico.trim() || "Sem nome";
+        outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + s.valor);
+      });
+    recebimentos
+      .filter((r) => r.status === "Pago")
+      .forEach((r) => {
+        const nome = (r.servico ?? "").trim() || "Recebimento avulso";
+        outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + r.valor);
+      });
+
+    return {
+      societarioTotal,
+      societarioPorTipo: [...societarioPorTipo.entries()]
+        .map(([tipo, total]) => ({ tipo, total }))
+        .sort((a, b) => b.total - a.total),
+      outros: [...outrosPorServico.entries()]
+        .map(([servico, total]) => ({ servico, total }))
+        .sort((a, b) => b.total - a.total),
+    };
+  }, [processosSocietarios, servicosExtras, recebimentos]);
+
   return (
     <div>
       <PageHeader
@@ -1125,9 +1168,58 @@ export default function FinanceiroPage() {
             {servicosExtrasCompletos.length === 0 && (
               <p className="py-6 text-center text-xs text-sand-400">Nenhum serviço extra lançado ainda.</p>
             )}
+            {servicosExtrasCompletos.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-sand-100 pt-2 text-xs">
+                <span className="text-sand-500">
+                  {servicosExtrasCompletos.length} lançamento{servicosExtrasCompletos.length !== 1 ? "s" : ""}
+                </span>
+                <span className="font-semibold text-sand-800">
+                  Recebido: <span className="text-status-success">{formatCurrency(recebidoServicosExtras)}</span>
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <CardTitle>Quanto já recebemos por tipo de serviço extra</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 pt-4 sm:grid-cols-2">
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-sand-500">Societário</p>
+              <p className="text-xs font-semibold text-sand-800">{formatCurrency(relatorioServicosExtras.societarioTotal)}</p>
+            </div>
+            <div className="space-y-1.5">
+              {relatorioServicosExtras.societarioPorTipo.map((t) => (
+                <div key={t.tipo} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-1.5 text-xs">
+                  <span className="text-sand-700">{t.tipo}</span>
+                  <span className="font-medium text-wine-700">{formatCurrency(t.total)}</span>
+                </div>
+              ))}
+              {relatorioServicosExtras.societarioPorTipo.length === 0 && (
+                <p className="text-xs text-sand-400">Nada recebido ainda.</p>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-500">Outros serviços extras</p>
+            <div className="space-y-1.5">
+              {relatorioServicosExtras.outros.map((o) => (
+                <div key={o.servico} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-1.5 text-xs">
+                  <span className="text-sand-700">{o.servico}</span>
+                  <span className="font-medium text-wine-700">{formatCurrency(o.total)}</span>
+                </div>
+              ))}
+              {relatorioServicosExtras.outros.length === 0 && (
+                <p className="text-xs text-sand-400">Nada recebido ainda.</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="mt-4">
         <CardHeader className="flex flex-wrap items-center justify-between gap-2">
