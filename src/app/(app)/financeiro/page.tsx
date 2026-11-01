@@ -51,6 +51,7 @@ export default function FinanceiroPage() {
   const deleteServicoExtra = useAppStore((s) => s.deleteServicoExtra);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const recebimentos = useAppStore((s) => s.recebimentos);
+  const servicosPortfolio = useAppStore((s) => s.servicosPortfolio);
   const boletosMensais = useAppStore((s) => s.boletosMensais);
   const recebimentosParceiro = useAppStore((s) => s.recebimentosParceiro);
   const extrasParceiro = useAppStore((s) => s.extrasParceiro);
@@ -845,47 +846,69 @@ export default function FinanceiroPage() {
     .filter((s) => s.status === "Pago")
     .reduce((a, s) => a + s.valor, 0);
 
-  // Quebra do que já foi efetivamente recebido (status "Pago") por tipo de
-  // serviço extra — Societário vira uma categoria só com sub-linhas por
-  // tipoServico (Abertura, Alteração, Baixa...), os demais (manuais +
-  // avulsos de Honorários) uma linha por nome de serviço distinto. Mesmo
-  // período selecionado acima (competenciasPeriodo), pela data de
-  // pagamento — pra bater com a lista de Serviços extras logo ali em cima.
+  // Quebra do que já foi efetivamente recebido (status "Pago") por
+  // categoria de serviço extra: Societário sempre em primeiro (sub-linhas
+  // por tipoServico — Abertura, Alteração, Baixa...), depois uma categoria
+  // pra cada "categoria" cadastrada no Portfólio (ex: MEI, agrupando
+  // "Abertura MEI"/"Alteração MEI"/"Regularização MEI" etc.), e por último
+  // "Outros serviços extras" pra quem não bate com nenhum serviço do
+  // catálogo. Mesmo período selecionado acima (competenciasPeriodo), pela
+  // data de pagamento — pra bater com a lista de Serviços extras ali em cima.
+  const OUTRA_CATEGORIA = "Outros serviços extras";
   const relatorioServicosExtras = useMemo(() => {
-    const societarioPorTipo = new Map<string, number>();
+    const categorias = new Map<string, Map<string, number>>();
+    categorias.set("Societário", new Map());
+
+    function add(categoria: string, servico: string, valor: number) {
+      const porServico = categorias.get(categoria) ?? new Map<string, number>();
+      porServico.set(servico, (porServico.get(servico) ?? 0) + valor);
+      categorias.set(categoria, porServico);
+    }
+
+    function categoriaDoServico(servico: string): string {
+      const alvo = servico.trim().toLowerCase();
+      const item = servicosPortfolio.find((sp) => sp.nome.trim().toLowerCase() === alvo);
+      return item?.categoria?.trim() || OUTRA_CATEGORIA;
+    }
+
     processosSocietarios.forEach((p) => {
       if (p.pagamento !== "Pago" && p.pagamento !== "Parcial") return;
       if (!p.dataPagamento || !competenciasPeriodo.includes(p.dataPagamento.slice(0, 7))) return;
       const recebido = valorRecebidoProcesso(p);
       if (recebido <= 0) return;
-      societarioPorTipo.set(p.tipoServico, (societarioPorTipo.get(p.tipoServico) ?? 0) + recebido);
+      add("Societário", p.tipoServico, recebido);
     });
-    const societarioTotal = [...societarioPorTipo.values()].reduce((a, v) => a + v, 0);
 
-    const outrosPorServico = new Map<string, number>();
     servicosExtras
       .filter((s) => s.status === "Pago" && competenciasPeriodo.includes(s.data.slice(0, 7)))
       .forEach((s) => {
         const nome = s.servico.trim() || "Sem nome";
-        outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + s.valor);
+        add(categoriaDoServico(nome), nome, s.valor);
       });
+
     recebimentos
       .filter((r) => r.status === "Pago" && competenciasPeriodo.includes((r.pagamento ?? r.vencimento).slice(0, 7)))
       .forEach((r) => {
         const nome = (r.servico ?? "").trim() || "Recebimento avulso";
-        outrosPorServico.set(nome, (outrosPorServico.get(nome) ?? 0) + r.valor);
+        add(categoriaDoServico(nome), nome, r.valor);
       });
 
-    return {
-      societarioTotal,
-      societarioPorTipo: [...societarioPorTipo.entries()]
-        .map(([tipo, total]) => ({ tipo, total }))
-        .sort((a, b) => b.total - a.total),
-      outros: [...outrosPorServico.entries()]
+    const totalDe = (categoria: string) => [...(categorias.get(categoria)?.values() ?? [])].reduce((a, v) => a + v, 0);
+    const nomes = [...categorias.keys()];
+    const ordenadas = [
+      "Societário",
+      ...nomes.filter((c) => c !== "Societário" && c !== OUTRA_CATEGORIA).sort((a, b) => totalDe(b) - totalDe(a)),
+      ...(nomes.includes(OUTRA_CATEGORIA) ? [OUTRA_CATEGORIA] : []),
+    ];
+
+    return ordenadas.map((categoria) => ({
+      categoria,
+      total: totalDe(categoria),
+      porServico: [...(categorias.get(categoria)?.entries() ?? [])]
         .map(([servico, total]) => ({ servico, total }))
         .sort((a, b) => b.total - a.total),
-    };
-  }, [processosSocietarios, servicosExtras, recebimentos, competenciasPeriodo]);
+    }));
+  }, [processosSocietarios, servicosExtras, recebimentos, servicosPortfolio, competenciasPeriodo]);
 
   return (
     <div>
@@ -1233,38 +1256,24 @@ export default function FinanceiroPage() {
             Quanto já recebemos por tipo de serviço extra — {mes === "anual" ? year : `${MESES.find((m) => m.value === mes)?.label}/${year}`}
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 pt-4 sm:grid-cols-2">
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sand-500">Societário</p>
-              <p className="text-xs font-semibold text-sand-800">{formatCurrency(relatorioServicosExtras.societarioTotal)}</p>
+        <CardContent className="grid gap-4 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+          {relatorioServicosExtras.map((cat) => (
+            <div key={cat.categoria}>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-sand-500">{cat.categoria}</p>
+                <p className="text-xs font-semibold text-sand-800">{formatCurrency(cat.total)}</p>
+              </div>
+              <div className="space-y-1.5">
+                {cat.porServico.map((s) => (
+                  <div key={s.servico} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-1.5 text-xs">
+                    <span className="text-sand-700">{s.servico}</span>
+                    <span className="font-medium text-wine-700">{formatCurrency(s.total)}</span>
+                  </div>
+                ))}
+                {cat.porServico.length === 0 && <p className="text-xs text-sand-400">Nada recebido ainda.</p>}
+              </div>
             </div>
-            <div className="space-y-1.5">
-              {relatorioServicosExtras.societarioPorTipo.map((t) => (
-                <div key={t.tipo} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-1.5 text-xs">
-                  <span className="text-sand-700">{t.tipo}</span>
-                  <span className="font-medium text-wine-700">{formatCurrency(t.total)}</span>
-                </div>
-              ))}
-              {relatorioServicosExtras.societarioPorTipo.length === 0 && (
-                <p className="text-xs text-sand-400">Nada recebido ainda.</p>
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-sand-500">Outros serviços extras</p>
-            <div className="space-y-1.5">
-              {relatorioServicosExtras.outros.map((o) => (
-                <div key={o.servico} className="flex items-center justify-between rounded-lg border border-sand-200 px-3 py-1.5 text-xs">
-                  <span className="text-sand-700">{o.servico}</span>
-                  <span className="font-medium text-wine-700">{formatCurrency(o.total)}</span>
-                </div>
-              ))}
-              {relatorioServicosExtras.outros.length === 0 && (
-                <p className="text-xs text-sand-400">Nada recebido ainda.</p>
-              )}
-            </div>
-          </div>
+          ))}
         </CardContent>
       </Card>
 
