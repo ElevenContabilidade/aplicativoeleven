@@ -21,6 +21,7 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
   const updateTask = useAppStore((s) => s.updateTask);
   const deleteTask = useAppStore((s) => s.deleteTask);
   const clients = useAppStore((s) => s.clients);
+  const team = useAppStore((s) => s.team);
   const { userId } = useAuthStore();
   const [comment, setComment] = useState("");
   const [subtaskTitle, setSubtaskTitle] = useState("");
@@ -75,20 +76,33 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
                 <Badge key={c.id} variant="cream">{c.dados.razaoSocial}</Badge>
               ))
             : client && <Badge variant="cream">{client.dados.razaoSocial}</Badge>}
-          <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)} • {teamName(task.responsavelId)}</span>
+          <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)}</span>
         </div>
 
         <div className="mt-3 flex items-end justify-between gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
-            <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
-              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-end gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
+              <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-sand-600">Responsável</label>
+              <Select value={task.responsavelId} onValueChange={(v) => updateTask(task.id, { responsavelId: v })}>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {team.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={handleDelete} className="text-status-danger hover:bg-status-danger-bg">
             <Trash2 className="size-3.5" /> Excluir tarefa
