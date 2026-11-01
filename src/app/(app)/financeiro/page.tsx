@@ -156,6 +156,7 @@ export default function FinanceiroPage() {
     ...extrasParceiro
       .filter((e) => {
         if (e.inicioCompetencia && mesAtual < e.inicioCompetencia) return false;
+        if (e.fimCompetencia && mesAtual > e.fimCompetencia) return false;
         const pagamento = pagamentosExtrasParceiro.find((p) => p.extraParceiroId === e.id && p.competencia === mesAtual);
         return !pagamento?.removido;
       })
@@ -305,6 +306,7 @@ export default function FinanceiroPage() {
       );
       return competencias.flatMap((comp) => {
         if (e.inicioCompetencia && comp < e.inicioCompetencia) return [];
+        if (e.fimCompetencia && comp > e.fimCompetencia) return [];
         const pagamento = pagamentoMap.get(comp);
         if (pagamento?.removido) return [];
         const valorPago = valorPagoResolvido(pagamento?.valorPago, pagamento?.status, e.valorMensal);

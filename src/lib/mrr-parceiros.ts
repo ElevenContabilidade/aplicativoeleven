@@ -32,6 +32,7 @@ export function valorParceirosNoPeriodo(
   for (const extra of extrasParceiro) {
     for (const comp of competencias) {
       if (extra.inicioCompetencia && comp < extra.inicioCompetencia) continue;
+      if (extra.fimCompetencia && comp > extra.fimCompetencia) continue;
       const pagamento = pagamentoMap.get(`${extra.id}__${comp}`);
       if (pagamento?.removido) continue;
       total += extra.valorMensal;
