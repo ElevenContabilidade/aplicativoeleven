@@ -940,6 +940,16 @@ export interface ProcessoSocietario {
    * se voltar pra outro status) — usada pra calcular o tempo médio de
    * cada tipo de processo. */
   dataConclusao?: string;
+  /** Documentos anexados ao processo (procuração, comprovantes etc.), salvos
+   * no Drive do escritório — ver uploadAnexoProcessoSocietario. */
+  anexos?: ProcessoAnexo[];
+}
+
+export interface ProcessoAnexo {
+  id: string;
+  nome: string;
+  url: string;
+  enviadoEm: string; // "YYYY-MM-DD"
 }
 
 // ---------- Parcelamentos ----------

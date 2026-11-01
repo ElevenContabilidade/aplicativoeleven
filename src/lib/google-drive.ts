@@ -170,6 +170,20 @@ export async function ensureLeadFolder(leadId: string, leadNome: string): Promis
   return existente ?? criarPasta(nomePasta, leadsRootId);
 }
 
+const SOCIETARIO_FOLDER_NAME = "Societário — Documentos";
+
+/** Acha (ou cria) a pasta de um processo societário pra guardar os
+ * documentos anexados (procuração, comprovantes etc.) — processos avulsos
+ * (sem cliente cadastrado ainda) não têm pasta própria de cliente, então
+ * ficam separados numa subpasta própria da raiz, igual aos leads. */
+export async function ensureProcessoSocietarioFolder(processoId: string, nome: string): Promise<string> {
+  const rootId = await getRootFolderId();
+  const societarioRootId = (await encontrarPasta(SOCIETARIO_FOLDER_NAME, rootId)) ?? (await criarPasta(SOCIETARIO_FOLDER_NAME, rootId));
+  const nomePasta = `${nome} (${processoId})`;
+  const existente = await encontrarPasta(nomePasta, societarioRootId);
+  return existente ?? criarPasta(nomePasta, societarioRootId);
+}
+
 /** Acha (ou cria) a pasta do cliente e, dentro dela, a subpasta certa pra
  * essa categoria de documento (Licenças, Setor Fiscal, Docs Sócio etc.) —
  * a mesma organização que já era feita manualmente no Drive. */

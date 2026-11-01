@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, UserPlus } from "lucide-react";
+import { Trash2, UserPlus, FileUp, Paperclip } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { teamName } from "@/lib/team-lookup";
 import { CHECKLIST_STATUS, type ChecklistStatus, type PagamentoProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
 import { CHECKLISTS_POR_TIPO, etapasAtualizadas } from "@/lib/societario-checklist";
 import { criarClienteAvulso, nomeDoProcessoSocietario } from "@/lib/processo-societario";
+import { uploadAnexoSocietario } from "@/lib/upload-anexo-societario";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 
 const STATUSES: ProcessoSocietarioStatus[] = ["Solicitado", "Documentação", "Protocolo", "Em análise", "Exigência", "Aprovado", "Finalizado"];
@@ -51,6 +52,8 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   const [responsavelId, setResponsavelId] = useState(team[0]?.id ?? "");
   const [inicio, setInicio] = useState(new Date().toISOString().slice(0, 10));
   const [prazo, setPrazo] = useState(new Date().toISOString().slice(0, 10));
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false);
+  const [erroAnexo, setErroAnexo] = useState<string | null>(null);
 
   if (!processo) return null;
   const client = clients.find((c) => c.id === processo.clienteId);
@@ -85,6 +88,32 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
     if (!descricao.trim() || !processo) return;
     addEtapaProcesso(processo.id, { id: `et-${Date.now()}`, descricao, responsavelId, inicio, prazo, status: "Pendente" });
     setDescricao("");
+  }
+
+  async function handleAnexarDocumento(file: File | null) {
+    if (!file || !processo) return;
+    setEnviandoAnexo(true);
+    setErroAnexo(null);
+    try {
+      const anexo = await uploadAnexoSocietario({
+        file,
+        processoId: processo.id,
+        processoNome: nomeDoProcessoSocietario(processo, clients),
+      });
+      updateProcessoSocietario(processo.id, {
+        anexos: [...(processo.anexos ?? []), { id: `anexo-${Date.now()}`, nome: anexo.nome, url: anexo.url, enviadoEm: new Date().toISOString().slice(0, 10) }],
+      });
+    } catch (err) {
+      setErroAnexo(err instanceof Error ? err.message : "Não foi possível enviar o documento.");
+    } finally {
+      setEnviandoAnexo(false);
+    }
+  }
+
+  function removerAnexo(anexoId: string) {
+    if (!processo) return;
+    if (!confirm("Remover esse anexo da lista? O arquivo continua salvo no Drive.")) return;
+    updateProcessoSocietario(processo.id, { anexos: (processo.anexos ?? []).filter((a) => a.id !== anexoId) });
   }
 
   return (
@@ -234,6 +263,40 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               onChange={(e) => updateProcessoSocietario(processo.id, { pendencias: e.target.value })}
               className="min-h-16 text-xs"
             />
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <p className="mb-1.5 text-xs font-semibold text-sand-700">Documentos</p>
+          <div className="space-y-1.5">
+            {(processo.anexos ?? []).map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-sand-200 bg-sand-50 px-3 py-1.5 text-xs">
+                <a href={a.url} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-1.5 text-wine-700 hover:underline">
+                  <Paperclip className="size-3.5 shrink-0" />
+                  <span className="truncate">{a.nome}</span>
+                </a>
+                <div className="flex shrink-0 items-center gap-2 text-sand-400">
+                  <span>{formatDate(a.enviadoEm)}</span>
+                  <button type="button" onClick={() => removerAnexo(a.id)} title="Remover anexo" className="hover:text-status-danger">
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-sand-300 bg-sand-50 px-3 py-2 text-xs text-sand-600 hover:border-wine-400 hover:bg-wine-50">
+              <FileUp className="size-3.5 shrink-0 text-wine-500" />
+              {enviandoAnexo ? "Enviando..." : "Clique para anexar um documento"}
+              <input
+                type="file"
+                className="hidden"
+                disabled={enviandoAnexo}
+                onChange={(e) => {
+                  handleAnexarDocumento(e.target.files?.[0] ?? null);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {erroAnexo && <p className="text-[11px] text-status-danger">{erroAnexo}</p>}
           </div>
         </div>
 
