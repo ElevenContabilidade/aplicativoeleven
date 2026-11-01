@@ -882,6 +882,9 @@ export default function FinanceiroPage() {
   const recebidoServicosExtras = servicosExtrasCompletos
     .filter((s) => s.status === "Pago")
     .reduce((a, s) => a + s.valor, 0);
+  const aReceberServicosExtras = servicosExtrasCompletos
+    .filter((s) => s.status !== "Pago")
+    .reduce((a, s) => a + s.valor, 0);
 
   // Quebra do que já foi efetivamente recebido (status "Pago") por
   // categoria de serviço extra: Societário sempre em primeiro (sub-linhas
@@ -1278,8 +1281,9 @@ export default function FinanceiroPage() {
                 <span className="text-sand-500">
                   {servicosExtrasCompletos.length} lançamento{servicosExtrasCompletos.length !== 1 ? "s" : ""}
                 </span>
-                <span className="font-semibold text-sand-800">
-                  Recebido: <span className="text-status-success">{formatCurrency(recebidoServicosExtras)}</span>
+                <span className="flex flex-wrap items-center gap-x-4 gap-y-1 font-semibold text-sand-800">
+                  <span>Recebido: <span className="text-status-success">{formatCurrency(recebidoServicosExtras)}</span></span>
+                  <span>Total a receber: <span className="text-status-warning">{formatCurrency(aReceberServicosExtras)}</span></span>
                 </span>
               </div>
             )}
