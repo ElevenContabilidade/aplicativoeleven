@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,10 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppStore } from "@/lib/store/app-store";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { teamName } from "@/lib/team-lookup";
-import type { Task, TaskStatus } from "@/lib/types";
+import type { Departamento, Task, TaskPrioridade, TaskStatus } from "@/lib/types";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 const STATUSES: TaskStatus[] = ["Não iniciada", "Em andamento", "Aguardando cliente", "Aguardando órgão", "Em análise", "Concluída", "Cancelada"];
+const DEPARTAMENTOS: Departamento[] = ["Comercial", "Relacionamento", "Fiscal", "Contábil", "Pessoal", "Societário", "Financeiro", "Atendimento"];
+const PRIORIDADES: TaskPrioridade[] = ["Baixa", "Normal", "Alta", "Urgente"];
 
 export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose: () => void }) {
   const updateTask = useAppStore((s) => s.updateTask);
@@ -69,8 +70,6 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={task.prioridade} />
-          <Badge variant="outline">{task.departamento}</Badge>
           {clientesDaTarefa
             ? clientesDaTarefa.map((c) => (
                 <Badge key={c.id} variant="cream">{c.dados.razaoSocial}</Badge>
@@ -79,31 +78,54 @@ export function TaskDetailDialog({ task, onClose }: { task: Task | null; onClose
           <span className="text-xs text-sand-400">Prazo {formatDate(task.prazo)}</span>
         </div>
 
-        <div className="mt-3 flex items-end justify-between gap-3">
-          <div className="flex items-end gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
-              <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-sand-600">Responsável</label>
-              <Select value={task.responsavelId} onValueChange={(v) => updateTask(task.id, { responsavelId: v })}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {team.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-sand-600">Status</label>
+            <Select value={task.status} onValueChange={(v) => updateTask(task.id, { status: v as TaskStatus })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-sand-600">Responsável</label>
+            <Select value={task.responsavelId} onValueChange={(v) => updateTask(task.id, { responsavelId: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {team.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-sand-600">Setor</label>
+            <Select value={task.departamento} onValueChange={(v) => updateTask(task.id, { departamento: v as Departamento })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {DEPARTAMENTOS.map((d) => (
+                  <SelectItem key={d} value={d}>{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-sand-600">Urgência</label>
+            <Select value={task.prioridade} onValueChange={(v) => updateTask(task.id, { prioridade: v as TaskPrioridade })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {PRIORIDADES.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-end">
           <Button type="button" variant="outline" size="sm" onClick={handleDelete} className="text-status-danger hover:bg-status-danger-bg">
             <Trash2 className="size-3.5" /> Excluir tarefa
           </Button>
