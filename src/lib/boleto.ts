@@ -34,3 +34,21 @@ export function resolveBoletoLedger(
   const atraso = !!(b.recebido && b.dataRecebimento && b.dataRecebimento > vencimento);
   return { valor, vencimento, pagamento: b.dataRecebimento, status, atraso };
 }
+
+/** Valor da mensalidade de um cliente numa competência, pela mesma regra da
+ * tela de Boletos: usa o valor ajustado daquele boleto quando existe (ele é
+ * quem reflete descontos/renegociações pontuais daquele mês), senão cai no
+ * valorMensal padrão do cadastro. Retorna null quando o boleto daquela
+ * competência foi marcado como removido (cliente não precisou naquele mês) —
+ * nesse caso ele não deve contar no MRR do mês. Usado pelo MRR do Financeiro
+ * pra nunca divergir do que está de fato lançado em Boletos. */
+export function valorMensalidadeNaCompetencia(
+  clienteId: string,
+  valorMensalPadrao: number,
+  boletosMensais: Pick<BoletoMensal, "clienteId" | "competencia" | "valor" | "removido">[],
+  competencia: string
+): number | null {
+  const entry = boletosMensais.find((b) => b.clienteId === clienteId && b.competencia === competencia);
+  if (entry?.removido) return null;
+  return entry?.valor ?? valorMensalPadrao;
+}

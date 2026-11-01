@@ -22,13 +22,13 @@ import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario, valorRecebidoProcesso } from "@/lib/societario-financeiro";
 import { nomeDoProcessoSocietario } from "@/lib/processo-societario";
-import { resolveBoletoLedger } from "@/lib/boleto";
+import { resolveBoletoLedger, valorMensalidadeNaCompetencia } from "@/lib/boleto";
 import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
 import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { ClientStatus, DespesaAvulsa, Recebimento, ServicoExtra, SistemaEscritorio } from "@/lib/types";
+import type { Client, ClientStatus, DespesaAvulsa, Recebimento, ServicoExtra, SistemaEscritorio } from "@/lib/types";
 
 const TODOS = "todos";
 const WINE = "#5C1420";
@@ -119,7 +119,15 @@ export default function FinanceiroPage() {
     if (inicio && inicio > mesAtual) return false;
     return true;
   });
-  const mrrDiretos = clientesAssessoriaMensal.reduce((a, c) => a + c.financeiro.valorMensal, 0);
+  // O valor que entra no MRR é o do boleto do mês (mesma regra da tela de
+  // Boletos: ajuste pontual daquele mês quando existe, senão o valorMensal
+  // do cadastro) — não direto do cadastro, porque o valor do boleto pode ter
+  // sido renegociado/alterado naquele mês específico sem isso refletir no
+  // cadastro. Cliente cujo boleto do mês foi marcado como removido não entra.
+  const clientesComValorMrr = clientesAssessoriaMensal
+    .map((c) => ({ cliente: c, valor: valorMensalidadeNaCompetencia(c.id, c.financeiro.valorMensal, boletosMensais, mesAtual) }))
+    .filter((x): x is { cliente: Client; valor: number } => x.valor !== null);
+  const mrrDiretos = clientesComValorMrr.reduce((a, x) => a + x.valor, 0);
 
   const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [mesAtual]);
 
@@ -132,16 +140,16 @@ export default function FinanceiroPage() {
   });
 
   const mrr = mrrDiretos + mrrParceiros;
-  const totalClientesMrr = clientesAssessoriaMensal.length + clientesParceiroAtivosMes.length;
+  const totalClientesMrr = clientesComValorMrr.length + clientesParceiroAtivosMes.length;
   const ticketMedio = totalClientesMrr ? mrr / totalClientesMrr : 0;
 
   const detalheMrr = [
-    ...clientesAssessoriaMensal.map((c) => ({
+    ...clientesComValorMrr.map(({ cliente: c, valor }) => ({
       key: c.id,
       nome: c.dados.razaoSocial,
       cnpj: c.dados.cnpj || "—",
       status: c.status as string,
-      valor: c.financeiro.valorMensal,
+      valor,
       parceiro: undefined as string | undefined,
     })),
     ...clientesParceiroAtivosMes.map((c) => {
