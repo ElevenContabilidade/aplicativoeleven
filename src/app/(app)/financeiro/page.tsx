@@ -100,42 +100,49 @@ export default function FinanceiroPage() {
 
   /** MRR = soma das assessorias mensais de todo cliente com mensalidade
    * cadastrada (valorMensal > 0), separando dois grupos: clientes diretos
-   * (Boletos) somam o valorMensal do cadastro; clientes de parceiro (pagam
-   * via PIX, controlados em Parceiros) usam o valor ajustado do mês atual
-   * (ou o valorMensal quando não há ajuste) + os valores extras do
+   * (Boletos) somam o valor do boleto do mês em vista; clientes de parceiro
+   * (pagam via PIX, controlados em Parceiros) usam o valor ajustado do mês
+   * em vista (ou o valorMensal quando não há ajuste) + os valores extras do
    * parceiro — mesma lógica da tela de Parceiros, pra bater com o que
    * aparece lá. Cliente que já saiu (suspenso, cancelando ou encerrado)
    * não conta mais no lado direto — senão o MRR fica inflado com quem não
    * paga mais (o lado parceiro segue a mesma regra da tela de Parceiros,
-   * que não filtra por status). */
+   * que não filtra por status).
+   *
+   * O mês usado é o selecionado nos filtros de cima (Jan, Fev, ... Out...),
+   * não necessariamente o mês real de hoje — senão o card mostra um número
+   * que não bate com o resto da tela quando a pessoa está olhando outro mês
+   * (ex: olhando Outubro, o card mostrava o MRR de hoje/Novembro). Na aba
+   * "Anual" cai no mês real de hoje, já que não há um único mês selecionado. */
   const STATUS_FORA_DO_MRR: ClientStatus[] = ["Suspenso", "Em processo de cancelamento", "Encerrado"];
-  const mesAtual = new Date().toISOString().slice(0, 7);
+  const mesMrr = mes === "anual" ? new Date().toISOString().slice(0, 7) : `${year}-${mes}`;
   const clientesAssessoriaMensal = clients.filter((c) => {
     if (c.dados.clienteParceiro || !(c.financeiro.valorMensal > 0) || STATUS_FORA_DO_MRR.includes(c.status)) return false;
     // Cliente novo cujo contrato só começa num mês futuro (ex: onboarding
     // em outubro, mensalidade só valendo a partir de novembro) ainda não
     // entra no MRR deste mês — mesma regra já usada pro lado parceiro.
     const inicio = c.financeiro.inicioContrato?.slice(0, 7);
-    if (inicio && inicio > mesAtual) return false;
+    if (inicio && inicio > mesMrr) return false;
     return true;
   });
-  // O valor que entra no MRR é o do boleto do mês (mesma regra da tela de
-  // Boletos: ajuste pontual daquele mês quando existe, senão o valorMensal
-  // do cadastro) — não direto do cadastro, porque o valor do boleto pode ter
-  // sido renegociado/alterado naquele mês específico sem isso refletir no
-  // cadastro. Cliente cujo boleto do mês foi marcado como removido não entra.
+  // O valor que entra no MRR é o do boleto do mês em vista (mesma regra da
+  // tela de Boletos: ajuste pontual daquele mês quando existe, senão o
+  // valorMensal do cadastro) — não direto do cadastro, porque o valor do
+  // boleto pode ter sido renegociado/alterado naquele mês específico sem
+  // isso refletir no cadastro. Cliente cujo boleto do mês foi marcado como
+  // removido não entra.
   const clientesComValorMrr = clientesAssessoriaMensal
-    .map((c) => ({ cliente: c, valor: valorMensalidadeNaCompetencia(c.id, c.financeiro.valorMensal, boletosMensais, mesAtual) }))
+    .map((c) => ({ cliente: c, valor: valorMensalidadeNaCompetencia(c.id, c.financeiro.valorMensal, boletosMensais, mesMrr) }))
     .filter((x): x is { cliente: Client; valor: number } => x.valor !== null);
   const mrrDiretos = clientesComValorMrr.reduce((a, x) => a + x.valor, 0);
 
-  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [mesAtual]);
+  const mrrParceiros = valorParceirosNoPeriodo(clients, recebimentosParceiro, extrasParceiro, pagamentosExtrasParceiro, [mesMrr]);
 
   const clientesParceiroAtivosMes = clients.filter((c) => {
     if (!c.dados.clienteParceiro) return false;
     const inicio = c.financeiro.inicioContrato?.slice(0, 7);
-    if (inicio && inicio > mesAtual) return false;
-    const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
+    if (inicio && inicio > mesMrr) return false;
+    const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesMrr);
     return !entry?.removido;
   });
 
@@ -153,7 +160,7 @@ export default function FinanceiroPage() {
       parceiro: undefined as string | undefined,
     })),
     ...clientesParceiroAtivosMes.map((c) => {
-      const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesAtual);
+      const entry = recebimentosParceiro.find((r) => r.clienteId === c.id && r.competencia === mesMrr);
       return {
         key: `parceiro-${c.id}`,
         nome: c.dados.razaoSocial,
@@ -165,9 +172,9 @@ export default function FinanceiroPage() {
     }),
     ...extrasParceiro
       .filter((e) => {
-        if (e.inicioCompetencia && mesAtual < e.inicioCompetencia) return false;
-        if (e.fimCompetencia && mesAtual > e.fimCompetencia) return false;
-        const pagamento = pagamentosExtrasParceiro.find((p) => p.extraParceiroId === e.id && p.competencia === mesAtual);
+        if (e.inicioCompetencia && mesMrr < e.inicioCompetencia) return false;
+        if (e.fimCompetencia && mesMrr > e.fimCompetencia) return false;
+        const pagamento = pagamentosExtrasParceiro.find((p) => p.extraParceiroId === e.id && p.competencia === mesMrr);
         return !pagamento?.removido;
       })
       .map((e) => ({
@@ -980,7 +987,7 @@ export default function FinanceiroPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <MetricCard
-          label="MRR"
+          label={`MRR — ${mes === "anual" ? "hoje" : `${MESES.find((m) => m.value === mes)?.label}/${year}`}`}
           value={formatCurrency(mrr)}
           icon={Repeat}
           tone="wine"
