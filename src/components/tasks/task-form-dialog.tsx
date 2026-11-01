@@ -16,6 +16,8 @@ const DEPARTAMENTOS: Departamento[] = ["Comercial", "Relacionamento", "Fiscal", 
 const PRIORIDADES: TaskPrioridade[] = ["Baixa", "Normal", "Alta", "Urgente"];
 const TODOS_VENCIMENTOS = "todos";
 const SEM_VENCIMENTO = "nenhum";
+const TODOS_TIPOS = "todos";
+const SO_ELEVEN = "eleven";
 
 export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const addTask = useAppStore((s) => s.addTask);
@@ -27,6 +29,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   const [descricao, setDescricao] = useState("");
   const [clienteIds, setClienteIds] = useState<string[]>([]);
   const [filtroVencimento, setFiltroVencimento] = useState(TODOS_VENCIMENTOS);
+  const [filtroTipoCliente, setFiltroTipoCliente] = useState(TODOS_TIPOS);
   const [departamento, setDepartamento] = useState<Departamento>("Fiscal");
   const [responsavelId, setResponsavelId] = useState(userId ?? team[0]?.id ?? "");
   const [prioridade, setPrioridade] = useState<TaskPrioridade>("Normal");
@@ -41,14 +44,28 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     [clients]
   );
 
+  // Parceiros existentes (nomes distintos) pra oferecer "só os clientes
+  // desse parceiro" no filtro — além de "só cliente Eleven" (direto, sem
+  // parceiro), útil pra tarefa que não deve envolver a carteira de parceiro.
+  const parceirosExistentes = useMemo(
+    () => [...new Set(clients.map((c) => c.dados.nomeParceiro).filter((n): n is string => !!n?.trim()))].sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [clients]
+  );
+
   const clientesFiltrados = useMemo(() => {
     const ordenados = [...clients].sort((a, b) =>
       (a.dados.razaoSocial).localeCompare(b.dados.razaoSocial, "pt-BR")
     );
-    if (filtroVencimento === TODOS_VENCIMENTOS) return ordenados;
-    if (filtroVencimento === SEM_VENCIMENTO) return ordenados.filter((c) => !c.financeiro.vencimentoDia);
-    return ordenados.filter((c) => c.financeiro.vencimentoDia === Number(filtroVencimento));
-  }, [clients, filtroVencimento]);
+    const porVencimento =
+      filtroVencimento === TODOS_VENCIMENTOS
+        ? ordenados
+        : filtroVencimento === SEM_VENCIMENTO
+          ? ordenados.filter((c) => !c.financeiro.vencimentoDia)
+          : ordenados.filter((c) => c.financeiro.vencimentoDia === Number(filtroVencimento));
+    if (filtroTipoCliente === TODOS_TIPOS) return porVencimento;
+    if (filtroTipoCliente === SO_ELEVEN) return porVencimento.filter((c) => !c.dados.clienteParceiro);
+    return porVencimento.filter((c) => c.dados.nomeParceiro === filtroTipoCliente);
+  }, [clients, filtroVencimento, filtroTipoCliente]);
 
   const todosFiltradosSelecionados = clientesFiltrados.length > 0 && clientesFiltrados.every((c) => clienteIds.includes(c.id));
 
@@ -65,7 +82,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   }
 
   function reset() {
-    setTitulo(""); setDescricao(""); setClienteIds([]); setFiltroVencimento(TODOS_VENCIMENTOS); setDepartamento("Fiscal");
+    setTitulo(""); setDescricao(""); setClienteIds([]); setFiltroVencimento(TODOS_VENCIMENTOS); setFiltroTipoCliente(TODOS_TIPOS); setDepartamento("Fiscal");
     setResponsavelId(userId ?? team[0]?.id ?? ""); setPrioridade("Normal"); setPrazo(new Date().toISOString().slice(0, 10));
   }
 
@@ -109,7 +126,7 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <div>
             <Label className="mb-1 block">Cliente(s)</Label>
             <p className="mb-1.5 text-[11px] text-sand-400">Deixe em branco pra tarefa interna, marque um ou vários — ex: todo mundo que vence dia 05.</p>
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <span className="shrink-0 text-[11px] text-sand-500">Filtrar por vencimento do honorário:</span>
               <Select value={filtroVencimento} onValueChange={setFiltroVencimento}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -119,6 +136,19 @@ export function TaskFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                     <SelectItem key={d} value={String(d)}>Dia {String(d).padStart(2, "0")}</SelectItem>
                   ))}
                   <SelectItem value={SEM_VENCIMENTO}>Sem vencimento definido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="shrink-0 text-[11px] text-sand-500">Filtrar por tipo de cliente:</span>
+              <Select value={filtroTipoCliente} onValueChange={setFiltroTipoCliente}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TODOS_TIPOS}>Todos</SelectItem>
+                  <SelectItem value={SO_ELEVEN}>Somente cliente Eleven (sem parceiro)</SelectItem>
+                  {parceirosExistentes.map((p) => (
+                    <SelectItem key={p} value={p}>Parceiro: {p}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
