@@ -23,6 +23,7 @@ import { teamName } from "@/lib/team-lookup";
 import { resumoFinanceiroSocietario, valorRecebidoProcesso } from "@/lib/societario-financeiro";
 import { nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { resolveBoletoLedger } from "@/lib/boleto";
+import { recebimentoPertenceAoCliente } from "@/lib/recebimento";
 import { contasAPagarDoPeriodo } from "@/lib/contas-pagar";
 import { valorParceirosNoPeriodo } from "@/lib/mrr-parceiros";
 import { statusRecebimentoParceiro, valorPagoResolvido } from "@/lib/pagamento-parceiro";
@@ -35,7 +36,7 @@ const PIE_COLORS = ["#5C1420", "#8A2F3E", "#E6C378", "#B4791F", "#3E6B8A", "#2E7
 
 type LedgerSortField = "cliente" | "competencia" | "servico" | "banco" | "tipo" | "valor" | "vencimento" | "status";
 type ContaPagarSortField = "descricao" | "competencia" | "vencimento" | "valor" | "status";
-type DetalheRecebidoSortField = "nome" | "servico" | "competencia" | "data" | "valor";
+type DetalheRecebidoSortField = "nome" | "servico" | "competencia" | "data" | "valor" | "parceiro";
 
 const YEARS = Array.from({ length: 2034 - 2026 + 1 }, (_, i) => String(2026 + i));
 const MESES = [
@@ -198,6 +199,15 @@ export default function FinanceiroPage() {
    * extraído pra função reutilizável porque a Visão anual precisa do ledger
    * do ano inteiro independente do mês selecionado nos filtros da página. */
   const buildLedger = useCallback((competencias: string[]) => {
+    // Parceiro de quem bateu o recebimento avulso — mesmo critério usado no
+    // Histórico de honorários do cliente (CNPJ/CPF primeiro, nome depois).
+    const parceiroClientes = clients.filter((c) => c.dados.clienteParceiro);
+    function nomeParceiroDoRecebimento(r: Recebimento): string | undefined {
+      const match = parceiroClientes.find((c) =>
+        recebimentoPertenceAoCliente(r, { id: c.id, nomeFantasia: c.dados.nomeFantasia, razaoSocial: c.dados.razaoSocial, cnpj: c.dados.cnpj })
+      );
+      return match?.dados.nomeParceiro;
+    }
     const doClientes = clients.flatMap((c) =>
       c.historicoFinanceiro.map((h) => ({
         ...h,
@@ -209,6 +219,7 @@ export default function FinanceiroPage() {
         clienteIdParceiro: undefined as string | undefined,
         extraIdParceiro: undefined as string | undefined,
         valorPago: undefined as number | undefined,
+        nomeParceiro: c.dados.clienteParceiro ? c.dados.nomeParceiro : undefined,
       }))
     );
     const avulsos = recebimentos.map((r) => ({
@@ -218,6 +229,7 @@ export default function FinanceiroPage() {
       clienteIdParceiro: undefined as string | undefined,
       extraIdParceiro: undefined as string | undefined,
       valorPago: undefined as number | undefined,
+      nomeParceiro: nomeParceiroDoRecebimento(r),
     }));
     const boletos = clients.flatMap((c) => {
       const emitidos = boletosMensais.filter((b) => b.clienteId === c.id && b.status === "Emitido" && !b.removido);
@@ -240,6 +252,7 @@ export default function FinanceiroPage() {
           clienteIdParceiro: undefined as string | undefined,
           extraIdParceiro: undefined as string | undefined,
           valorPago: undefined as number | undefined,
+          nomeParceiro: c.dados.clienteParceiro ? c.dados.nomeParceiro : undefined,
         };
       });
     });
@@ -279,6 +292,7 @@ export default function FinanceiroPage() {
           // precisa pra marcar remover (removido:true) sem outra tabela/id.
           clienteIdParceiro: c.id as string | undefined,
           extraIdParceiro: undefined as string | undefined,
+          nomeParceiro: c.dados.nomeParceiro,
         }];
       });
     });
@@ -310,6 +324,7 @@ export default function FinanceiroPage() {
           avulso: false as const,
           clienteIdParceiro: undefined as string | undefined,
           extraIdParceiro: e.id as string | undefined,
+          nomeParceiro: e.nomeParceiro,
         }];
       });
     });
@@ -525,7 +540,7 @@ export default function FinanceiroPage() {
           (filtroBanco === TODOS || h.banco === filtroBanco) &&
           (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
       )
-      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }))
+      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento, parceiro: h.nomeParceiro }))
       .filter((h) => h.valor > 0);
     const doSocietario = processosSocietariosFiltrados
       .filter(
@@ -547,6 +562,7 @@ export default function FinanceiroPage() {
         // entre este card e o "Recebido (caixa)".
         competencia: p.dataAbertura.slice(0, 7),
         data: p.dataPagamento,
+        parceiro: clients.find((c) => c.id === p.clienteId)?.dados.nomeParceiro,
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => b.valor - a.valor);
   }, [ledgerAll, processosSocietariosFiltrados, clients, competenciasPeriodo, filtroBanco, filtroTipo, pagoEfetivoDe]);
@@ -560,7 +576,7 @@ export default function FinanceiroPage() {
           (filtroBanco === TODOS || h.banco === filtroBanco) &&
           (filtroTipo === TODOS || h.tipoPessoa === filtroTipo)
       )
-      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento }));
+      .map((h) => ({ key: h.key, nome: h.nome, servico: h.servico ?? "Assessoria mensal", valor: pagoEfetivoDe(h), competencia: h.competencia, data: h.pagamento, parceiro: h.nomeParceiro }));
     const doSocietario = processosSocietariosFiltrados
       .filter(
         (p) =>
@@ -576,6 +592,7 @@ export default function FinanceiroPage() {
         valor: valorRecebidoProcesso(p),
         competencia: p.dataAbertura.slice(0, 7),
         data: p.dataPagamento,
+        parceiro: clients.find((c) => c.id === p.clienteId)?.dados.nomeParceiro,
       }));
     return [...doLedger, ...doSocietario].sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""));
   }, [ledgerAno, mesesCaixa, processosSocietariosFiltrados, clients, pagoEfetivoDe, filtroBanco, filtroTipo]);
@@ -1520,6 +1537,7 @@ export default function FinanceiroPage() {
               <TableRow>
                 <SortableHead field="nome" label="Cliente" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
                 <SortableHead field="servico" label="Serviço" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
+                <SortableHead field="parceiro" label="Parceiro" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
                 <SortableHead field="competencia" label="Competência" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
                 <SortableHead field="data" label="Data pagamento" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
                 <SortableHead field="valor" label="Valor" sortField={detalheSortField} sortDir={detalheSortDir} onClick={toggleDetalheSort} />
@@ -1530,13 +1548,14 @@ export default function FinanceiroPage() {
                 <TableRow key={l.key}>
                   <TableCell className="font-medium text-sand-800">{l.nome}</TableCell>
                   <TableCell className="text-sand-500">{l.servico}</TableCell>
+                  <TableCell className={cn(!l.parceiro && "text-sand-300")}>{l.parceiro ?? "—"}</TableCell>
                   <TableCell className="text-sand-500">{l.competencia}</TableCell>
                   <TableCell className={cn(!l.data && "text-sand-300")}>{l.data ? formatDate(l.data) : "sem data"}</TableCell>
                   <TableCell className="text-right">{formatCurrency(l.valor)}</TableCell>
                 </TableRow>
               ))}
               {detalheItens.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sand-400">Nenhum item nesse período.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="py-8 text-center text-sand-400">Nenhum item nesse período.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
