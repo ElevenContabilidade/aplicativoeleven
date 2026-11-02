@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, ROTINAS_MEI, nomesParceirosDistintos, type ChecklistStatus, type Client } from "@/lib/types";
+import { CHECKLIST_STATUS, ROTINAS_MEI, nomesParceirosDistintos, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
 import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
@@ -68,16 +68,18 @@ export function MeiChecklist() {
   const rotinas = ROTINAS_MEI;
   const competencia = `${year}-${mes}`;
 
-  /** Cliente só entra no checklist a partir do mês em que foi cadastrado
-   * (criadoEm) — chegou no escritório em agosto, só aparece de agosto em
-   * diante, mesmo que a empresa tenha aberto antes. Deixa de aparecer
-   * quando o status muda para algo fora da carteira ativa (ex.: Encerrado). */
+  /** Cliente só entra no checklist a partir do mês marcado em "Início do
+   * contrato" (financeiro) — mesma regra usada em Fiscal/Contábil/Pessoal,
+   * pra dar pra escolher quando as rotinas começam a aparecer mesmo que o
+   * cadastro tenha sido feito antes (ex: handover de outro escritório).
+   * Deixa de aparecer quando o status muda pra algo fora da carteira ativa
+   * (ex.: Encerrado). */
   function clientesMeiEm(comp: string) {
     return clients.filter(
       (c) =>
         c.dados.regimeTributario === "MEI" &&
         (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
-        c.criadoEm.slice(0, 7) <= comp &&
+        clienteAtivoNaCompetencia(c, comp) &&
         (!somenteProprios || !c.dados.clienteParceiro) &&
         (!parceiroFiltro || c.dados.nomeParceiro === parceiroFiltro)
     );

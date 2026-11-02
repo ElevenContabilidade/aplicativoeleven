@@ -7,6 +7,7 @@ import {
   rotinasContabeisFor,
   rotinasPessoalMensalFor,
   setorAtendidoPelaEleven,
+  clienteAtivoNaCompetencia,
   type Client,
   type ChecklistEntry,
   type ChecklistStatus,
@@ -97,9 +98,12 @@ export function vencimentoRotina(tipo: string, competencia: string, overrides: R
   return `${ajustada.getFullYear()}-${String(ajustada.getMonth() + 1).padStart(2, "0")}-${String(ajustada.getDate()).padStart(2, "0")}`;
 }
 
-function clientesAtivosNoSetor(clients: Client[], setor: "fiscal" | "contabil" | "pessoal"): Client[] {
+function clientesAtivosNoSetor(clients: Client[], setor: "fiscal" | "contabil" | "pessoal", competencia: string): Client[] {
   return clients.filter(
-    (c) => (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") && setorAtendidoPelaEleven(c, setor)
+    (c) =>
+      (c.status === "Ativo" || c.status === "Com pendência" || c.status === "Onboarding") &&
+      setorAtendidoPelaEleven(c, setor) &&
+      clienteAtivoNaCompetencia(c, competencia)
   );
 }
 
@@ -166,13 +170,13 @@ export function rotinasDepartamentosDoMes(
     });
   }
 
-  for (const c of clientesAtivosNoSetor(clients, "fiscal")) {
+  for (const c of clientesAtivosNoSetor(clients, "fiscal", competencia)) {
     for (const rotina of rotinasFiscaisMensaisFor(c)) {
       empurrar(c.id, rotina, "Fiscal", statusDe(checklistFiscal, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "Fiscal", rotina)));
     }
   }
 
-  for (const c of clientesAtivosNoSetor(clients, "contabil")) {
+  for (const c of clientesAtivosNoSetor(clients, "contabil", competencia)) {
     for (const rotina of rotinasContabeisFor(c, ROTINAS_CONTABEIS_MENSAIS)) {
       empurrar(
         c.id,
@@ -183,7 +187,7 @@ export function rotinasDepartamentosDoMes(
     }
   }
 
-  for (const c of clientesAtivosNoSetor(clients, "pessoal")) {
+  for (const c of clientesAtivosNoSetor(clients, "pessoal", competencia)) {
     for (const rotina of rotinasPessoalMensalFor(c, [...ROTINAS_PESSOAL_FIXAS, ...ROTINAS_PESSOAL_VARIAVEIS])) {
       empurrar(
         c.id,
@@ -194,11 +198,16 @@ export function rotinasDepartamentosDoMes(
     }
   }
 
+  // MEI usa a mesma regra de "a partir de qual mês entra" dos outros
+  // setores (financeiro.inicioContrato) — antes usava a data de CRIAÇÃO do
+  // cadastro no sistema (criadoEm), que não dava pra escolher: se a empresa
+  // fosse cadastrada hoje mas devesse começar a aparecer só em dezembro
+  // (ex: handover de outro escritório), não tinha como adiar.
   for (const c of clients.filter(
     (cl) =>
       cl.dados.regimeTributario === "MEI" &&
       (cl.status === "Ativo" || cl.status === "Com pendência" || cl.status === "Onboarding") &&
-      cl.criadoEm.slice(0, 7) <= competencia
+      clienteAtivoNaCompetencia(cl, competencia)
   )) {
     for (const rotina of ROTINAS_MEI) {
       empurrar(c.id, rotina, "MEI", statusDe(checklistMei, c.id, competencia, rotina, isRotinaDispensada(dispensasRotina, c.id, "MEI", rotina)));
