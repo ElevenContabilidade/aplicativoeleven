@@ -36,6 +36,17 @@ const MESES = [
   { value: "07", label: "Julho" }, { value: "08", label: "Agosto" }, { value: "09", label: "Setembro" },
   { value: "10", label: "Outubro" }, { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
 ];
+/** Mês/ano de COMPETÊNCIA de uma obrigação, a partir do mês do ciclo
+ * (vencimento) selecionado na tela — regime de competência: o que vence em
+ * novembro se refere ao movimento de outubro, então a competência exibida é
+ * sempre o mês anterior ao ciclo em vista. */
+function competenciaDoCiclo(mes: string, ano: string): { label: string; ano: string } {
+  const mesIdx = Number(mes);
+  const mesAnteriorIdx = mesIdx === 1 ? 12 : mesIdx - 1;
+  const anoAnterior = mesIdx === 1 ? String(Number(ano) - 1) : ano;
+  return { label: MESES[mesAnteriorIdx - 1].label, ano: anoAnterior };
+}
+
 const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
   Fiscal: "wine",
   Contábil: "info",
@@ -513,7 +524,7 @@ export default function ObrigacoesPage() {
                             </span>
                             <p className="w-full truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
                             <p className="w-full truncate text-[11px] text-sand-400">
-                              Competência {MESES.find((m) => m.value === mes)?.label}/{ano}
+                              Competência {competenciaDoCiclo(mes, ano).label}/{competenciaDoCiclo(mes, ano).ano}
                             </p>
                             <p className="w-full truncate text-[11px]">
                               <span className="font-semibold text-status-success">{g.concluidas} concluídas</span>
@@ -802,7 +813,7 @@ export default function ObrigacoesPage() {
               <p>Obrigação avulsa cadastrada manualmente — o vencimento vem do cadastro, sem regra automática.</p>
             )}
             <p className="mt-1 text-wine-700/70">
-              Competência {MESES.find((m) => m.value === mes)?.label}/{ano} · {detalheConcluidas}/{linhasDetalhe.length} clientes concluídos
+              Competência {competenciaDoCiclo(mes, ano).label}/{competenciaDoCiclo(mes, ano).ano} · {detalheConcluidas}/{linhasDetalhe.length} clientes concluídos
             </p>
           </div>
 
