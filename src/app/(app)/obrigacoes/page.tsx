@@ -36,17 +36,6 @@ const MESES = [
   { value: "07", label: "Julho" }, { value: "08", label: "Agosto" }, { value: "09", label: "Setembro" },
   { value: "10", label: "Outubro" }, { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
 ];
-/** Mês/ano de COMPETÊNCIA de uma obrigação, a partir do mês do ciclo
- * (vencimento) selecionado na tela — regime de competência: o que vence em
- * novembro se refere ao movimento de outubro, então a competência exibida é
- * sempre o mês anterior ao ciclo em vista. */
-function competenciaDoCiclo(mes: string, ano: string): { label: string; ano: string } {
-  const mesIdx = Number(mes);
-  const mesAnteriorIdx = mesIdx === 1 ? 12 : mesIdx - 1;
-  const anoAnterior = mesIdx === 1 ? String(Number(ano) - 1) : ano;
-  return { label: MESES[mesAnteriorIdx - 1].label, ano: anoAnterior };
-}
-
 const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
   Fiscal: "wine",
   Contábil: "info",
@@ -79,9 +68,17 @@ export default function ObrigacoesPage() {
 
   const hoje = new Date();
   const hojeMeiaNoite = new Date(hoje).setHours(0, 0, 0, 0);
+  // Regime de competência: o que vence no mês real de hoje é referente à
+  // competência do mês ANTERIOR (ex: hoje é novembro, o que vence agora é
+  // competência outubro) — por isso a tela abre direto nessa competência,
+  // em vez da competência do mês atual (que só vence no mês seguinte).
+  // hoje.getMonth() é 0-based, então já aponta pro mês anterior em base 1
+  // (só dezembro precisa de ajuste manual de ano, por causa da virada).
+  const mesCompetenciaInicial = hoje.getMonth() === 0 ? 12 : hoje.getMonth();
+  const anoCompetenciaInicial = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
   const [secao, setSecao] = useState<Secao>("ciclo");
-  const [ano, setAno] = useState(String(hoje.getFullYear()));
-  const [mes, setMes] = useState(String(hoje.getMonth() + 1).padStart(2, "0"));
+  const [ano, setAno] = useState(String(anoCompetenciaInicial));
+  const [mes, setMes] = useState(String(mesCompetenciaInicial).padStart(2, "0"));
   const [query, setQuery] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState<"Pendentes" | "Concluídas" | "Todas">("Pendentes");
@@ -524,7 +521,7 @@ export default function ObrigacoesPage() {
                             </span>
                             <p className="w-full truncate font-medium text-sand-900" title={g.tipo}>{g.tipo}</p>
                             <p className="w-full truncate text-[11px] text-sand-400">
-                              Competência {competenciaDoCiclo(mes, ano).label}/{competenciaDoCiclo(mes, ano).ano}
+                              Competência {MESES.find((m) => m.value === mes)?.label}/{ano}
                             </p>
                             <p className="w-full truncate text-[11px]">
                               <span className="font-semibold text-status-success">{g.concluidas} concluídas</span>
@@ -807,13 +804,13 @@ export default function ObrigacoesPage() {
             </p>
             {detalheRegra ? (
               <p>
-                Vencimento todo dia <strong>{detalheRegra.dia}</strong> — {detalheRegra.descricaoAjuste}
+                Vencimento todo dia <strong>{detalheRegra.dia}</strong> do mês seguinte à competência — {detalheRegra.descricaoAjuste}
               </p>
             ) : (
               <p>Obrigação avulsa cadastrada manualmente — o vencimento vem do cadastro, sem regra automática.</p>
             )}
             <p className="mt-1 text-wine-700/70">
-              Competência {competenciaDoCiclo(mes, ano).label}/{competenciaDoCiclo(mes, ano).ano} · {detalheConcluidas}/{linhasDetalhe.length} clientes concluídos
+              Competência {MESES.find((m) => m.value === mes)?.label}/{ano} · {detalheConcluidas}/{linhasDetalhe.length} clientes concluídos
             </p>
           </div>
 

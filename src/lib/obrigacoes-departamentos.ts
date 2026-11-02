@@ -82,18 +82,22 @@ export function regraVencimentoRotina(
   return { dia: regra.dia, descricaoAjuste };
 }
 
-/** Vencimento ("YYYY-MM-DD") da rotina nessa competência, ou undefined
- * quando não há regra de prazo cadastrada pra ela (nem padrão, nem
- * override). */
+/** Vencimento ("YYYY-MM-DD") da rotina referente a essa competência, ou
+ * undefined quando não há regra de prazo cadastrada pra ela (nem padrão,
+ * nem override). Regime de competência: a obrigação referente ao mês de
+ * "competencia" vence no mês SEGUINTE (ex: competência setembro vence em
+ * outubro) — por isso o cálculo sempre usa o mês de competência + 1. O
+ * construtor Date rola o ano sozinho quando a competência é dezembro (mês
+ * 12 vira janeiro do ano seguinte), sem precisar de ajuste manual. */
 export function vencimentoRotina(tipo: string, competencia: string, overrides: Record<string, RegraVencimento> = {}): string | undefined {
   const regra = overrides[tipo] ?? REGRAS_VENCIMENTO_ROTINA_PADRAO[tipo];
   if (!regra) return undefined;
   const [anoStr, mesStr] = competencia.split("-");
   const ano = Number(anoStr);
-  const mesIdx = Number(mesStr) - 1;
-  const ultimoDiaDoMes = new Date(ano, mesIdx + 1, 0).getDate();
-  const dia = Math.min(regra.dia, ultimoDiaDoMes);
-  const base = new Date(ano, mesIdx, dia);
+  const mesVencimentoIdx = Number(mesStr); // mês de competência (1-based) == mês de vencimento (0-based, já +1)
+  const ultimoDiaDoMesVencimento = new Date(ano, mesVencimentoIdx + 1, 0).getDate();
+  const dia = Math.min(regra.dia, ultimoDiaDoMesVencimento);
+  const base = new Date(ano, mesVencimentoIdx, dia);
   const ajustada = regra.ajuste === "antecipa" ? diaUtilAnterior(base) : regra.ajuste === "prorroga" ? diaUtilPosterior(base) : base;
   return `${ajustada.getFullYear()}-${String(ajustada.getMonth() + 1).padStart(2, "0")}-${String(ajustada.getDate()).padStart(2, "0")}`;
 }
