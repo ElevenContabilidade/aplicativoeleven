@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_CONTABEIS_MENSAIS, ROTINAS_CONTABEIS_ANUAIS, rotinasContabeisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, nomesParceirosDistintos, type ChecklistStatus, type Client } from "@/lib/types";
-import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
+import { isRotinaDispensada, competenciaAtual } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -48,8 +48,8 @@ export function ContabilChecklist() {
   const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
   const deleteDispensaRotina = useAppStore((s) => s.deleteDispensaRotina);
 
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [year, setYear] = useState(() => competenciaAtual().ano);
+  const [period, setPeriod] = useState<"anual" | string>(() => competenciaAtual().mes);
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);

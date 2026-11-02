@@ -20,7 +20,7 @@ import { ObrigacoesRelatorios } from "@/components/obligations/obrigacoes-relato
 import { ObrigacoesConfiguracoes } from "@/components/obligations/obrigacoes-configuracoes";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
-import { rotinasDepartamentosDoMes, regraVencimentoRotina, type RotinaDepartamento, type SetorRotina } from "@/lib/obrigacoes-departamentos";
+import { rotinasDepartamentosDoMes, regraVencimentoRotina, competenciaAtual, type RotinaDepartamento, type SetorRotina } from "@/lib/obrigacoes-departamentos";
 import { CHECKLIST_STATUS, OBLIGATION_STATUS, type Obligation, type ChecklistStatus } from "@/lib/types";
 import type { BadgeTone } from "@/lib/status";
 import { formatDate, cn } from "@/lib/utils";
@@ -68,17 +68,9 @@ export default function ObrigacoesPage() {
 
   const hoje = new Date();
   const hojeMeiaNoite = new Date(hoje).setHours(0, 0, 0, 0);
-  // Regime de competência: o que vence no mês real de hoje é referente à
-  // competência do mês ANTERIOR (ex: hoje é novembro, o que vence agora é
-  // competência outubro) — por isso a tela abre direto nessa competência,
-  // em vez da competência do mês atual (que só vence no mês seguinte).
-  // hoje.getMonth() é 0-based, então já aponta pro mês anterior em base 1
-  // (só dezembro precisa de ajuste manual de ano, por causa da virada).
-  const mesCompetenciaInicial = hoje.getMonth() === 0 ? 12 : hoje.getMonth();
-  const anoCompetenciaInicial = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
   const [secao, setSecao] = useState<Secao>("ciclo");
-  const [ano, setAno] = useState(String(anoCompetenciaInicial));
-  const [mes, setMes] = useState(String(mesCompetenciaInicial).padStart(2, "0"));
+  const [ano, setAno] = useState(() => competenciaAtual(hoje).ano);
+  const [mes, setMes] = useState(() => competenciaAtual(hoje).mes);
   const [query, setQuery] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState<"Pendentes" | "Concluídas" | "Todas">("Pendentes");
@@ -278,9 +270,19 @@ export default function ObrigacoesPage() {
   // departamento com regra de vencimento conhecida (ver
   // REGRAS_VENCIMENTO_ROTINA) — organizadas por dia do mês selecionado.
   // Respeita os mesmos filtros de busca/cliente/status da lista.
+  // O calendário mostra o mês de VENCIMENTO das obrigações, não o mês da
+  // competência selecionada acima — competência de outubro vence em
+  // novembro (ver vencimentoRotina). Monta a grade em cima do mês seguinte
+  // ao "mes"/"ano" selecionados, deixando o Date cuidar da virada de ano
+  // sozinho quando a competência é dezembro.
+  const mesVencimentoBase = useMemo(() => {
+    const competenciaBase = new Date(Number(ano), Number(mes) - 1, 1);
+    return new Date(competenciaBase.getFullYear(), competenciaBase.getMonth() + 1, 1);
+  }, [ano, mes]);
+
   const semanas = useMemo(() => {
-    const ano_ = Number(ano);
-    const mesIdx = Number(mes) - 1;
+    const anoV = mesVencimentoBase.getFullYear();
+    const mesVIdx = mesVencimentoBase.getMonth();
     const porDia = new Map<string, typeof filtered>();
     for (const item of filtered) {
       if (!item.linha.vencimento) continue;
@@ -288,19 +290,19 @@ export default function ObrigacoesPage() {
       atual.push(item);
       porDia.set(item.linha.vencimento, atual);
     }
-    const primeiroDiaSemana = new Date(ano_, mesIdx, 1).getDay();
-    const totalDias = new Date(ano_, mesIdx + 1, 0).getDate();
+    const primeiroDiaSemana = new Date(anoV, mesVIdx, 1).getDay();
+    const totalDias = new Date(anoV, mesVIdx + 1, 0).getDate();
     const celulas: ({ dia: number; iso: string; itens: typeof filtered } | null)[] = [];
     for (let i = 0; i < primeiroDiaSemana; i++) celulas.push(null);
     for (let dia = 1; dia <= totalDias; dia++) {
-      const iso = `${ano}-${mes}-${String(dia).padStart(2, "0")}`;
+      const iso = `${anoV}-${String(mesVIdx + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
       celulas.push({ dia, iso, itens: porDia.get(iso) ?? [] });
     }
     while (celulas.length % 7 !== 0) celulas.push(null);
     const semanas_: typeof celulas[] = [];
     for (let i = 0; i < celulas.length; i += 7) semanas_.push(celulas.slice(i, i + 7));
     return semanas_;
-  }, [filtered, ano, mes]);
+  }, [filtered, mesVencimentoBase]);
 
   const totalPendentes = linhas.filter((l) => l.pendente).length;
   const totalAtrasadas = linhas.filter((l) => l.pendente && l.vencimento && l.vencimento < hojeIso).length;
@@ -647,6 +649,10 @@ export default function ObrigacoesPage() {
       {visao === "calendario" ? (
         <Card>
           <CardContent className="p-3 sm:p-4">
+            <p className="mb-2 text-[11px] text-sand-500">
+              Vencimentos de <strong>{MESES[mesVencimentoBase.getMonth()].label}/{mesVencimentoBase.getFullYear()}</strong> — referentes
+              à competência {MESES.find((m) => m.value === mes)?.label}/{ano} selecionada acima.
+            </p>
             <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-sand-400">
               {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (<div key={d}>{d}</div>))}
             </div>

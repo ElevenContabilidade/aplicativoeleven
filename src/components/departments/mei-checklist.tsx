@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_MEI, nomesParceirosDistintos, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
-import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
+import { isRotinaDispensada, competenciaAtual } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -48,8 +48,8 @@ export function MeiChecklist() {
   const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
   const deleteDispensaRotina = useAppStore((s) => s.deleteDispensaRotina);
 
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [mes, setMes] = useState<string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [year, setYear] = useState(() => competenciaAtual().ano);
+  const [mes, setMes] = useState<string>(() => competenciaAtual().mes);
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);

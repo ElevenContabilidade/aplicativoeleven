@@ -17,6 +17,18 @@ import { diaUtilAnterior, diaUtilPosterior } from "@/lib/feriados";
 
 export type SetorRotina = "Fiscal" | "Contábil" | "Departamento Pessoal" | "MEI";
 
+/** Mês/ano da competência que vence no mês real de hoje — regime de
+ * competência: hoje em novembro, a competência que vence agora é outubro
+ * (ver vencimentoRotina, que sempre calcula o vencimento no mês seguinte à
+ * competência). Usado como seleção inicial padrão em todas as telas de
+ * rotina (Obrigações e os 4 checklists de departamento), pra abrir direto
+ * no mês que realmente está vencendo agora, em vez do mês civil atual. */
+export function competenciaAtual(hoje: Date = new Date()): { mes: string; ano: string } {
+  const mes = hoje.getMonth() === 0 ? 12 : hoje.getMonth();
+  const ano = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
+  return { mes: String(mes).padStart(2, "0"), ano: String(ano) };
+}
+
 /** Uma rotina de departamento (Fiscal/Contábil/DP/MEI), representada no
  * mesmo formato de "obrigação" pra aparecer junto com as obrigações
  * cadastradas manualmente. `status` vem direto do checklist do

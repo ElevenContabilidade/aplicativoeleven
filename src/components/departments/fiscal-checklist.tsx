@@ -9,7 +9,7 @@ import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_FISCAIS_MENSAIS, rotinasFiscaisAnuais, rotinasFiscaisMensaisFor, setorAtendidoPelaEleven, clienteAtivoNaCompetencia, nomesParceirosDistintos, type ChecklistStatus, type Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { maskCpf } from "@/lib/cnpj";
-import { isRotinaDispensada } from "@/lib/obrigacoes-departamentos";
+import { isRotinaDispensada, competenciaAtual } from "@/lib/obrigacoes-departamentos";
 import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Check, Copy, Eye, EyeOff, KeyRound } from "lucide-react";
 
@@ -63,8 +63,8 @@ export function FiscalChecklist() {
   const addDispensaRotina = useAppStore((s) => s.addDispensaRotina);
   const deleteDispensaRotina = useAppStore((s) => s.deleteDispensaRotina);
 
-  const [year, setYear] = useState(String(new Date().getFullYear()));
-  const [period, setPeriod] = useState<"anual" | string>(String(new Date().getMonth() + 1).padStart(2, "0"));
+  const [year, setYear] = useState(() => competenciaAtual().ano);
+  const [period, setPeriod] = useState<"anual" | string>(() => competenciaAtual().mes);
   const [origemId, setOrigemId] = useState("");
   const [destinoId, setDestinoId] = useState("");
   const [somenteProprios, setSomenteProprios] = useState(false);
