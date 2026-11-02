@@ -237,10 +237,10 @@ export default function CertificadosPage() {
               return (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{client?.dados.razaoSocial}</TableCell>
-                  <TableCell>{c.tipo}</TableCell>
-                  <TableCell className="text-sand-500">{c.documento}</TableCell>
-                  <TableCell>{formatDate(c.dataVencimento)}</TableCell>
-                  <TableCell>{expiryBadge(days)}</TableCell>
+                  <TableCell className="whitespace-nowrap">{c.tipo}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sand-500">{c.documento}</TableCell>
+                  <TableCell className="whitespace-nowrap">{formatDate(c.dataVencimento)}</TableCell>
+                  <TableCell className="whitespace-nowrap">{expiryBadge(days)}</TableCell>
                   <TableCell>{formatCurrency(c.valor)}</TableCell>
                   <TableCell><StatusBadge status={statusAutomaticoCertificado(c.dataVencimento)} /></TableCell>
                   <TableCell>
