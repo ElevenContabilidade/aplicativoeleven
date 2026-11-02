@@ -80,6 +80,7 @@ export default function ObrigacoesPage() {
   const [editing, setEditing] = useState<Obligation | null>(null);
   const [detalheTipo, setDetalheTipo] = useState<string | null>(null);
   const [buscaDetalhe, setBuscaDetalhe] = useState("");
+  const [somenteEleven, setSomenteEleven] = useState(false);
   const [selecionadosDetalhe, setSelecionadosDetalhe] = useState<Set<string>>(new Set());
 
   const competencia = `${ano}-${mes}`;
@@ -345,13 +346,14 @@ export default function ObrigacoesPage() {
     return linhas
       .filter((l) => l.tipo === detalheTipo)
       .map((l) => ({ linha: l, cliente: clients.find((c) => c.id === l.clienteId) }))
+      .filter(({ cliente }) => !somenteEleven || !cliente?.dados.clienteParceiro)
       .filter(({ cliente }) => {
         if (!q) return true;
         const nome = cliente?.dados.razaoSocial.toLowerCase() ?? "";
         return nome.includes(q) || (cliente?.dados.cnpj ?? "").includes(q);
       })
       .sort((a, b) => (a.cliente?.dados.razaoSocial ?? "").localeCompare(b.cliente?.dados.razaoSocial ?? "", "pt-BR"));
-  }, [linhas, detalheTipo, clients, buscaDetalhe]);
+  }, [linhas, detalheTipo, clients, buscaDetalhe, somenteEleven]);
 
   const detalheConcluidas = linhasDetalhe.filter(({ linha: l }) => !l.pendente).length;
   const detalheRegra = detalheTipo ? regraVencimentoRotina(detalheTipo, regrasVencimentoOverride) : undefined;
@@ -814,6 +816,14 @@ export default function ObrigacoesPage() {
                 className="pl-8"
               />
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={somenteEleven ? "primary" : "outline"}
+              onClick={() => setSomenteEleven((v) => !v)}
+            >
+              Somente clientes Eleven
+            </Button>
             {linhasDetalhe.some(({ linha: l }) => l.pendente) && (
               <Button
                 type="button"
