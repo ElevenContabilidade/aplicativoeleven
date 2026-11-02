@@ -49,6 +49,19 @@ export function FinanceiroClienteForm({ client }: { client: Client }) {
             <Input type="date" value={form.inicioContrato} onChange={(e) => set("inicioContrato", e.target.value)} />
           </div>
           <div>
+            <Label className="mb-1 block">Início das obrigações (opcional)</Label>
+            <Input
+              type="month"
+              value={form.inicioObrigacoes ?? ""}
+              onChange={(e) => set("inicioObrigacoes", e.target.value || undefined)}
+            />
+            <p className="mt-1 text-[11px] text-sand-400">
+              Deixe em branco pra usar o mesmo mês do início do contrato. Preencha só quando o contrato for assinado num mês mas as
+              rotinas de Fiscal/Contábil/Pessoal/MEI só devem começar a aparecer no mês seguinte (ex: contrato assinado no fim de
+              outubro, obrigações começando em novembro).
+            </p>
+          </div>
+          <div>
             <Label className="mb-1 block">Reajuste</Label>
             <Input value={form.reajuste ?? ""} onChange={(e) => set("reajuste", e.target.value)} placeholder="Ex: anual, IGP-M" />
           </div>

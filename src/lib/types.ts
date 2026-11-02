@@ -535,6 +535,13 @@ export interface FinanceiroCliente {
   vencimentoDia: number;
   formaPagamento: string;
   inicioContrato: string;
+  /** Competência (YYYY-MM) a partir da qual as obrigações/rotinas desse
+   * cliente passam a aparecer em Fiscal/Contábil/Pessoal/MEI — ausente =
+   * usa o mesmo mês de inicioContrato (comportamento padrão). Existe
+   * separado porque às vezes o contrato é assinado no fim de um mês (ex:
+   * Halle, assinado no final de outubro) mas o primeiro mês de rotina de
+   * verdade só começa no mês seguinte. */
+  inicioObrigacoes?: string;
   reajuste?: string;
   /** Data do último reajuste de honorário aplicado — quando ausente, o
    * início do contrato vale como referência. Alimenta o alerta de "reajuste
@@ -633,12 +640,14 @@ export function nomesParceirosDistintos(clients: Pick<Client, "dados">[]): strin
   );
 }
 
-/** Um cliente só entra num checklist de rotinas (Fiscal/Contábil/Pessoal) a
- * partir da competência em que o contrato começou — cliente que só entrou
- * em setembro/2026 não deve aparecer nas rotinas de meses ou anos
- * anteriores. `competencia` pode ser "YYYY-MM" (mensal) ou "YYYY" (anual). */
+/** Um cliente só entra num checklist de rotinas (Fiscal/Contábil/Pessoal/
+ * MEI) a partir da competência em que as obrigações começam —
+ * financeiro.inicioObrigacoes quando preenchido (ex: contrato assinado no
+ * fim de outubro, mas a rotina só começa em novembro), senão cai no mesmo
+ * mês de financeiro.inicioContrato. `competencia` pode ser "YYYY-MM"
+ * (mensal) ou "YYYY" (anual). */
 export function clienteAtivoNaCompetencia(client: Pick<Client, "financeiro">, competencia: string): boolean {
-  const inicio = client.financeiro.inicioContrato;
+  const inicio = client.financeiro.inicioObrigacoes || client.financeiro.inicioContrato;
   if (!inicio) return true;
   return competencia >= inicio.slice(0, competencia.length);
 }
