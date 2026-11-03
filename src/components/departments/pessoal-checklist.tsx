@@ -22,7 +22,7 @@ import {
   type ChecklistStatus,
   type Client,
 } from "@/lib/types";
-import { isRotinaDispensada, competenciaAtual } from "@/lib/obrigacoes-departamentos";
+import { competenciaAtual } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -94,10 +94,27 @@ export function PessoalChecklist() {
     [clientesDoSetor, competencia]
   );
 
+  // checklist/dispensasRotina guardam o histórico inteiro (todos os
+  // clientes, competências e anos já marcados) — sem esses índices,
+  // statusFor fazia um .find()/.some() varrendo tudo isso de novo pra CADA
+  // célula da tabela (centenas por tela), o que deixava marcar OK/Dispensada
+  // com atraso perceptível e, às vezes, perdendo o primeiro clique. Os Maps
+  // são reconstruídos só quando os dados mudam, e a busca por célula vira O(1).
+  const checklistMap = useMemo(() => {
+    const map = new Map<string, ChecklistStatus>();
+    for (const e of checklist) map.set(`${e.clienteId}|${e.competencia}|${e.rotina}`, e.status);
+    return map;
+  }, [checklist]);
+  const dispensasSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of dispensasRotina) if (d.setor === "Departamento Pessoal") set.add(`${d.clienteId}|${d.rotina}`);
+    return set;
+  }, [dispensasRotina]);
+
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
-    const explicito = checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status;
+    const explicito = checklistMap.get(`${clienteId}|${comp}|${rotina}`);
     if (explicito) return explicito;
-    return isRotinaDispensada(dispensasRotina, clienteId, "Departamento Pessoal", rotina) ? "Dispensada" : null;
+    return dispensasSet.has(`${clienteId}|${rotina}`) ? "Dispensada" : null;
   }
 
   function dispensaPermanente(clienteId: string, rotina: string) {
@@ -345,7 +362,7 @@ export function PessoalChecklist() {
                   statusFor={statusFor}
                   setChecklist={setChecklistPessoal}
                   pctForClient={(c) => pctFor(c, competencia)}
-                  isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
+                  isDispensadoPermanente={(clienteId, rotina) => dispensasSet.has(`${clienteId}|${rotina}`)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
                   onMarcarDispensada={garantirDispensaPermanente}
                 />
@@ -365,7 +382,7 @@ export function PessoalChecklist() {
                   statusFor={statusFor}
                   setChecklist={setChecklistPessoal}
                   pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_FIXAS))}
-                  isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
+                  isDispensadoPermanente={(clienteId, rotina) => dispensasSet.has(`${clienteId}|${rotina}`)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
                   onMarcarDispensada={garantirDispensaPermanente}
                 />
@@ -381,7 +398,7 @@ export function PessoalChecklist() {
                   statusFor={statusFor}
                   setChecklist={setChecklistPessoal}
                   pctForClient={(c) => pctForList(c.id, competencia, rotinasPessoalMensalFor(c, ROTINAS_PESSOAL_VARIAVEIS))}
-                  isDispensadoPermanente={(clienteId, rotina) => !!dispensaPermanente(clienteId, rotina)}
+                  isDispensadoPermanente={(clienteId, rotina) => dispensasSet.has(`${clienteId}|${rotina}`)}
                   onToggleDispensaPermanente={toggleDispensaPermanente}
                   onMarcarDispensada={garantirDispensaPermanente}
                 />

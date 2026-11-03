@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown, Ban, Copy } from "lucide-react";
 import { useAppStore } from "@/lib/store/app-store";
 import { CHECKLIST_STATUS, ROTINAS_MEI, nomesParceirosDistintos, clienteAtivoNaCompetencia, type ChecklistStatus, type Client } from "@/lib/types";
-import { isRotinaDispensada, competenciaAtual } from "@/lib/obrigacoes-departamentos";
+import { competenciaAtual } from "@/lib/obrigacoes-departamentos";
 import { cn } from "@/lib/utils";
 
 const WINE = "#5C1420";
@@ -91,10 +91,27 @@ export function MeiChecklist() {
     [clients, competencia, somenteProprios, parceiroFiltro]
   );
 
+  // checklist/dispensasRotina guardam o histórico inteiro (todos os
+  // clientes, competências e anos já marcados) — sem esses índices,
+  // statusFor fazia um .find()/.some() varrendo tudo isso de novo pra CADA
+  // célula da tabela (centenas por tela), o que deixava marcar OK/Dispensada
+  // com atraso perceptível e, às vezes, perdendo o primeiro clique. Os Maps
+  // são reconstruídos só quando os dados mudam, e a busca por célula vira O(1).
+  const checklistMap = useMemo(() => {
+    const map = new Map<string, ChecklistStatus>();
+    for (const e of checklist) map.set(`${e.clienteId}|${e.competencia}|${e.rotina}`, e.status);
+    return map;
+  }, [checklist]);
+  const dispensasSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of dispensasRotina) if (d.setor === "MEI") set.add(`${d.clienteId}|${d.rotina}`);
+    return set;
+  }, [dispensasRotina]);
+
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
-    const explicito = checklist.find((e) => e.clienteId === clienteId && e.competencia === comp && e.rotina === rotina)?.status;
+    const explicito = checklistMap.get(`${clienteId}|${comp}|${rotina}`);
     if (explicito) return explicito;
-    return isRotinaDispensada(dispensasRotina, clienteId, "MEI", rotina) ? "Dispensada" : null;
+    return dispensasSet.has(`${clienteId}|${rotina}`) ? "Dispensada" : null;
   }
 
   function dispensaPermanente(clienteId: string, rotina: string) {
@@ -354,7 +371,7 @@ export function MeiChecklist() {
                     statusFor={statusFor}
                     setChecklistMei={setChecklistMei}
                     pct={pctFor(c.id, competencia)}
-                    isDispensadoPermanente={(rotina) => !!dispensaPermanente(c.id, rotina)}
+                    isDispensadoPermanente={(rotina) => dispensasSet.has(`${c.id}|${rotina}`)}
                     onToggleDispensaPermanente={(rotina) => toggleDispensaPermanente(c.id, rotina)}
                     onMarcarDispensada={(rotina) => garantirDispensaPermanente(c.id, rotina)}
                   />
