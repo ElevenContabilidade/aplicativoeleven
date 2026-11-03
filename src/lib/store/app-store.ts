@@ -615,6 +615,88 @@ const initial = {
   conteudoPosts: [] as ConteudoPost[],
 };
 
+type ChecklistArrayKey = "checklistFiscal" | "checklistContabil" | "checklistPessoal";
+
+interface RotinaVinculada {
+  setor: ChecklistArrayKey;
+  rotina: string;
+  prefixoId: string;
+}
+
+/** Colunas de setores diferentes que representam o mesmo evento real na
+ * prática do escritório — ex: o Fiscal "contabiliza os movimentos" e
+ * "exporta pro contábil", e é exatamente isso que o Contábil enxerga como
+ * "Importar Fiscal"; da mesma forma, "Importar DP" é o mesmo evento visto
+ * do lado do Pessoal e do lado do Contábil. Marcar qualquer rotina de um
+ * grupo (OK, Dispensada, ou voltando pra Pendente) marca as outras do
+ * mesmo grupo automaticamente, nos checklists dos dois setores — ninguém
+ * precisa marcar a mesma coisa duas vezes em telas diferentes. */
+const GRUPOS_CHECKLIST_VINCULADOS: RotinaVinculada[][] = [
+  [
+    { setor: "checklistFiscal", rotina: "Contabilizar movimentos", prefixoId: "chkf" },
+    { setor: "checklistFiscal", rotina: "Exportar pro contábil", prefixoId: "chkf" },
+    { setor: "checklistContabil", rotina: "Importar Fiscal", prefixoId: "chk" },
+  ],
+  [
+    { setor: "checklistPessoal", rotina: "Importar DP", prefixoId: "chkp" },
+    { setor: "checklistContabil", rotina: "Importar DP", prefixoId: "chk" },
+  ],
+];
+
+function alvosChecklistVinculado(setorOrigem: ChecklistArrayKey, rotina: string): RotinaVinculada[] {
+  const grupo = GRUPOS_CHECKLIST_VINCULADOS.find((g) => g.some((i) => i.setor === setorOrigem && i.rotina === rotina));
+  if (grupo) return grupo;
+  const prefixoId = setorOrigem === "checklistFiscal" ? "chkf" : setorOrigem === "checklistPessoal" ? "chkp" : "chk";
+  return [{ setor: setorOrigem, rotina, prefixoId }];
+}
+
+/** Aplica um status de checklist a todas as rotinas vinculadas (ver
+ * GRUPOS_CHECKLIST_VINCULADOS), devolvendo os 3 arrays já atualizados —
+ * quando a rotina não faz parte de nenhum grupo, só o próprio array muda,
+ * igual ao comportamento de antes dessa ligação existir. */
+function aplicarChecklistVinculado(
+  s: Pick<AppState, ChecklistArrayKey>,
+  setorOrigem: ChecklistArrayKey,
+  clienteId: string,
+  competencia: string,
+  rotina: string,
+  status: ChecklistStatus | null
+): Pick<AppState, ChecklistArrayKey> {
+  let checklistFiscal = s.checklistFiscal;
+  let checklistContabil = s.checklistContabil;
+  let checklistPessoal = s.checklistPessoal;
+  for (const alvo of alvosChecklistVinculado(setorOrigem, rotina)) {
+    const arr = alvo.setor === "checklistFiscal" ? checklistFiscal : alvo.setor === "checklistContabil" ? checklistContabil : checklistPessoal;
+    const id = `${alvo.prefixoId}-${clienteId}-${competencia}-${alvo.rotina}`;
+    const existing = arr.find((e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === alvo.rotina);
+    const next: ChecklistEntry[] = !status
+      ? arr.filter((e) => e !== existing)
+      : existing
+        ? arr.map((e) => (e === existing ? { ...e, status } : e))
+        : [...arr, { id, clienteId, competencia, rotina: alvo.rotina, status }];
+    if (alvo.setor === "checklistFiscal") checklistFiscal = next;
+    else if (alvo.setor === "checklistContabil") checklistContabil = next;
+    else checklistPessoal = next;
+  }
+  return { checklistFiscal, checklistContabil, checklistPessoal };
+}
+
+/** Replica no Supabase (push ou delete) cada rotina vinculada afetada —
+ * espelha exatamente o que aplicarChecklistVinculado fez no estado local. */
+function pushChecklistVinculado(
+  setorOrigem: ChecklistArrayKey,
+  clienteId: string,
+  competencia: string,
+  rotina: string,
+  status: ChecklistStatus | null
+) {
+  for (const alvo of alvosChecklistVinculado(setorOrigem, rotina)) {
+    const id = `${alvo.prefixoId}-${clienteId}-${competencia}-${alvo.rotina}`;
+    if (!status) deleteFinanceiro(alvo.setor, id);
+    else pushFinanceiro(alvo.setor, id, clienteId, { id, clienteId, competencia, rotina: alvo.rotina, status });
+  }
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -1819,67 +1901,37 @@ export const useAppStore = create<AppState>()(
       },
 
       setChecklistContabil: (clienteId, competencia, rotina, status) => {
-        const id = `chk-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
-          const existing = s.checklistContabil.find(
-            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
-          );
-          if (!status) {
-            return { checklistContabil: s.checklistContabil.filter((e) => e !== existing) };
-          }
-          if (existing) {
-            return {
-              checklistContabil: s.checklistContabil.map((e) => (e === existing ? { ...e, status } : e)),
-            };
-          }
+          const patch = aplicarChecklistVinculado(s, "checklistContabil", clienteId, competencia, rotina, status);
           return {
-            checklistContabil: [...s.checklistContabil, { id, clienteId, competencia, rotina, status }],
+            ...patch,
+            ...(patch.checklistFiscal !== s.checklistFiscal
+              ? { notifications: syncFiscalAlerts(s.notifications, patch.checklistFiscal, s.clients) }
+              : {}),
           };
         });
-        if (!status) deleteFinanceiro("checklistContabil", id);
-        else pushFinanceiro("checklistContabil", id, clienteId, { id, clienteId, competencia, rotina, status });
+        pushChecklistVinculado("checklistContabil", clienteId, competencia, rotina, status);
       },
 
       setChecklistFiscal: (clienteId, competencia, rotina, status) => {
-        const id = `chkf-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
-          const existing = s.checklistFiscal.find(
-            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
-          );
-          const checklistFiscal = !status
-            ? s.checklistFiscal.filter((e) => e !== existing)
-            : existing
-              ? s.checklistFiscal.map((e) => (e === existing ? { ...e, status } : e))
-              : [...s.checklistFiscal, { id, clienteId, competencia, rotina, status }];
-          return {
-            checklistFiscal,
-            notifications: syncFiscalAlerts(s.notifications, checklistFiscal, s.clients),
-          };
+          const patch = aplicarChecklistVinculado(s, "checklistFiscal", clienteId, competencia, rotina, status);
+          return { ...patch, notifications: syncFiscalAlerts(s.notifications, patch.checklistFiscal, s.clients) };
         });
-        if (!status) deleteFinanceiro("checklistFiscal", id);
-        else pushFinanceiro("checklistFiscal", id, clienteId, { id, clienteId, competencia, rotina, status });
+        pushChecklistVinculado("checklistFiscal", clienteId, competencia, rotina, status);
       },
 
       setChecklistPessoal: (clienteId, competencia, rotina, status) => {
-        const id = `chkp-${clienteId}-${competencia}-${rotina}`;
         set((s) => {
-          const existing = s.checklistPessoal.find(
-            (e) => e.clienteId === clienteId && e.competencia === competencia && e.rotina === rotina
-          );
-          if (!status) {
-            return { checklistPessoal: s.checklistPessoal.filter((e) => e !== existing) };
-          }
-          if (existing) {
-            return {
-              checklistPessoal: s.checklistPessoal.map((e) => (e === existing ? { ...e, status } : e)),
-            };
-          }
+          const patch = aplicarChecklistVinculado(s, "checklistPessoal", clienteId, competencia, rotina, status);
           return {
-            checklistPessoal: [...s.checklistPessoal, { id, clienteId, competencia, rotina, status }],
+            ...patch,
+            ...(patch.checklistFiscal !== s.checklistFiscal
+              ? { notifications: syncFiscalAlerts(s.notifications, patch.checklistFiscal, s.clients) }
+              : {}),
           };
         });
-        if (!status) deleteFinanceiro("checklistPessoal", id);
-        else pushFinanceiro("checklistPessoal", id, clienteId, { id, clienteId, competencia, rotina, status });
+        pushChecklistVinculado("checklistPessoal", clienteId, competencia, rotina, status);
       },
 
       setChecklistMei: (clienteId, competencia, rotina, status) => {
