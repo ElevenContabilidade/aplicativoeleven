@@ -39,12 +39,39 @@ export default function SocietarioPage() {
   const clients = useAppStore((s) => s.clients);
   const processos = useAppStore((s) => s.processosSocietarios);
   const deleteProcessoSocietario = useAppStore((s) => s.deleteProcessoSocietario);
+  const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
 
   function handleDelete(e: React.MouseEvent, p: ProcessoSocietario, clienteNome: string) {
     e.stopPropagation();
     if (confirm(`Excluir o processo "${p.tipoServico}" de ${clienteNome}?`)) {
       deleteProcessoSocietario(p.id);
     }
+  }
+
+  /** Processos com o checklist 100% completo (toda etapa OK/Dispensada)
+   * passaram a finalizar sozinhos automaticamente — mas quem já tinha
+   * chegado a 100% ANTES desse fix existir ficou parado com Status
+   * diferente de "Finalizado", sem aparecer em Concluídos/Tempo médio.
+   * Corrige esses de uma vez, retroativamente. */
+  function corrigirProcessosConcluidos() {
+    const pendentes = processos.filter((p) => {
+      const etapas = p.etapas ?? [];
+      return etapas.length > 0 && etapas.every((e) => e.status === "OK" || e.status === "Dispensada") && p.status !== "Finalizado";
+    });
+    if (pendentes.length === 0) {
+      alert("Nenhum processo com checklist 100% pra corrigir — tudo certo.");
+      return;
+    }
+    if (!confirm(`${pendentes.length} processo(s) com checklist 100% completo serão marcados como "Finalizado". Continuar?`)) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    for (const p of pendentes) {
+      // Não dá pra saber a data real em que cada um ficou pronto (só que já
+      // estava 100% antes desse fix existir) — usa hoje em vez de inventar
+      // uma data retroativa, pra não fingir um "tempo médio" artificialmente
+      // rápido que nunca aconteceu de verdade.
+      updateProcessoSocietario(p.id, { status: "Finalizado", dataConclusao: p.dataConclusao ?? hoje });
+    }
+    alert(`${pendentes.length} processo(s) corrigido(s).`);
   }
 
   const searchParams = useSearchParams();
@@ -150,7 +177,14 @@ export default function SocietarioPage() {
       <PageHeader
         title="Societário"
         description="Abertura, alteração, baixa, inscrições e regularizações em andamento."
-        actions={<Button size="sm" onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo processo</Button>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={corrigirProcessosConcluidos}>
+              <CheckCheck className="size-3.5" /> Corrigir processos já concluídos
+            </Button>
+            <Button size="sm" onClick={() => setFormOpen(true)}><Plus className="size-3.5" /> Novo processo</Button>
+          </div>
+        }
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">

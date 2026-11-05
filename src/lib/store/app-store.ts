@@ -1580,11 +1580,20 @@ export const useAppStore = create<AppState>()(
 
       setEtapaStatus: (processoId, etapaId, status) => {
         set((s) => ({
-          processosSocietarios: s.processosSocietarios.map((p) =>
-            p.id === processoId
-              ? { ...p, etapas: (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, status } : e)) }
-              : p
-          ),
+          processosSocietarios: s.processosSocietarios.map((p) => {
+            if (p.id !== processoId) return p;
+            const etapas = (p.etapas ?? []).map((e) => (e.id === etapaId ? { ...e, status } : e));
+            // Checklist 100% completo (toda etapa OK ou Dispensada) finaliza o
+            // processo sozinho — sem isso, "Concluídos" e "Tempo médio" (que só
+            // olham status === "Finalizado") nunca enxergavam um processo com
+            // todas as etapas feitas, a não ser que alguém trocasse o campo
+            // Status à parte, manualmente, depois de já ter marcado tudo.
+            const todasConcluidas = etapas.length > 0 && etapas.every((e) => e.status === "OK" || e.status === "Dispensada");
+            if (todasConcluidas && p.status !== "Finalizado") {
+              return { ...p, etapas, status: "Finalizado", dataConclusao: p.dataConclusao ?? new Date().toISOString().slice(0, 10) };
+            }
+            return { ...p, etapas };
+          }),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
         if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId ?? null, processo);
@@ -1592,9 +1601,17 @@ export const useAppStore = create<AppState>()(
 
       deleteEtapaProcesso: (processoId, etapaId) => {
         set((s) => ({
-          processosSocietarios: s.processosSocietarios.map((p) =>
-            p.id === processoId ? { ...p, etapas: (p.etapas ?? []).filter((e) => e.id !== etapaId) } : p
-          ),
+          processosSocietarios: s.processosSocietarios.map((p) => {
+            if (p.id !== processoId) return p;
+            const etapas = (p.etapas ?? []).filter((e) => e.id !== etapaId);
+            // Mesma regra de setEtapaStatus: excluir a última etapa pendente
+            // também pode deixar o checklist 100% completo.
+            const todasConcluidas = etapas.length > 0 && etapas.every((e) => e.status === "OK" || e.status === "Dispensada");
+            if (todasConcluidas && p.status !== "Finalizado") {
+              return { ...p, etapas, status: "Finalizado", dataConclusao: p.dataConclusao ?? new Date().toISOString().slice(0, 10) };
+            }
+            return { ...p, etapas };
+          }),
         }));
         const processo = useAppStore.getState().processosSocietarios.find((p) => p.id === processoId);
         if (processo) pushFinanceiro("processosSocietarios", processoId, processo.clienteId ?? null, processo);
