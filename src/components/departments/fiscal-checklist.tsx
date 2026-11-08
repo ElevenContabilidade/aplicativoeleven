@@ -126,6 +126,27 @@ export function FiscalChecklist() {
     [clientesDoSetor, competencia]
   );
 
+  // checklist/dispensasRotina guardam o histórico inteiro (todos os
+  // clientes, competências e anos já marcados) — sem esses índices,
+  // statusFor fazia um .find()/.some() varrendo tudo isso de novo pra CADA
+  // célula da tabela (centenas por tela), o que deixava marcar OK/Dispensada
+  // com atraso perceptível e, às vezes, perdendo o primeiro clique. Os Maps
+  // são reconstruídos só quando os dados mudam, e a busca por célula vira O(1).
+  // Precisa vir ANTES de myClientsOrdenados: ordenar por "% concluído" chama
+  // pctFor -> statusFor -> checklistMap já na mesma renderização, e um const
+  // só existe a partir da linha em que é declarado (TDZ) — declarado depois,
+  // dava "Cannot access 'checklistMap' before initialization" ao ordenar.
+  const checklistMap = useMemo(() => {
+    const map = new Map<string, ChecklistStatus>();
+    for (const e of checklist) map.set(`${e.clienteId}|${e.competencia}|${e.rotina}`, e.status);
+    return map;
+  }, [checklist]);
+  const dispensasSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of dispensasRotina) if (d.setor === "Fiscal") set.add(`${d.clienteId}|${d.rotina}`);
+    return set;
+  }, [dispensasRotina]);
+
   const myClientsOrdenados = useMemo(() => {
     if (!ordem) return myClients;
     const dir = ordem.dir === "asc" ? 1 : -1;
@@ -137,23 +158,6 @@ export function FiscalChecklist() {
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myClients, ordem, competencia, checklist, period]);
-
-  // checklist/dispensasRotina guardam o histórico inteiro (todos os
-  // clientes, competências e anos já marcados) — sem esses índices,
-  // statusFor fazia um .find()/.some() varrendo tudo isso de novo pra CADA
-  // célula da tabela (centenas por tela), o que deixava marcar OK/Dispensada
-  // com atraso perceptível e, às vezes, perdendo o primeiro clique. Os Maps
-  // são reconstruídos só quando os dados mudam, e a busca por célula vira O(1).
-  const checklistMap = useMemo(() => {
-    const map = new Map<string, ChecklistStatus>();
-    for (const e of checklist) map.set(`${e.clienteId}|${e.competencia}|${e.rotina}`, e.status);
-    return map;
-  }, [checklist]);
-  const dispensasSet = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of dispensasRotina) if (d.setor === "Fiscal") set.add(`${d.clienteId}|${d.rotina}`);
-    return set;
-  }, [dispensasRotina]);
 
   function statusFor(clienteId: string, comp: string, rotina: string): ChecklistStatus | null {
     const explicito = checklistMap.get(`${clienteId}|${comp}|${rotina}`);
