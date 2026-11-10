@@ -51,6 +51,17 @@ function ultimoDiaCompetencia(competencia: string): string {
   return `${competencia}-${String(ultimoDia).padStart(2, "0")}`;
 }
 
+/** Data de pagamento assumida ao marcar "Pago" sem informar a data —
+ * competência atual (ou futura): usa hoje, porque marcar agora mesmo
+ * normalmente significa que acabou de cair; competência passada (acerto
+ * retroativo, meses depois): usa o último dia do mês, só como um valor
+ * neutro pra ajustar depois, já que "hoje" seria visivelmente errado pra
+ * um pagamento de meses atrás. */
+function dataPagamentoPadrao(competencia: string): string {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return competencia >= hoje.slice(0, 7) ? hoje : ultimoDiaCompetencia(competencia);
+}
+
 function inicioContratoLabel(iso: string) {
   if (!iso) return "—";
   const [ano, mes] = iso.split("-");
@@ -237,11 +248,7 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : l.valor,
-      // Último dia da própria competência, não "hoje" — quem marca Pago
-      // meses depois (acerto retroativo) não quer que o sistema carimbe a
-      // data de hoje como se tivesse acabado de cair; dá pra ajustar certinho
-      // no campo de data logo ao lado.
-      dataPagamento: quitado ? undefined : ultimoDiaCompetencia(l.competencia),
+      dataPagamento: quitado ? undefined : dataPagamentoPadrao(l.competencia),
     });
   }
 
@@ -251,7 +258,7 @@ export default function ParceirosPage() {
     updateRecebimentoParceiro(l.cliente.id, l.competencia, {
       valorPago,
       status: pago ? "Pago" : "Em aberto",
-      dataPagamento: pago ? (existente ?? ultimoDiaCompetencia(l.competencia)) : undefined,
+      dataPagamento: pago ? (existente ?? dataPagamentoPadrao(l.competencia)) : undefined,
     });
   }
 
@@ -323,7 +330,7 @@ export default function ParceirosPage() {
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       status: quitado ? "Em aberto" : "Pago",
       valorPago: quitado ? 0 : le.extra.valorMensal,
-      dataPagamento: quitado ? undefined : ultimoDiaCompetencia(le.competencia),
+      dataPagamento: quitado ? undefined : dataPagamentoPadrao(le.competencia),
     });
   }
 
@@ -333,7 +340,7 @@ export default function ParceirosPage() {
     updatePagamentoExtraParceiro(le.extra.id, le.competencia, {
       valorPago,
       status: pago ? "Pago" : "Em aberto",
-      dataPagamento: pago ? (existente ?? ultimoDiaCompetencia(le.competencia)) : undefined,
+      dataPagamento: pago ? (existente ?? dataPagamentoPadrao(le.competencia)) : undefined,
     });
   }
 
@@ -379,10 +386,11 @@ export default function ParceirosPage() {
   }
 
   /** Preenche a data de pagamento de quem já está marcado "Pago" mas ficou
-   * sem data (marcado antes dessa coluna existir) — usa o último dia da
-   * própria competência como aproximação, já que não tem como saber o dia
-   * exato. Sem isso, esses recebimentos nunca entram no "Recebido (caixa)"
-   * do Financeiro, só na competência. */
+   * sem data (marcado antes dessa coluna existir) — usa dataPagamentoPadrao
+   * (hoje pra competência atual/futura, último dia do mês como aproximação
+   * só pra competência já passada) como melhor aproximação disponível, já
+   * que não tem como saber o dia exato. Sem isso, esses recebimentos nunca
+   * entram no "Recebido (caixa)" do Financeiro, só na competência. */
   async function aplicarDatasPagamentoRetroativas() {
     const semDataRecebimentos = recebimentosParceiro.filter((r) => r.status === "Pago" && !r.dataPagamento && !r.removido);
     const semDataExtras = pagamentosExtrasParceiro.filter((p) => p.status === "Pago" && !p.dataPagamento && !p.removido);
@@ -393,14 +401,14 @@ export default function ParceirosPage() {
     }
     if (
       !confirm(
-        `Encontrei ${total} recebimento(s) de parceiro já marcados como "Pago" sem data de pagamento. Preencher com o último dia da própria competência (aproximação, já que não dá pra saber o dia exato)? Isso faz esses valores passarem a contar no "Recebido (caixa)" do Financeiro.`
+        `Encontrei ${total} recebimento(s) de parceiro já marcados como "Pago" sem data de pagamento. Preencher com hoje (competência atual) ou o último dia da própria competência (aproximação pra competência passada), já que não dá pra saber o dia exato? Isso faz esses valores passarem a contar no "Recebido (caixa)" do Financeiro.`
       )
     )
       return;
 
     const atualizacoes = [
-      ...semDataRecebimentos.map((r) => () => updateRecebimentoParceiro(r.clienteId, r.competencia, { dataPagamento: ultimoDiaCompetencia(r.competencia) })),
-      ...semDataExtras.map((p) => () => updatePagamentoExtraParceiro(p.extraParceiroId, p.competencia, { dataPagamento: ultimoDiaCompetencia(p.competencia) })),
+      ...semDataRecebimentos.map((r) => () => updateRecebimentoParceiro(r.clienteId, r.competencia, { dataPagamento: dataPagamentoPadrao(r.competencia) })),
+      ...semDataExtras.map((p) => () => updatePagamentoExtraParceiro(p.extraParceiroId, p.competencia, { dataPagamento: dataPagamentoPadrao(p.competencia) })),
     ];
     // Mesmo cuidado de sempre: disparar tudo de uma vez passa do limite de
     // requisições simultâneas do navegador quando são muitos — aplica em
