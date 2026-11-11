@@ -37,7 +37,7 @@ interface Linha {
   banco: string;
 }
 
-type SortColumn = "cliente" | "valor" | "vencimento" | "status";
+type SortColumn = "cliente" | "valor" | "vencimento" | "status" | "dataRecebimento";
 
 function SortableHead({
   label,
@@ -313,7 +313,7 @@ export default function BoletosPage() {
                   <SortableHead label="Status" column="status" sort={sort} onSort={toggleSort} />
                   <TableHead className="w-36">Banco</TableHead>
                   <TableHead className="w-24 text-center">Recebido</TableHead>
-                  <TableHead className="w-40">Data recebimento</TableHead>
+                  <SortableHead label="Data recebimento" column="dataRecebimento" sort={sort} onSort={toggleSort} className="w-40" />
                   <TableHead className="w-32">Valor recebido</TableHead>
                   <TableHead className="w-10" />
                   <TableHead className="w-10" />
