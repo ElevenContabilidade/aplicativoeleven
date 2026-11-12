@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info, CheckCheck, RotateCcw, Wand2 } from "lucide-react";
+import { CalendarClock, Plus, Search, Pencil, Trash2, AlertTriangle, List, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Info, CheckCheck, RotateCcw, Wand2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,14 @@ export default function ObrigacoesPage() {
   const [detalheTipo, setDetalheTipo] = useState<string | null>(null);
   const [buscaDetalhe, setBuscaDetalhe] = useState("");
   const [somenteEleven, setSomenteEleven] = useState(false);
+  const [sortDetalhe, setSortDetalhe] = useState<{ column: "cliente" | "cnpj" | "status"; direction: "asc" | "desc" } | null>(null);
+
+  function toggleSortDetalhe(column: "cliente" | "cnpj" | "status") {
+    setSortDetalhe((atual) => {
+      if (!atual || atual.column !== column) return { column, direction: "asc" };
+      return atual.direction === "asc" ? { column, direction: "desc" } : null;
+    });
+  }
   const [selecionadosDetalhe, setSelecionadosDetalhe] = useState<Set<string>>(new Set());
 
   const competencia = `${ano}-${mes}`;
@@ -353,6 +361,7 @@ export default function ObrigacoesPage() {
   const linhasDetalhe = useMemo(() => {
     if (!detalheTipo) return [];
     const q = buscaDetalhe.trim().toLowerCase();
+    const dir = sortDetalhe?.direction === "desc" ? -1 : 1;
     return linhas
       .filter((l) => l.tipo === detalheTipo)
       .map((l) => ({ linha: l, cliente: clients.find((c) => c.id === l.clienteId) }))
@@ -362,8 +371,17 @@ export default function ObrigacoesPage() {
         const nome = cliente?.dados.razaoSocial.toLowerCase() ?? "";
         return nome.includes(q) || (cliente?.dados.cnpj ?? "").includes(q);
       })
-      .sort((a, b) => (a.cliente?.dados.razaoSocial ?? "").localeCompare(b.cliente?.dados.razaoSocial ?? "", "pt-BR"));
-  }, [linhas, detalheTipo, clients, buscaDetalhe, somenteEleven]);
+      .sort((a, b) => {
+        if (sortDetalhe?.column === "cnpj") {
+          return (a.cliente?.dados.cnpj ?? "").localeCompare(b.cliente?.dados.cnpj ?? "", "pt-BR") * dir;
+        }
+        if (sortDetalhe?.column === "status") {
+          return a.linha.status.localeCompare(b.linha.status, "pt-BR") * dir;
+        }
+        // Padrão (sem coluna escolhida, ou "cliente"): sempre por razão social.
+        return (a.cliente?.dados.razaoSocial ?? "").localeCompare(b.cliente?.dados.razaoSocial ?? "", "pt-BR") * dir;
+      });
+  }, [linhas, detalheTipo, clients, buscaDetalhe, somenteEleven, sortDetalhe]);
 
   const detalheConcluidas = linhasDetalhe.filter(({ linha: l }) => !l.pendente).length;
   const detalheRegra = detalheTipo ? regraVencimentoRotina(detalheTipo, regrasVencimentoOverride) : undefined;
@@ -875,9 +893,23 @@ export default function ObrigacoesPage() {
                     />
                   )}
                 </TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>CNPJ</TableHead>
-                <TableHead>Status</TableHead>
+                {(["cliente", "cnpj", "status"] as const).map((col) => {
+                  const active = sortDetalhe?.column === col;
+                  const Icon = active ? (sortDetalhe!.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+                  const label = col === "cliente" ? "Cliente" : col === "cnpj" ? "CNPJ" : "Status";
+                  return (
+                    <TableHead key={col}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSortDetalhe(col)}
+                        className={cn("flex items-center gap-1 hover:text-wine-700", active && "text-wine-700")}
+                      >
+                        {label}
+                        <Icon className={cn("size-3", !active && "text-sand-300")} />
+                      </button>
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
