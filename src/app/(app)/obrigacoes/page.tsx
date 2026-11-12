@@ -36,6 +36,38 @@ const MESES = [
   { value: "07", label: "Julho" }, { value: "08", label: "Agosto" }, { value: "09", label: "Setembro" },
   { value: "10", label: "Outubro" }, { value: "11", label: "Novembro" }, { value: "12", label: "Dezembro" },
 ];
+/** Cabeçalho de coluna clicável pra ordenar (asc -> desc -> sem ordenação),
+ * com seta indicando a direção ativa — usado tanto na lista principal
+ * quanto no detalhe de obrigação, cada um com seu próprio conjunto de
+ * colunas (C é o tipo das colunas daquela tabela). */
+function OrdenarHead<C extends string>({
+  column,
+  label,
+  active,
+  direction,
+  onClick,
+}: {
+  column: C;
+  label: string;
+  active: boolean;
+  direction: "asc" | "desc";
+  onClick: (column: C) => void;
+}) {
+  const Icon = active ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <TableHead>
+      <button
+        type="button"
+        onClick={() => onClick(column)}
+        className={cn("flex items-center gap-1 hover:text-wine-700", active && "text-wine-700")}
+      >
+        {label}
+        <Icon className={cn("size-3", !active && "text-sand-300")} />
+      </button>
+    </TableHead>
+  );
+}
+
 const SETOR_STYLE: Record<SetorRotina | "Manual", BadgeTone> = {
   Fiscal: "wine",
   Contábil: "info",
@@ -74,7 +106,15 @@ export default function ObrigacoesPage() {
   const [query, setQuery] = useState("");
   const [clienteFiltro, setClienteFiltro] = useState("Todos");
   const [statusFiltro, setStatusFiltro] = useState<"Pendentes" | "Concluídas" | "Todas">("Pendentes");
-  const [ordenar, setOrdenar] = useState<"cliente" | "vencimento" | "setor" | "status">("cliente");
+  type ColunaOrdenar = "cliente" | "obrigacao" | "setor" | "vencimento" | "responsavel" | "status";
+  const [ordenar, setOrdenar] = useState<{ column: ColunaOrdenar; direction: "asc" | "desc" } | null>({ column: "cliente", direction: "asc" });
+
+  function toggleOrdenar(column: ColunaOrdenar) {
+    setOrdenar((atual) => {
+      if (!atual || atual.column !== column) return { column, direction: "asc" };
+      return atual.direction === "asc" ? { column, direction: "desc" } : null;
+    });
+  }
   const [visao, setVisao] = useState<"lista" | "calendario">("lista");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Obligation | null>(null);
@@ -258,18 +298,28 @@ export default function ObrigacoesPage() {
         const an = a.cliente?.dados.razaoSocial ?? "";
         const bn = b.cliente?.dados.razaoSocial ?? "";
         const nomeCliente = () => an.localeCompare(bn, "pt-BR") || a.linha.tipo.localeCompare(b.linha.tipo, "pt-BR");
-        switch (ordenar) {
-          case "vencimento":
-            if (!a.linha.vencimento && !b.linha.vencimento) return nomeCliente();
+        if (!ordenar) return nomeCliente();
+        const dir = ordenar.direction === "desc" ? -1 : 1;
+        switch (ordenar.column) {
+          case "obrigacao":
+            return (a.linha.tipo.localeCompare(b.linha.tipo, "pt-BR") || nomeCliente()) * dir;
+          case "vencimento": {
+            if (!a.linha.vencimento && !b.linha.vencimento) return nomeCliente() * dir;
             if (!a.linha.vencimento) return 1;
             if (!b.linha.vencimento) return -1;
-            return a.linha.vencimento.localeCompare(b.linha.vencimento) || nomeCliente();
+            return (a.linha.vencimento.localeCompare(b.linha.vencimento) || nomeCliente()) * dir;
+          }
           case "setor":
-            return a.linha.setor.localeCompare(b.linha.setor, "pt-BR") || nomeCliente();
+            return (a.linha.setor.localeCompare(b.linha.setor, "pt-BR") || nomeCliente()) * dir;
+          case "responsavel": {
+            const ar = a.linha.responsavelId ? teamName(a.linha.responsavelId) : "";
+            const br = b.linha.responsavelId ? teamName(b.linha.responsavelId) : "";
+            return (ar.localeCompare(br, "pt-BR") || nomeCliente()) * dir;
+          }
           case "status":
-            return a.linha.status.localeCompare(b.linha.status, "pt-BR") || nomeCliente();
+            return (a.linha.status.localeCompare(b.linha.status, "pt-BR") || nomeCliente()) * dir;
           default:
-            return nomeCliente();
+            return nomeCliente() * dir;
         }
       });
   }, [linhas, clients, query, clienteFiltro, statusFiltro, ordenar]);
@@ -629,17 +679,6 @@ export default function ObrigacoesPage() {
             <SelectItem value="Todas">Todos os status</SelectItem>
           </SelectContent>
         </Select>
-        {visao === "lista" && (
-          <Select value={ordenar} onValueChange={(v) => setOrdenar(v as typeof ordenar)}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Ordenar por" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="cliente">Ordenar: Cliente (A-Z)</SelectItem>
-              <SelectItem value="vencimento">Ordenar: Vencimento</SelectItem>
-              <SelectItem value="setor">Ordenar: Setor</SelectItem>
-              <SelectItem value="status">Ordenar: Status</SelectItem>
-            </SelectContent>
-          </Select>
-        )}
         <div className="ml-auto flex items-center gap-1 rounded-lg border border-sand-200 bg-white p-0.5">
           <button
             type="button"
@@ -731,12 +770,12 @@ export default function ObrigacoesPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Obrigação</TableHead>
-            <TableHead>Setor</TableHead>
-            <TableHead>Vencimento</TableHead>
-            <TableHead>Responsável</TableHead>
-            <TableHead>Status</TableHead>
+            <OrdenarHead column="cliente" label="Cliente" active={ordenar?.column === "cliente"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
+            <OrdenarHead column="obrigacao" label="Obrigação" active={ordenar?.column === "obrigacao"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
+            <OrdenarHead column="setor" label="Setor" active={ordenar?.column === "setor"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
+            <OrdenarHead column="vencimento" label="Vencimento" active={ordenar?.column === "vencimento"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
+            <OrdenarHead column="responsavel" label="Responsável" active={ordenar?.column === "responsavel"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
+            <OrdenarHead column="status" label="Status" active={ordenar?.column === "status"} direction={ordenar?.direction ?? "asc"} onClick={toggleOrdenar} />
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -893,23 +932,9 @@ export default function ObrigacoesPage() {
                     />
                   )}
                 </TableHead>
-                {(["cliente", "cnpj", "status"] as const).map((col) => {
-                  const active = sortDetalhe?.column === col;
-                  const Icon = active ? (sortDetalhe!.direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
-                  const label = col === "cliente" ? "Cliente" : col === "cnpj" ? "CNPJ" : "Status";
-                  return (
-                    <TableHead key={col}>
-                      <button
-                        type="button"
-                        onClick={() => toggleSortDetalhe(col)}
-                        className={cn("flex items-center gap-1 hover:text-wine-700", active && "text-wine-700")}
-                      >
-                        {label}
-                        <Icon className={cn("size-3", !active && "text-sand-300")} />
-                      </button>
-                    </TableHead>
-                  );
-                })}
+                <OrdenarHead column="cliente" label="Cliente" active={sortDetalhe?.column === "cliente"} direction={sortDetalhe?.direction ?? "asc"} onClick={toggleSortDetalhe} />
+                <OrdenarHead column="cnpj" label="CNPJ" active={sortDetalhe?.column === "cnpj"} direction={sortDetalhe?.direction ?? "asc"} onClick={toggleSortDetalhe} />
+                <OrdenarHead column="status" label="Status" active={sortDetalhe?.column === "status"} direction={sortDetalhe?.direction ?? "asc"} onClick={toggleSortDetalhe} />
               </TableRow>
             </TableHeader>
             <TableBody>
