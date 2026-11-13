@@ -443,6 +443,37 @@ export default function SocietarioPage() {
               </Table>
             </CardContent>
           </Card>
+
+          <Card className="mt-4">
+            <CardHeader><CardTitle>Quanto cada parceiro rendeu</CardTitle></CardHeader>
+            <CardContent className="pt-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Parceiro</TableHead>
+                    <TableHead>Processos</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Recebido</TableHead>
+                    <TableHead>A receber</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resumoFinanceiro.porParceiro.map((p) => (
+                    <TableRow key={p.parceiro}>
+                      <TableCell className="font-medium">{p.parceiro}</TableCell>
+                      <TableCell>{p.qtd}</TableCell>
+                      <TableCell>{formatCurrency(p.total)}</TableCell>
+                      <TableCell className="text-status-success">{formatCurrency(p.recebido)}</TableCell>
+                      <TableCell className="text-status-warning">{formatCurrency(p.aReceber)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {resumoFinanceiro.porParceiro.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="py-10 text-center text-sand-400">Nenhum processo com parceiro marcado neste período.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       )}
 

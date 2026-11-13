@@ -18,11 +18,22 @@ export interface ServicoFinanceiro {
   aReceber: number;
 }
 
+export interface ParceiroFinanceiro {
+  parceiro: string;
+  qtd: number;
+  total: number;
+  recebido: number;
+  aReceber: number;
+}
+
 export interface SocietarioFinanceiroResumo {
   total: number;
   recebido: number;
   aReceber: number;
   porServico: ServicoFinanceiro[];
+  /** Só processos com parceiro marcado — quem não tem parceiro fica de fora
+   * (não é "parceiro vazio", é processo direto, sem indicação de ninguém). */
+  porParceiro: ParceiroFinanceiro[];
 }
 
 /**
@@ -60,5 +71,20 @@ export function resumoFinanceiroSocietario(processos: ProcessoSocietario[], comp
   const recebido = porServico.reduce((a, s) => a + s.recebido, 0);
   const aReceber = porServico.reduce((a, s) => a + s.aReceber, 0);
 
-  return { total, recebido, aReceber, porServico };
+  const porParceiroMap = new Map<string, ParceiroFinanceiro>();
+  for (const p of cobrados) {
+    const nomeParceiro = p.parceiro?.trim();
+    if (!nomeParceiro) continue;
+    const valor = p.valorProcesso ?? 0;
+    const recebidoDoProcesso = valorRecebidoProcesso(p);
+    const entry = porParceiroMap.get(nomeParceiro) ?? { parceiro: nomeParceiro, qtd: 0, total: 0, recebido: 0, aReceber: 0 };
+    entry.qtd += 1;
+    entry.total += valor;
+    entry.recebido += recebidoDoProcesso;
+    entry.aReceber += valor - recebidoDoProcesso;
+    porParceiroMap.set(nomeParceiro, entry);
+  }
+  const porParceiro = [...porParceiroMap.values()].sort((a, b) => b.total - a.total);
+
+  return { total, recebido, aReceber, porServico, porParceiro };
 }

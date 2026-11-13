@@ -640,6 +640,20 @@ export function nomesParceirosDistintos(clients: Pick<Client, "dados">[]): strin
   );
 }
 
+/** Todos os nomes de parceiro já conhecidos pelo sistema — tanto os que têm
+ * cliente vinculado (nomeParceiro) quanto os que só têm valor extra
+ * recorrente (ExtraParceiro.nomeParceiro) — usado pra sugerir o parceiro em
+ * qualquer campo do app (ex: processo societário) sem depender de já ter um
+ * cliente marcado com aquele nome. */
+export function nomesParceirosConhecidos(
+  clients: Pick<Client, "dados">[],
+  extrasParceiro: Pick<ExtraParceiro, "nomeParceiro">[]
+): string[] {
+  const nomes = new Set(nomesParceirosDistintos(clients));
+  for (const e of extrasParceiro) if (e.nomeParceiro?.trim()) nomes.add(e.nomeParceiro.trim());
+  return [...nomes].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 /** Um cliente só entra num checklist de rotinas (Fiscal/Contábil/Pessoal/
  * MEI) a partir da competência em que as obrigações começam —
  * financeiro.inicioObrigacoes quando preenchido (ex: contrato assinado no
@@ -979,6 +993,11 @@ export interface ProcessoSocietario {
   /** Documentos anexados ao processo (procuração, comprovantes etc.), salvos
    * no Drive do escritório — ver uploadAnexoProcessoSocietario. */
   anexos?: ProcessoAnexo[];
+  /** Parceiro que indicou/trouxe esse processo (mesmo nome usado em
+   * Client.dados.nomeParceiro) — permite medir quanto cada parceiro rendeu
+   * em processos societários, e, se o cliente avulso "virar cliente", liga
+   * o cadastro novo a esse mesmo parceiro automaticamente. */
+  parceiro?: string;
 }
 
 export interface ProcessoAnexo {

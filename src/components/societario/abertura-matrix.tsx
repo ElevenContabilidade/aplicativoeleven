@@ -7,7 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/store/app-store";
-import { CHECKLIST_STATUS, type ChecklistStatus, type Client, type PagamentoProcesso, type ProcessoSocietario } from "@/lib/types";
+import {
+  CHECKLIST_STATUS,
+  nomesParceirosConhecidos,
+  type ChecklistStatus,
+  type Client,
+  type PagamentoProcesso,
+  type ProcessoSocietario,
+} from "@/lib/types";
 import { CHECKLISTS_POR_TIPO, etapasAtualizadas, gruposComEtapas } from "@/lib/societario-checklist";
 import { criarClienteAvulso, nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { cn } from "@/lib/utils";
@@ -37,6 +44,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
   const updateClientDados = useAppStore((s) => s.updateClientDados);
   const addClient = useAppStore((s) => s.addClient);
   const todosProcessos = useAppStore((s) => s.processosSocietarios);
+  const extrasParceiro = useAppStore((s) => s.extrasParceiro);
   const [openId, setOpenId] = useState<string | null>(processos[0]?.id ?? null);
   const [editingProcessoId, setEditingProcessoId] = useState<string | null>(null);
   const [nomeDraft, setNomeDraft] = useState("");
@@ -44,6 +52,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
   const bancoOptions = [...new Set(todosProcessos.map((p) => p.banco).filter((b): b is string => !!b))].sort((a, b) =>
     a.localeCompare(b, "pt-BR")
   );
+  const parceiroOptions = nomesParceirosConhecidos(clients, extrasParceiro);
 
   function startEditNome(processoId: string, nomeAtual: string) {
     setEditingProcessoId(processoId);
@@ -64,7 +73,7 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
    * processo a ele. Só acontece quando alguém clica aqui, nunca sozinho. */
   function virarCliente(p: ProcessoSocietario) {
     const hoje = new Date().toISOString().slice(0, 10);
-    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(p, clients), p.responsavelId, hoje);
+    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(p, clients), p.responsavelId, hoje, p.parceiro);
     addClient(novoCliente);
     updateProcessoSocietario(p.id, { clienteId: novoCliente.id, clienteNomeAvulso: undefined });
   }
@@ -196,6 +205,17 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
                     value={p.protocolo ?? ""}
                     onChange={(e) => updateProcessoSocietario(p.id, { protocolo: e.target.value })}
                     placeholder="—"
+                    className="h-8 w-28 text-[12px]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-sand-400">Parceiro</span>
+                  <Input
+                    value={p.parceiro ?? ""}
+                    onChange={(e) => updateProcessoSocietario(p.id, { parceiro: e.target.value || undefined })}
+                    placeholder="—"
+                    list="societario-parceiros-matrix"
                     className="h-8 w-28 text-[12px]"
                   />
                 </div>
@@ -387,6 +407,9 @@ export function AberturaMatrix({ processos, clients }: { processos: ProcessoSoci
       })}
       <datalist id="societario-bancos-matrix">
         {bancoOptions.map((b) => (<option key={b} value={b} />))}
+      </datalist>
+      <datalist id="societario-parceiros-matrix">
+        {parceiroOptions.map((p) => (<option key={p} value={p} />))}
       </datalist>
     </div>
   );

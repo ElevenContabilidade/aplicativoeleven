@@ -17,9 +17,14 @@ export function nomeDoProcessoSocietario(
  * processo já vinculado a "novo cliente" quanto pelo botão "Virou cliente"
  * que promove um processo avulso depois. Fica de fora da tela de Clientes
  * até alguém completar CNPJ e os demais dados de verdade no cadastro.
+ *
+ * Quando o processo tinha um parceiro marcado, o cliente novo já nasce
+ * ligado a esse parceiro (clienteParceiro/nomeParceiro) — assim ele entra
+ * automaticamente no controle de Parceiros sem precisar marcar de novo.
  */
-export function criarClienteAvulso(nome: string, responsavelId: string | undefined, hoje: string): Client {
+export function criarClienteAvulso(nome: string, responsavelId: string | undefined, hoje: string, parceiro?: string): Client {
   const id = `c-${Date.now()}`;
+  const nomeParceiro = parceiro?.trim() || undefined;
   return {
     id,
     status: "Onboarding",
@@ -36,6 +41,7 @@ export function criarClienteAvulso(nome: string, responsavelId: string | undefin
       estado: "—",
       endereco: "—",
       criadoViaSocietario: true,
+      ...(nomeParceiro ? { clienteParceiro: true, nomeParceiro } : {}),
     },
     socios: [],
     contatos: [],

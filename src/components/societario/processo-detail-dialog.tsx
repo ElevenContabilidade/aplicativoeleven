@@ -12,7 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAppStore } from "@/lib/store/app-store";
 import { teamName } from "@/lib/team-lookup";
-import { CHECKLIST_STATUS, type ChecklistStatus, type PagamentoProcesso, type ProcessoSocietario, type ProcessoSocietarioStatus } from "@/lib/types";
+import {
+  CHECKLIST_STATUS,
+  nomesParceirosConhecidos,
+  type ChecklistStatus,
+  type PagamentoProcesso,
+  type ProcessoSocietario,
+  type ProcessoSocietarioStatus,
+} from "@/lib/types";
 import { CHECKLISTS_POR_TIPO, etapasAtualizadas } from "@/lib/societario-checklist";
 import { criarClienteAvulso, nomeDoProcessoSocietario } from "@/lib/processo-societario";
 import { uploadAnexoSocietario } from "@/lib/upload-anexo-societario";
@@ -41,6 +48,7 @@ function isDone(status: ChecklistStatus) {
 export function ProcessoDetailDialog({ processo, onClose }: { processo: ProcessoSocietario | null; onClose: () => void }) {
   const clients = useAppStore((s) => s.clients);
   const team = useAppStore((s) => s.team);
+  const extrasParceiro = useAppStore((s) => s.extrasParceiro);
   const processosSocietarios = useAppStore((s) => s.processosSocietarios);
   const updateProcessoSocietario = useAppStore((s) => s.updateProcessoSocietario);
   const addClient = useAppStore((s) => s.addClient);
@@ -63,6 +71,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   const bancoOptions = [...new Set(processosSocietarios.map((p) => p.banco).filter((b): b is string => !!b))].sort((a, b) =>
     a.localeCompare(b, "pt-BR")
   );
+  const parceiroOptions = nomesParceirosConhecidos(clients, extrasParceiro);
   const checklistDesatualizado = !!checklistPadrao && checklistPadrao.etapas.length !== etapas.length;
 
   function sincronizarChecklist() {
@@ -79,7 +88,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
   function virarCliente() {
     if (!processo) return;
     const hoje = new Date().toISOString().slice(0, 10);
-    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(processo, clients), processo.responsavelId, hoje);
+    const novoCliente = criarClienteAvulso(nomeDoProcessoSocietario(processo, clients), processo.responsavelId, hoje, processo.parceiro);
     addClient(novoCliente);
     updateProcessoSocietario(processo.id, { clienteId: novoCliente.id, clienteNomeAvulso: undefined });
   }
@@ -136,6 +145,7 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
         <div className="flex flex-wrap items-center gap-2">
           {processo.orgao && <Badge variant="outline">{processo.orgao}</Badge>}
           {processo.protocolo && <Badge variant="cream">Nº {processo.protocolo}</Badge>}
+          {processo.parceiro && <Badge variant="outline">Parceiro: {processo.parceiro}</Badge>}
           {!!processo.valorProcesso && <Badge variant="cream">{formatCurrency(processo.valorProcesso)}</Badge>}
           {processo.pagamento && (
             <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase", PAGAMENTO_STYLE[processo.pagamento])}>
@@ -184,6 +194,15 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
               value={processo.protocolo ?? ""}
               onChange={(e) => updateProcessoSocietario(processo.id, { protocolo: e.target.value || undefined })}
               placeholder="Ex: JC-2209981"
+            />
+          </div>
+          <div>
+            <Label className="mb-1 block">Parceiro</Label>
+            <Input
+              value={processo.parceiro ?? ""}
+              onChange={(e) => updateProcessoSocietario(processo.id, { parceiro: e.target.value || undefined })}
+              placeholder="Quem indicou (se for o caso)"
+              list="societario-parceiros"
             />
           </div>
           <div>
@@ -404,6 +423,9 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
         </div>
         <datalist id="societario-bancos">
           {bancoOptions.map((b) => (<option key={b} value={b} />))}
+        </datalist>
+        <datalist id="societario-parceiros">
+          {parceiroOptions.map((p) => (<option key={p} value={p} />))}
         </datalist>
       </DialogContent>
     </Dialog>
