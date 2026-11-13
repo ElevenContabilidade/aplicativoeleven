@@ -913,6 +913,19 @@ export const ETAPAS_BAIXA_GRUPOS = [
   { label: "Baixas e encerramento", count: 3, color: "#9A5A72" },
 ] as const;
 
+/** Checklist de desenquadramento do MEI, no mesmo formato do de abertura —
+ * só a fase Receita Federal, já que desenquadrar é um processo só dela
+ * (não envolve Junta Comercial/Prefeitura/Estado como abrir uma empresa). */
+export const ETAPAS_DESENQUADRAMENTO_EMPRESA = [
+  "Confirmar bem a data do desenquadramento",
+  "Solicitar o desenquadramento no portal",
+] as const;
+
+/** Faixas de colunas de ETAPAS_DESENQUADRAMENTO_EMPRESA, com a cor da fase. */
+export const ETAPAS_DESENQUADRAMENTO_GRUPOS = [
+  { label: "Receita Federal", count: 2, color: "#4A7A8C" },
+] as const;
+
 export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
 
 export interface ProcessoSocietario {
