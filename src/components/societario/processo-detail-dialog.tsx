@@ -179,6 +179,14 @@ export function ProcessoDetailDialog({ processo, onClose }: { processo: Processo
             </Select>
           </div>
           <div>
+            <Label className="mb-1 block">Número do processo</Label>
+            <Input
+              value={processo.protocolo ?? ""}
+              onChange={(e) => updateProcessoSocietario(processo.id, { protocolo: e.target.value || undefined })}
+              placeholder="Ex: JC-2209981"
+            />
+          </div>
+          <div>
             <Label className="mb-1 block">Valor do processo (R$)</Label>
             <Input
               type="number"
