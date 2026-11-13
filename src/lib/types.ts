@@ -914,16 +914,30 @@ export const ETAPAS_BAIXA_GRUPOS = [
 ] as const;
 
 /** Checklist de desenquadramento do MEI, no mesmo formato do de abertura —
- * só a fase Receita Federal, já que desenquadrar é um processo só dela
- * (não envolve Junta Comercial/Prefeitura/Estado como abrir uma empresa). */
+ * com todos os órgãos (Junta Comercial, Receita Federal, Prefeitura e
+ * Estado reaproveitados do checklist de Alteração), já que desenquadrar
+ * também é uma mudança de dados da empresa. */
 export const ETAPAS_DESENQUADRAMENTO_EMPRESA = [
+  "Viabilidade",
+  "DBE",
+  "FCN/Integrador",
+  "Pagamento Taxa",
+  "Registro",
   "Confirmar bem a data do desenquadramento",
   "Solicitar o desenquadramento no portal",
+  "Atualizar Inscrição Municipal",
+  "Atualizar Alvará",
+  "Atualizar Licenças",
+  "Atualizar Inscrição Estadual",
+  "DTE/Sintegra",
 ] as const;
 
-/** Faixas de colunas de ETAPAS_DESENQUADRAMENTO_EMPRESA, com a cor da fase. */
+/** Faixas de colunas de ETAPAS_DESENQUADRAMENTO_EMPRESA, com a cor de cada fase. */
 export const ETAPAS_DESENQUADRAMENTO_GRUPOS = [
+  { label: "Junta Comercial", count: 5, color: "#2E5F7F" },
   { label: "Receita Federal", count: 2, color: "#4A7A8C" },
+  { label: "Prefeitura", count: 3, color: "#B4691F" },
+  { label: "Estado", count: 2, color: "#7A1F1F" },
 ] as const;
 
 export type PagamentoProcesso = "Pago" | "Parcial" | "Pendente";
